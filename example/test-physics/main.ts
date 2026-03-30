@@ -43,8 +43,8 @@ function addBox(x: number, y: number) {
       height: 50,
       color: `hsl(${Math.random() * 360}, 80%, 60%)`,
       opacity: 0.9,
-      borderColor: 'rgb(255, 0, 0)',
-      borderWidth: 0,
+      outlineColor: 'rgb(255, 0, 0)',
+      outlineWidth: 0,
     },
     transform: {
       position: { x, y, z: 0 }
@@ -52,11 +52,11 @@ function addBox(x: number, y: number) {
   });
 
   box.on('mouseover', () => {
-    box.animate({ style: { opacity: 1, borderWidth: 3 } }, 150);
+    box.animate({ style: { opacity: 1, outlineWidth: 3 } }, 150);
   });
 
   box.on('mouseout', () => {
-    box.animate({ style: { opacity: 0.9, borderWidth: 0 } }, 150);
+    box.animate({ style: { opacity: 0.9, outlineWidth: 0 } }, 150);
   });
 
   box.on('click', (e) => {

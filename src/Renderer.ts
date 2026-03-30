@@ -433,15 +433,22 @@ export class Renderer {
 
   private _drawRectangle(obj: LveObject, x: number, y: number, w: number, h: number, rot: number) {
     const { style } = obj
-    if (!style.color && !style.borderColor) return
+    if (!style.color && !style.borderColor && !style.outlineColor) return
 
-    // 테두리 먼저 그리기 (더 큰 사각형)
+    // outline 먼저 (border 바깥)
+    if (style.outlineColor && (style.outlineWidth ?? 0) > 0) {
+      const bw = (style.borderWidth ?? 0)
+      const ow = style.outlineWidth!
+      this._drawColorMesh(this.colorProgram, x, y, w + bw * 2 + ow * 2, h + bw * 2 + ow * 2, rot, style.outlineColor, style.opacity)
+    }
+
+    // 테두리 (border)
     if (style.borderColor && (style.borderWidth ?? 0) > 0) {
       const bw = style.borderWidth!
       this._drawColorMesh(this.colorProgram, x, y, w + bw * 2, h + bw * 2, rot, style.borderColor, style.opacity)
     }
 
-    // 본체 그리기
+    // 본체
     if (style.color) {
       this._drawColorMesh(this.colorProgram, x, y, w, h, rot, style.color, style.opacity)
     }
@@ -451,7 +458,7 @@ export class Renderer {
 
   private _drawEllipse(obj: LveObject, x: number, y: number, w: number, h: number, rot: number) {
     const { style } = obj
-    if (!style.color && !style.borderColor) return
+    if (!style.color && !style.borderColor && !style.outlineColor) return
 
     const drawEllipse = (ew: number, eh: number, color: string) => {
       const [r, g, b, a] = parseCSSColor(color)
@@ -462,13 +469,20 @@ export class Renderer {
       this.ellipseMesh.draw({ camera: this.camera })
     }
 
-    // 테두리 먼저 그리기 (더 큰 타원)
+    // outline 먼저 (border 바깥)
+    if (style.outlineColor && (style.outlineWidth ?? 0) > 0) {
+      const bw = (style.borderWidth ?? 0)
+      const ow = style.outlineWidth!
+      drawEllipse(w + bw * 2 + ow * 2, h + bw * 2 + ow * 2, style.outlineColor)
+    }
+
+    // 테두리 (border)
     if (style.borderColor && (style.borderWidth ?? 0) > 0) {
       const bw = style.borderWidth!
       drawEllipse(w + bw * 2, h + bw * 2, style.borderColor)
     }
 
-    // 본체 그리기
+    // 본체
     if (style.color) {
       drawEllipse(w, h, style.color)
     }
