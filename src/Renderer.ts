@@ -152,7 +152,11 @@ export class Renderer {
   // 비디오 텍스처 캐시 (src → Texture) — 매 프레임 업데이트 필요
   private videoTextureCache = new Map<string, Texture>()
 
-  constructor(canvas: HTMLCanvasElement) {
+  /** 원근 투영 초점 거리. 카메라 기본 Z는 -focalLength 로 설정됩니다. */
+  readonly focalLength: number
+
+  constructor(canvas: HTMLCanvasElement, focalLength: number = 100) {
+    this.focalLength = focalLength
     this.ogl = new OGLRenderer({
       canvas,
       width: canvas.width,
@@ -305,7 +309,7 @@ export class Renderer {
     const renderables = Array.from(objects)
       .filter(o => o.attribute.type !== 'camera' && o.style.display !== 'none')
       .sort((a, b) => {
-        const zdiff = a.transform.position.z - b.transform.position.z
+        const zdiff = b.transform.position.z - a.transform.position.z
         return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex
       })
 
@@ -335,15 +339,16 @@ export class Renderer {
   ) {
     const { style, transform } = obj
 
-    const depth = transform.position.z - camZ
-    if (depth < 0) return
+    // rawDepth = 카메라로부터의 부호 있는 거리. 음수 = 카메라 뒤 → 숨김
+    const rawDepth = transform.position.z - camZ
+    if (rawDepth < 0) return
 
-    const focalLength = 500
-    // depth=0이면 원근 투영 없이 1:1 스케일
-    const perspectiveScale = depth === 0 ? 1 : focalLength / depth
+    const focalLength = this.focalLength
+    // depth=0이면 1:1 스케일, focalLength만큼 떨어졌을 때 1:1 스케일
+    const perspectiveScale = rawDepth === 0 ? 1 : focalLength / rawDepth
 
     const screenX = (transform.position.x - camX) * perspectiveScale * transform.scale.x
-    const screenY = (transform.position.y - camY) * perspectiveScale * transform.scale.y // WebGL은 Y 반전 (X) -> Lve4는 양수가 위로가야함
+    const screenY = (transform.position.y - camY) * perspectiveScale * transform.scale.y
 
     const w = (style.width ?? 0) * perspectiveScale * transform.scale.x
     const h = (style.height ?? 0) * perspectiveScale * transform.scale.y
@@ -358,11 +363,11 @@ export class Renderer {
     } else if (type === 'text') {
       this._drawText(obj, screenX, screenY, perspectiveScale, rotation, timestamp)
     } else if (type === 'image') {
-      this._drawAsset(obj as LveImage, screenX, screenY, w, h, rotation, assets)
+      this._drawAsset(obj as LveImage, screenX, screenY, w, h, perspectiveScale, rotation, assets)
     } else if (type === 'video') {
-      this._drawVideo(obj as LveVideo, screenX, screenY, w, h, rotation, assets)
+      this._drawVideo(obj as LveVideo, screenX, screenY, w, h, perspectiveScale, rotation, assets)
     } else if (type === 'sprite') {
-      this._drawSprite(obj as Sprite, screenX, screenY, w, h, rotation, assets, timestamp)
+      this._drawSprite(obj as Sprite, screenX, screenY, w, h, perspectiveScale, rotation, assets, timestamp)
     } else if (type === 'particle') {
       this._drawParticle(obj as Particle, screenX, screenY, w, h, perspectiveScale, assets, timestamp)
     }
@@ -709,7 +714,7 @@ export class Renderer {
 
   // ─── Image ──────────────────────────────────────────────────────────────
 
-  private _drawAsset(obj: LveImage, x: number, y: number, w: number, h: number, rot: number, assets: LoadedAssets) {
+  private _drawAsset(obj: LveImage, x: number, y: number, w: number, h: number, perspectiveScale: number, rot: number, assets: LoadedAssets) {
     const src = obj._src
     const asset = src ? assets[src] : undefined
     if (!asset || !(asset instanceof HTMLImageElement)) {
@@ -717,13 +722,13 @@ export class Renderer {
       return
     }
 
-    const drawW = w || asset.naturalWidth
-    const drawH = h || asset.naturalHeight
+    // style.width/height 미지정 시 naturalSize에 perspectiveScale 적용
+    const drawW = w || asset.naturalWidth * perspectiveScale * obj.transform.scale.x
+    const drawH = h || asset.naturalHeight * perspectiveScale * obj.transform.scale.y
 
-    // 실제 월드 크기 기록: w/h는 perspectiveScale*scale이 반영된 screen 크기이므로 scale로만 역산
     obj._renderedSize = {
-      w: drawW / obj.transform.scale.x,
-      h: drawH / obj.transform.scale.y,
+      w: drawW / perspectiveScale / obj.transform.scale.x,
+      h: drawH / perspectiveScale / obj.transform.scale.y,
     }
 
     const texture = this._getOrCreateAssetTexture(src!, asset)
@@ -733,7 +738,7 @@ export class Renderer {
 
   // ─── Video ──────────────────────────────────────────────────────────────
 
-  private _drawVideo(obj: LveVideo, x: number, y: number, w: number, h: number, rot: number, assets: LoadedAssets) {
+  private _drawVideo(obj: LveVideo, x: number, y: number, w: number, h: number, perspectiveScale: number, rot: number, assets: LoadedAssets) {
     const src = obj._src
     const asset = src ? assets[src] : undefined
     if (!asset || !(asset instanceof HTMLVideoElement)) {
@@ -763,13 +768,13 @@ export class Renderer {
       }
     }
 
-    const drawW = w || asset.videoWidth
-    const drawH = h || asset.videoHeight
+    // style.width/height 미지정 시 videoSize에 perspectiveScale 적용
+    const drawW = w || asset.videoWidth * perspectiveScale * obj.transform.scale.x
+    const drawH = h || asset.videoHeight * perspectiveScale * obj.transform.scale.y
 
-    // 실제 월드 크기 기록 (scale로만 역산)
     obj._renderedSize = {
-      w: drawW / obj.transform.scale.x,
-      h: drawH / obj.transform.scale.y,
+      w: drawW / perspectiveScale / obj.transform.scale.x,
+      h: drawH / perspectiveScale / obj.transform.scale.y,
     }
 
     // 비디오 텍스처는 매 프레임 업데이트
@@ -786,7 +791,7 @@ export class Renderer {
 
   // ─── Sprite ─────────────────────────────────────────────────────────────
 
-  private _drawSprite(sprite: Sprite, x: number, y: number, w: number, h: number, rot: number, assets: LoadedAssets, timestamp: number) {
+  private _drawSprite(sprite: Sprite, x: number, y: number, w: number, h: number, perspectiveScale: number, rot: number, assets: LoadedAssets, timestamp: number) {
     sprite.tick(timestamp)
 
     const clip = sprite._clip
@@ -802,8 +807,8 @@ export class Renderer {
     const texture = this._getOrCreateAssetTexture(src, asset)
 
     if (!clip) {
-      const drawW = w || asset.naturalWidth
-      const drawH = h || asset.naturalHeight
+      const drawW = w || asset.naturalWidth * perspectiveScale * sprite.transform.scale.x
+      const drawH = h || asset.naturalHeight * perspectiveScale * sprite.transform.scale.y
       this._drawTextureMesh(texture, x, y, drawW, drawH, rot, sprite.style.opacity)
       return
     }
@@ -818,8 +823,8 @@ export class Renderer {
     const uvScaleX = frameWidth / asset.naturalWidth
     const uvScaleY = frameHeight / asset.naturalHeight
 
-    const drawW = w || frameWidth
-    const drawH = h || frameHeight
+    const drawW = w || frameWidth * perspectiveScale * sprite.transform.scale.x
+    const drawH = h || frameHeight * perspectiveScale * sprite.transform.scale.y
 
     this._drawTextureMesh(
       texture,

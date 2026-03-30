@@ -1,18 +1,24 @@
 import { World, Animation } from '../../src/index.js'
 
 const world = new World()
-world.createCamera()
+world.createCamera({
+  transform: {
+    position: {
+      z: -100
+    }
+  }
+})
 
 // 1. LveObject.animate() 테스트
 const text = world.createText({
   attribute: { text: 'Move and Fade' },
-  style: { color: '#7ec8e3', fontSize: 36, opacity: 0.2, shadowBlur: 10, shadowColor: 'red', shadowOffsetX: 10, shadowOffsetY: 10 },
-  transform: { position: { x: -0, y: 0, z: 0 } },
+  style: { color: '#7ec8e3', zIndex: 1, fontSize: 36, opacity: 0.2, shadowBlur: 10, shadowColor: 'red', shadowOffsetX: 10, shadowOffsetY: 10 },
+  transform: { position: { x: 0, y: 0, z: -100 } },
 })
 
 text.animate({
   style: { opacity: 1, fontSize: 48 },
-  position: { z: 100 },
+  position: { z: 0 },
 }, 2000, 'easeInOut')
 
 // 2. 복합 대입 연산자 테스트
@@ -23,8 +29,7 @@ const box = world.createRectangle({
 
 box.animate({
   style: { width: '+=150', height: '*=2' },
-  transform: { rotation: { z: '+=3.14' } },
-  position: { x: '+=250' }
+  transform: { rotation: { z: '+=3.14' }, position: { x: '+=250' } },
 }, 1500, 'easeOutElastic')
 
 // 3. 순수 Animation 객체 테스트

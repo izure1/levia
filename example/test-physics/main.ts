@@ -1,7 +1,13 @@
 import { World } from '../../src/index.js'
 
 const world = new World()
-world.createCamera()
+world.createCamera({
+  transform: {
+    position: {
+      z: -100
+    }
+  }
+})
 
 world.setGravity({ x: 0, y: -1 })
 
@@ -21,13 +27,7 @@ world.createRectangle({
   transform: {
     position: { x: 0, y: -300, z: 0 }
   }
-}).on('click', (e) => {
-  // 바닥 클릭 시 새로운 박스 생성
-  const mx = e.clientX - window.innerWidth / 2;
-  const my = window.innerHeight / 2 - e.clientY;
-  addBox(mx, my);
-});
-
+})
 
 function addBox(x: number, y: number) {
   const box = world.createRectangle({
@@ -80,3 +80,5 @@ world.on('click', (obj, e) => {
 });
 
 world.start()
+
+console.log(world)

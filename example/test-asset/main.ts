@@ -2,7 +2,7 @@ import { World } from '../../src/index.js'
 
 const world = new World()
 const camera = world.createCamera()
-camera.transform.position.z = -100
+camera.transform.position.z = 0
 
 await world.loader.load({
   'logo': '../asset/image/logo.png',
@@ -39,48 +39,48 @@ function label(text: string, x: number, y: number, z: number) {
 }
 
 // ① LveImage — logo.png (auto size)
-label('① LveImage — logo.png (auto size)', -500, -250, 300)
+label('① LveImage — logo.png (auto size)', -500, -250, 0)
 const img1 = world.createImage({
-  transform: { position: { x: -380, y: -160, z: 300 } },
+  transform: { position: { x: -380, y: -160, z: 0 } },
 })
 img1.play('logo')
 
 // ② LveImage — logo.png (지정 크기 200×200)
-label('② LveImage — logo.png (200×200)', -500, 20, 300)
+label('② LveImage — logo.png (200×200)', -500, 20, 0)
 const img2 = world.createImage({
   style: { width: 200, height: 200 },
-  transform: { position: { x: -400, y: 120, z: 300 } },
+  transform: { position: { x: -400, y: 120, z: 0 } },
 })
 img2.play('logo')
 
 // ③ Placeholder (src 없음)
-label('③ Placeholder (no src)', -500, 250, 300)
+label('③ Placeholder (no src)', -500, 250, 0)
 world.createImage({
   style: { width: 80, height: 80 },
-  transform: { position: { x: -460, y: 310, z: 300 } },
+  transform: { position: { x: -460, y: 310, z: 0 } },
 })
 
 // ④ Sprite — sprite.png, 10fps
-label('④ Sprite — sprite.png (10fps, 44×40)', 80, -250, 300)
+label('④ Sprite — sprite.png (10fps, 44×40)', 80, -250, 0)
 const spr = world.createSprite({
   style: { width: 132, height: 120 },
-  transform: { position: { x: 180, y: -160, z: 300 } },
+  transform: { position: { x: 180, y: -160, z: 0 } },
 })
 spr.play('play')
 
-// ⑤ Sprite — 원경 (z=600, perspective 축소)
-label('⑤ Sprite 원경 (z=600)', 80, 60, 300)
+// ⑤ Sprite — 원경 (z=300, perspective 축소)
+label('⑤ Sprite 원경 (z300)', 80, 60, 0)
 const sprFar = world.createSprite({
   style: { width: 132, height: 120 },
-  transform: { position: { x: 180, y: 160, z: 600 } },
+  transform: { position: { x: 180, y: 160, z: 300 } },
 })
 sprFar.play('play')
 
 // ⑥ LveVideo — sample.mp4
-label('⑥ LveVideo — sample.mp4', -200, -250, 300)
+label('⑥ LveVideo — sample.mp4', -200, -250, 0)
 const vid = world.createVideo({
   style: { width: 200, height: 120 },
-  transform: { position: { x: -120, y: -160, z: 300 } },
+  transform: { position: { x: -120, y: -160, z: 0 } },
 })
 vid.play('sample')
 
@@ -94,10 +94,10 @@ world.particleManager.create({
   rate: 8,
 })
 
-label('⑦ Particle — flame (일반 모드)', -200, 60, 300)
+label('⑦ Particle — flame (일반 모드)', -200, 60, 0)
 const ptcl = world.createParticle({
   style: { width: 30, height: 30, blendMode: 'lighter' },
-  transform: { position: { x: -120, y: 160, z: 300 } },
+  transform: { position: { x: -120, y: 160, z: 0 } },
 })
 ptcl.play('flame')
 

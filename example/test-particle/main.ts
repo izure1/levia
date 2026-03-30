@@ -3,11 +3,16 @@ import { World } from '../../src/index.js'
 const W = window.innerWidth
 const H = window.innerHeight
 const CX = W / 2
-const Z = 300
+const Z = 0
 
 const world = new World()
-const camera = world.createCamera()
-camera.transform.position.z = -100
+const camera = world.createCamera({
+  transform: {
+    position: {
+      z: -100
+    }
+  }
+})
 
 await world.loader.load({
   'star': '../asset/image/star.png',

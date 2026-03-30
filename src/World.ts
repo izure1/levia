@@ -13,10 +13,22 @@ import { SpriteManager } from './SpriteManager.js'
 import { VideoManager } from './VideoManager.js'
 import { ParticleManager } from './ParticleManager.js'
 import { PhysicsEngine } from './PhysicsEngine.js'
-import type { LveObjectOptions, LoadedAssets } from './types.js'
+import type { LveObjectOptions, LoadedAssets, Attribute } from './types.js'
 import type { RectangleOptions } from './objects/Rectangle.js'
 import { Renderer } from './Renderer.js'
 import { EventEmitter } from './EventEmitter.js'
+
+export interface WorldOptions {
+  /** 캔버스 엘리먼트. 지정하지 않으면 자동으로 생성합니다. */
+  canvas?: HTMLCanvasElement
+  /**
+   * 원근 투영 초점 거리.
+   * 카메라 기본 Z는 `-focalLength` 로 설정됩니다.
+   * z=0 오브젝트가 1:1 스케일로 렌더링됩니다.
+   * @default 100
+   */
+  focalLength?: number
+}
 
 /**
  * MouseEvent를 래핑하여 stopPropagation() 호출 여부를 추적합니다.
@@ -41,6 +53,8 @@ export class World extends EventEmitter {
   private _canvas: HTMLCanvasElement | null = null
   /** mouseover 상태 추적 (객체 id → boolean) */
   private _mouseOver: Set<string> = new Set()
+  /** 원근 투영 초점 거리 */
+  readonly focalLength: number
 
   /** 스프라이트 애니메이션 클립 매니저 */
   readonly spriteManager: SpriteManager = new SpriteManager()
@@ -54,11 +68,21 @@ export class World extends EventEmitter {
   /** 모든 Loader에서 로드된 에셋의 통합 맵 */
   private _assets: LoadedAssets = {}
 
-  constructor(canvas?: HTMLCanvasElement) {
+  constructor(canvasOrOptions?: HTMLCanvasElement | WorldOptions) {
     super()
-    const canvasEl = canvas ?? this.createCanvas()
+    let canvasEl: HTMLCanvasElement
+    let options: WorldOptions = {}
+
+    if (canvasOrOptions instanceof HTMLCanvasElement) {
+      canvasEl = canvasOrOptions
+    } else {
+      options = canvasOrOptions ?? {}
+      canvasEl = options.canvas ?? this.createCanvas()
+    }
+
+    this.focalLength = options.focalLength ?? 100
     this._canvas = canvasEl
-    this.renderer = new Renderer(canvasEl)
+    this.renderer = new Renderer(canvasEl, this.focalLength)
     this.loader = new Loader()
     this.loader.on('complete', ({ assets }) => {
       Object.assign(this._assets, assets)
@@ -171,7 +195,7 @@ export class World extends EventEmitter {
       }
     }
 
-    const focalLength = 500
+    const focalLength = this.focalLength
     const result: LveObject[] = []
 
     for (const obj of this.objects) {
@@ -180,10 +204,10 @@ export class World extends EventEmitter {
       if (!obj.style.pointerEvents) continue
 
       const { transform, style } = obj
-      const depth = transform.position.z - camZ
-      if (depth < 0) continue
+      const rawDepth = transform.position.z - camZ
+      if (rawDepth < 0) continue
 
-      const perspectiveScale = depth === 0 ? 1 : focalLength / depth
+      const perspectiveScale = rawDepth === 0 ? 1 : focalLength / rawDepth
       const screenX = (transform.position.x - camX) * perspectiveScale * transform.scale.x
       const screenY = (transform.position.y - camY) * perspectiveScale * transform.scale.y
       const hw = ((style.width ?? 0) * perspectiveScale * transform.scale.x) / 2
@@ -211,7 +235,7 @@ export class World extends EventEmitter {
 
   /**
    * CSS querySelector와 유사한 방식으로 오브젝트를 선택합니다.
-   * 지원 셀렉터: `.className`, `#id`, `[name=xxx]`, 타입 문자열
+   * 지원 셀렉터: `.className`, `#id`, `[attribute=value]`
    */
   select(query: string): LveObject[] {
     const all = Array.from(this.objects)
@@ -223,11 +247,13 @@ export class World extends EventEmitter {
       const id = query.slice(1)
       return all.filter(o => o.attribute.id === id)
     }
-    const nameMatch = query.match(/^\[name=(.+)\]$/)
-    if (nameMatch) {
-      return all.filter(o => o.attribute.name === nameMatch[1])
+    const attrMatch = query.match(/^\[(.+)=(.+)\]$/)
+    if (attrMatch) {
+      const key = attrMatch[1]
+      const value = attrMatch[2]
+      return all.filter(o => o.attribute[key as keyof Attribute] === value)
     }
-    return all.filter(o => o.attribute.type === query)
+    return []
   }
 
   /**

@@ -38,6 +38,9 @@ export class PhysicsEngine {
   private prevTime: number = 0
   /** syncObjectSizes에서 크기 변경 감지용 - border/margin 제외한 순수 w, h */
   private lastSizeMap: Map<string, { w: number; h: number }> = new Map()
+  /** Z → 양수 그룹 번호 매핑 (1-based). 같은 Z = 같은 양수 그룹 = 충돌, 다른 Z = 다른 그룹 = 차단 */
+  private zGroupMap: Map<number, number> = new Map()
+  private nextZGroup: number = 1
 
   constructor() {
     this.engine = Matter.Engine.create()
@@ -218,8 +221,46 @@ export class PhysicsEngine {
     }
     const delta = Math.min(timestamp - this.prevTime, 50) // 최대 50ms로 clamp (탭 비활성화 등 대응)
     this.prevTime = timestamp
+    this.updateZCollisionFilters()
     Matter.Engine.update(this.engine, delta)
     this.syncToObjects()
+  }
+
+  /**
+   * 매 step 전, 오브젝트의 Z 좌표를 기반으로 collisionFilter.group을 동적으로 갱신합니다.
+   * - 같은 Z → 같은 양수 group → matter-js 규칙상 무조건 충돌
+   * - 다른 Z → 다른 group → category=0/mask=0 으로 충돌 차단
+   * - 사용자가 attr.collisionGroup을 명시한 경우 Z 로직을 건너뜁니다.
+   */
+  private updateZCollisionFilters() {
+    for (const [id, body] of this.bodyMap) {
+      const obj = this.objMap.get(id)
+      if (!obj) continue
+
+      // 사용자가 collisionCategory/collisionMask를 직접 지정한 경우 Z 필터 무시
+      if (obj.attribute.collisionCategory != null || obj.attribute.collisionMask != null) continue
+
+      const z = obj.transform.position.z ?? 0
+
+      // Z 값에 대응하는 category 비트 (1 << index, 최대 32개 고유 Z 레이어)
+      if (!this.zGroupMap.has(z)) {
+        const bit = 1 << ((this.nextZGroup++ - 1) % 31 + 1) // 비트 1~31 사용 (비트0은 기본값 회피)
+        this.zGroupMap.set(z, bit)
+      }
+      const category = this.zGroupMap.get(z)!
+
+      // mask = 자신의 category → 같은 category끼리만 (A & B_mask) !== 0 성립
+      const cf = body.collisionFilter
+      if (cf.group !== 0 || cf.category !== category || cf.mask !== category) {
+        Matter.Body.set(body, {
+          collisionFilter: {
+            group: obj.attribute.collisionGroup ?? 0,
+            category,
+            mask: category,
+          },
+        })
+      }
+    }
   }
 
   /**

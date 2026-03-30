@@ -1,4 +1,5 @@
 export { World } from './World.js'
+export type { WorldOptions } from './World.js'
 export { Loader } from './Loader.js'
 export { Renderer } from './Renderer.js'
 export { LveObject } from './LveObject.js'
