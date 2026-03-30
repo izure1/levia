@@ -51,7 +51,7 @@ object.emit('event1 event2')
   - rotation 속성이 변경되었을 때 발생합니다. 매개변수로 변경된 속성명, 현재값, 이전값을 받을 수 있습니다.
 - 'positionmodified'
   - position 속성이 변경되었을 때 발생합니다. 매개변수로 변경된 속성명, 현재값, 이전값을 받을 수 있습니다.
-- 'scaleemodified'
+- 'scalemodified'
   - scale 속성이 변경되었을 때 발생합니다. 매개변수로 변경된 속성명, 현재값, 이전값을 받을 수 있습니다.
 - 'play'
   - 재생이 시작되었을 때 발생합니다. video, sprite, particle 객체에서 사용 가능합니다.
