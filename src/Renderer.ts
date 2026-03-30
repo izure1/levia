@@ -291,13 +291,15 @@ export class Renderer {
 
   // ─── 공개 렌더 메서드 ────────────────────────────────────────────────────
 
-  render(objects: Set<LveObject>, assets: LoadedAssets = {}, timestamp: number = 0) {
+  render(objects: Set<LveObject>, assets: LoadedAssets = {}, timestamp: number = 0, activeCamera: LveObject | null = null) {
     // Camera 찾기
-    let lveCamera: LveCamera | null = null
-    for (const obj of objects) {
-      if (obj.attribute.type === 'camera') {
-        lveCamera = obj as LveCamera
-        break
+    let lveCamera: LveObject | null = activeCamera
+    if (!lveCamera) {
+      for (const obj of objects) {
+        if (obj.attribute.type === 'camera') {
+          lveCamera = obj
+          break
+        }
       }
     }
 

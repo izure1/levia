@@ -51,6 +51,8 @@ export class World extends EventEmitter {
   private rafId: number | null = null
   private physics: PhysicsEngine = new PhysicsEngine()
   private _canvas: HTMLCanvasElement | null = null
+  /** 현재 포커스 중인 카메라 (지정되지 않으면 객체 중 Camera를 찾습니다) */
+  private _activeCamera: LveObject | null = null
   /** mouseover 상태 추적 (객체 id → boolean) */
   private _mouseOver: Set<string> = new Set()
   /** 원근 투영 초점 거리 */
@@ -186,13 +188,11 @@ export class World extends EventEmitter {
     let camX = 0
     let camY = 0
     let camZ = 0
-    for (const obj of this.objects) {
-      if (obj.attribute.type === 'camera') {
-        camX = obj.transform.position.x
-        camY = obj.transform.position.y
-        camZ = obj.transform.position.z
-        break
-      }
+    const activeCam = this.camera
+    if (activeCam) {
+      camX = activeCam.transform.position.x
+      camY = activeCam.transform.position.y
+      camZ = activeCam.transform.position.z
     }
 
     const focalLength = this.focalLength
@@ -231,6 +231,22 @@ export class World extends EventEmitter {
    */
   setGravity(g: { x: number; y: number }) {
     this.physics.setGravity(g.x, g.y)
+  }
+
+  /**
+   * 월드의 활성 카메라 객체를 반환합니다. 
+   * 지정된 카메라가 없다면 가장 처음 등록된 `camera` 타입의 객체를 반환합니다.
+   */
+  get camera(): LveObject | null {
+    return this._activeCamera ?? Array.from(this.objects).find(obj => obj.attribute.type === 'camera') ?? null
+  }
+
+  /**
+   * 월드의 카메라를 특정 객체로 지정합니다. 카메라 객체 외에도 다른 객체를 지정할 수 있습니다.
+   * `null`을 할당하면 기본 동작으로 돌아갑니다.
+   */
+  set camera(camera: LveObject | null) {
+    this._activeCamera = camera
   }
 
   /**
@@ -336,7 +352,7 @@ export class World extends EventEmitter {
       }
       prevTime = timestamp
 
-      this.renderer.render(this.objects, this._assets, timestamp)
+      this.renderer.render(this.objects, this._assets, timestamp, this.camera)
       // 렌더 후 실제 크기가 확정되면 물리 바디 크기를 동기화
       this.physics.syncObjectSizes(this.objects)
       this.rafId = requestAnimationFrame(loop)

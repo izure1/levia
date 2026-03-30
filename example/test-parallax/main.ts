@@ -1,7 +1,13 @@
 import { World } from '../../src/index.js'
 
 const world = new World()
-const camera = world.createCamera()
+const camera = world.createCamera({
+  transform: {
+    position: {
+      z: -100
+    }
+  }
+})
 
 const layers = [
   { z: 800, count: 6, size: 180, colors: ['#1a1a3e', '#0d0d2b', '#16163a'] },
@@ -63,20 +69,22 @@ world.createText({
   transform: { position: { x: -120, y: 60, z: 200 } },
 })
 
-camera.transform.position.z = -50
-
 window.addEventListener('mousemove', (e) => {
+  if (!world.camera) return
   const cx = window.innerWidth / 2
   const cy = window.innerHeight / 2
-  camera.transform.position.x = (e.clientX - cx) * 0.12
-  camera.transform.position.y = (e.clientY - cy) * 0.12
+  world.camera.transform.position.x = (e.clientX - cx) * 0.12
+  world.camera.transform.position.y = (e.clientY - cy) * 0.12
 })
 
 window.addEventListener('wheel', (e) => {
-  camera.transform.position.z = Math.min(
-    Math.max(camera.transform.position.z + e.deltaY * 0.1, -200),
+  if (!world.camera) return
+  world.camera.transform.position.z = Math.min(
+    Math.max(world.camera.transform.position.z + e.deltaY * 0.1, -200),
     200
   )
 }, { passive: true })
 
 world.start()
+
+console.log(world)
