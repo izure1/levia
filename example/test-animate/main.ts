@@ -76,12 +76,9 @@ dataItem.animate({
 }, 2000, 'linear')
 
 // 매 프레임 dataset 값을 텍스트로 표시
-world.loader.on('complete', () => {
-  // 간단히 tick마다 상태 업데이트(Lve4 엔진 구조상 text 갱신은 필요할 때마다)
-  setInterval(() => {
-    dataItem.attribute.text = `Data: a=${Math.round((dataItem.dataset.nested as any).a)}, b=${Math.round((dataItem.dataset.nested as any).b)}`
-  }, 100)
-})
+setInterval(() => {
+  dataItem.attribute.text = `Data: a=${Math.round((dataItem.dataset.nested as any).a)}, b=${Math.round((dataItem.dataset.nested as any).b)}`
+}, 100)
 
 
 world.start()

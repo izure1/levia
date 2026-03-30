@@ -6,7 +6,7 @@ world.createCamera()
 function label(text: string, x: number, y: number, z: number) {
   world.createText({
     attribute: { text },
-    style: { color: '#aaaaaa', fontSize: 13, fontFamily: 'monospace' },
+    style: { color: '#aaaaaa', fontSize: 13, fontFamily: 'sans-serif, monospace' },
     transform: { position: { x, y, z } },
   })
 }

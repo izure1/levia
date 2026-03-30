@@ -33,7 +33,7 @@ world.videoManager.create({
 function label(text: string, x: number, y: number, z: number) {
   world.createText({
     attribute: { text },
-    style: { color: '#888', fontSize: 13, fontFamily: 'monospace' },
+    style: { color: '#888', fontSize: 13, fontFamily: 'sans-serif, monospace' },
     transform: { position: { x, y, z } },
   })
 }

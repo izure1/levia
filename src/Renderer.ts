@@ -1,54 +1,274 @@
+import {
+  Renderer as OGLRenderer,
+  Camera,
+  Transform,
+  Geometry,
+  Program,
+  Mesh,
+  Texture,
+} from 'ogl'
+import type { OGLRenderingContext } from 'ogl'
+import { colorVertex, colorFragment, ellipseVertex, ellipseFragment } from './shaders/color.js'
+import { textureVertex, textureFragment } from './shaders/texture.js'
+import { instancedVertex, instancedFragment } from './shaders/instanced.js'
+import { parseTextMarkup } from './utils/textMarkup.js'
+
 import type { LveObject } from './LveObject.js'
-import type { Camera } from './objects/Camera.js'
+import type { Camera as LveCamera } from './objects/Camera.js'
 import type { Sprite } from './objects/Sprite.js'
 import type { LveImage } from './objects/LveImage.js'
 import type { LveVideo } from './objects/LveVideo.js'
 import type { Particle } from './objects/Particle.js'
-import { parseTextMarkup } from './utils/textMarkup.js'
-import type { TextSpan } from './utils/textMarkup.js'
 import type { LoadedAssets } from './types.js'
 
-/**
- * WebGL 기반 렌더러.
- * 현재는 기본 2D Canvas를 폴백으로 사용하며, 향후 WebGL 렌더링 파이프라인으로 확장 예정입니다.
- */
+// ─── Quad 지오메트리 헬퍼 ────────────────────────────────────────────────────
+
+function createQuadGeometry(gl: OGLRenderingContext) {
+  return new Geometry(gl, {
+    position: {
+      size: 2,
+      data: new Float32Array([
+        -0.5, -0.5,
+        0.5, -0.5,
+        0.5, 0.5,
+        -0.5, 0.5,
+      ]),
+    },
+    uv: {
+      size: 2,
+      data: new Float32Array([
+        0, 0,
+        1, 0,
+        1, 1,
+        0, 1,
+      ]),
+    },
+    index: {
+      data: new Uint16Array([0, 1, 2, 0, 2, 3]),
+    },
+  })
+}
+
+// ─── 색상 파싱 헬퍼 ──────────────────────────────────────────────────────────
+
+function parseCSSColor(color: string): [number, number, number, number] {
+  // hex #rrggbb 또는 #rrggbbaa
+  if (color.startsWith('#')) {
+    const hex = color.slice(1)
+    if (hex.length === 3) {
+      const r = parseInt(hex[0] + hex[0], 16) / 255
+      const g = parseInt(hex[1] + hex[1], 16) / 255
+      const b = parseInt(hex[2] + hex[2], 16) / 255
+      return [r, g, b, 1]
+    }
+    if (hex.length >= 6) {
+      const r = parseInt(hex.slice(0, 2), 16) / 255
+      const g = parseInt(hex.slice(2, 4), 16) / 255
+      const b = parseInt(hex.slice(4, 6), 16) / 255
+      const a = hex.length >= 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1
+      return [r, g, b, a]
+    }
+  }
+  // rgb(r, g, b) 또는 rgba(r, g, b, a)
+  const rgbMatch = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/)
+  if (rgbMatch) {
+    return [
+      parseInt(rgbMatch[1]) / 255,
+      parseInt(rgbMatch[2]) / 255,
+      parseInt(rgbMatch[3]) / 255,
+      rgbMatch[4] != null ? parseFloat(rgbMatch[4]) : 1,
+    ]
+  }
+  return [1, 1, 1, 1]
+}
+
+// ─── 텍스처 캐시 키 ──────────────────────────────────────────────────────────
+
+// 텍스트 오브젝트의 Offscreen Canvas → Texture 캐시
+interface TextTextureEntry {
+  texture: Texture
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
+  lastText: string
+  mesh: Mesh
+}
+
+// ─── Renderer ────────────────────────────────────────────────────────────────
+
 export class Renderer {
-  private canvas: HTMLCanvasElement
-  private ctx: CanvasRenderingContext2D
+  private ogl: OGLRenderer
+  private gl: OGLRenderingContext
+  private camera: Camera
+  private scene: Transform
+
+  // 공용 지오메트리 (quad)
+  private quadGeo!: Geometry
+
+  // 프로그램 캐시
+  private colorProgram!: Program
+  private ellipseProgram!: Program
+  private textureProgram!: Program
+  private instancedProgram!: Program
+
+  // Placeholder 색상 Program (에러 표시)
+  private placeholderProgram!: Program
+
+  // 오브젝트별 Mesh 캐시
+  private meshCache = new Map<string, Mesh>()
+
+  // 텍스트 텍스처 캐시 (id → TextTextureEntry)
+  private textCache = new Map<string, TextTextureEntry>()
+
+  // 에셋 텍스처 캐시 (src → Texture)
+  private assetTextureCache = new Map<string, Texture>()
+
+  // 비디오 텍스처 캐시 (src → Texture) — 매 프레임 업데이트 필요
+  private videoTextureCache = new Map<string, Texture>()
 
   constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('[Renderer] Failed to get 2D context from canvas.')
-    this.ctx = ctx
+    this.ogl = new OGLRenderer({
+      canvas,
+      width: canvas.width,
+      height: canvas.height,
+      alpha: true,
+      antialias: true,
+      premultipliedAlpha: false,
+    })
+    this.gl = this.ogl.gl
+
+    // 직교 투영 카메라: 화면 픽셀 좌표계 (0,0 = center)
+    this.camera = new Camera(this.gl, {
+      left: -canvas.width / 2,
+      right: canvas.width / 2,
+      bottom: -canvas.height / 2,
+      top: canvas.height / 2,
+      near: -1000,
+      far: 1000,
+    })
+    this.camera.position.z = 1
+    this.camera.lookAt([0, 0, 0])
+
+    this.scene = new Transform()
+
+    this.quadGeo = createQuadGeometry(this.gl)
+    this._initPrograms()
   }
 
-  get width() {
-    return this.canvas.width
+  get width() { return this.ogl.width }
+  get height() { return this.ogl.height }
+
+  setSize(w: number, h: number) {
+    this.ogl.setSize(w, h)
+    // 직교 카메라 재설정
+    const cam = this.camera as any
+    cam.left = -w / 2
+    cam.right = w / 2
+    cam.bottom = -h / 2
+    cam.top = h / 2
+    this.camera.orthographic({ left: -w / 2, right: w / 2, bottom: -h / 2, top: h / 2, near: -1000, far: 1000 })
   }
 
-  get height() {
-    return this.canvas.height
+  // ─── 프로그램 초기화 ─────────────────────────────────────────────────────
+
+  private _initPrograms() {
+    const gl = this.gl
+
+    this.colorProgram = new Program(gl, {
+      vertex: colorVertex,
+      fragment: colorFragment,
+      uniforms: {
+        uColor: { value: [1, 1, 1, 1] },
+        uOpacity: { value: 1 },
+        uRadius: { value: 0 },
+        uSize: { value: [1, 1] },
+        uModelMatrix: { value: new Float32Array(16) },
+        uProjectionMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
+
+    this.ellipseProgram = new Program(gl, {
+      vertex: ellipseVertex,
+      fragment: ellipseFragment,
+      uniforms: {
+        uColor: { value: [1, 1, 1, 1] },
+        uOpacity: { value: 1 },
+        uModelMatrix: { value: new Float32Array(16) },
+        uProjectionMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
+
+    this.textureProgram = new Program(gl, {
+      vertex: textureVertex,
+      fragment: textureFragment,
+      uniforms: {
+        uTexture: { value: null },
+        uOpacity: { value: 1 },
+        uFlipY: { value: 0 },
+        uUVOffset: { value: [0, 0] },
+        uUVScale: { value: [1, 1] },
+        uModelMatrix: { value: new Float32Array(16) },
+        uProjectionMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
+
+    this.instancedProgram = new Program(gl, {
+      vertex: instancedVertex,
+      fragment: instancedFragment,
+      uniforms: {
+        uTexture: { value: null },
+        uOpacity: { value: 1 },
+        uProjectionMatrix: { value: new Float32Array(16) },
+        uViewMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
+
+    // placeholder: 분홍 반투명
+    this.placeholderProgram = new Program(gl, {
+      vertex: colorVertex,
+      fragment: colorFragment,
+      uniforms: {
+        uColor: { value: [1, 0.2, 0.4, 0.5] },
+        uOpacity: { value: 1 },
+        uRadius: { value: 0 },
+        uSize: { value: [1, 1] },
+        uModelMatrix: { value: new Float32Array(16) },
+        uProjectionMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
   }
+
+  // ─── 공개 렌더 메서드 ────────────────────────────────────────────────────
 
   render(objects: Set<LveObject>, assets: LoadedAssets = {}, timestamp: number = 0) {
-    const { ctx } = this
-    ctx.clearRect(0, 0, this.width, this.height)
-
     // Camera 찾기
-    let camera: Camera | null = null
+    let lveCamera: LveCamera | null = null
     for (const obj of objects) {
       if (obj.attribute.type === 'camera') {
-        camera = obj as Camera
+        lveCamera = obj as LveCamera
         break
       }
     }
 
-    const camX = camera?.transform.position.x ?? 0
-    const camY = camera?.transform.position.y ?? 0
-    const camZ = camera?.transform.position.z ?? 0
+    const camX = lveCamera?.transform.position.x ?? 0
+    const camY = lveCamera?.transform.position.y ?? 0
+    const camZ = lveCamera?.transform.position.z ?? 0
 
-    // z 기준 오름차순 정렬 (낮은 z가 먼저 그려짐 = 배경)
+    // z 기준 오름차순 정렬
     const renderables = Array.from(objects)
       .filter(o => o.attribute.type !== 'camera' && o.style.display !== 'none')
       .sort((a, b) => {
@@ -56,164 +276,209 @@ export class Renderer {
         return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex
       })
 
+    // 화면 클리어
+    this.gl.clearColor(0, 0, 0, 0)
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT)
+    this.gl.enable(this.gl.BLEND)
+    this.gl.blendFuncSeparate(
+      this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA,
+      this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA,
+    )
+
     for (const obj of renderables) {
-      this.drawObject(ctx, obj, camX, camY, camZ, assets, timestamp)
+      this._drawObject(obj, camX, camY, camZ, assets, timestamp)
     }
   }
 
-  private drawObject(
-    ctx: CanvasRenderingContext2D,
+  // ─── 내부 오브젝트 렌더 ──────────────────────────────────────────────────
+
+  private _drawObject(
     obj: LveObject,
     camX: number,
     camY: number,
     camZ: number,
-    assets: LoadedAssets = {},
-    timestamp: number = 0
+    assets: LoadedAssets,
+    timestamp: number,
   ) {
     const { style, transform } = obj
 
-    // 패럴랙스: z 깊이에 따른 스케일 및 오프셋 계산
-    // 카메라가 z=0에서 바라볼 때, z가 높을수록 더 가까이 있는 물체
     const depth = transform.position.z - camZ
-    // depth가 0이면 1:1 스케일, 음수면 카메라 뒤 (렌더링 스킵)
-    if (depth <= 0) return
+    if (depth < 0) return
 
-    // 간단한 원근 투영 (f: focal length)
     const focalLength = 500
-    const perspectiveScale = focalLength / depth
+    // depth=0이면 원근 투영 없이 1:1 스케일
+    const perspectiveScale = depth === 0 ? 1 : focalLength / depth
 
-    const screenX =
-      (this.width / 2) +
-      (transform.position.x - camX) * perspectiveScale * transform.scale.x
-    const screenY =
-      (this.height / 2) +
-      (transform.position.y - camY) * perspectiveScale * transform.scale.y
+    const screenX = (transform.position.x - camX) * perspectiveScale * transform.scale.x
+    const screenY = -((transform.position.y - camY) * perspectiveScale * transform.scale.y) // WebGL은 Y 반전
 
-    // width/height가 undefined인 경우 0으로 처리 (text 등에서 자체 계산)
     const w = (style.width ?? 0) * perspectiveScale * transform.scale.x
     const h = (style.height ?? 0) * perspectiveScale * transform.scale.y
-
-    ctx.save()
-    ctx.globalAlpha = style.opacity
-    if (style.blendMode) ctx.globalCompositeOperation = style.blendMode
-
-    // 회전
-    if (transform.rotation.z !== 0) {
-      ctx.translate(screenX, screenY)
-      ctx.rotate((transform.rotation.z * Math.PI) / 180)
-      ctx.translate(-screenX, -screenY)
-    }
-
-    // 그림자
-    if (style.shadowColor) {
-      ctx.shadowColor = style.shadowColor
-      ctx.shadowBlur = style.shadowBlur ?? 0
-      ctx.shadowOffsetX = style.shadowOffsetX ?? 0
-      ctx.shadowOffsetY = style.shadowOffsetY ?? 0
-    }
+    const rotation = transform.rotation.z
 
     const type = obj.attribute.type
 
     if (type === 'rectangle') {
-      this.drawRectangle(ctx, obj, screenX, screenY, w, h)
+      this._drawRectangle(obj, screenX, screenY, w, h, rotation)
     } else if (type === 'ellipse') {
-      this.drawEllipse(ctx, obj, screenX, screenY, w, h)
+      this._drawEllipse(obj, screenX, screenY, w, h, rotation)
     } else if (type === 'text') {
-      this.drawText(ctx, obj, screenX, screenY, perspectiveScale)
+      this._drawText(obj, screenX, screenY, perspectiveScale, rotation, timestamp)
     } else if (type === 'image') {
-      this.drawAsset(ctx, obj as LveImage, screenX, screenY, w, h, assets)
+      this._drawAsset(obj as LveImage, screenX, screenY, w, h, rotation, assets)
     } else if (type === 'video') {
-      this.drawVideo(ctx, obj as LveVideo, screenX, screenY, w, h, assets)
+      this._drawVideo(obj as LveVideo, screenX, screenY, w, h, rotation, assets)
     } else if (type === 'sprite') {
-      this.drawSprite(ctx, obj as Sprite, screenX, screenY, w, h, assets, timestamp)
+      this._drawSprite(obj as Sprite, screenX, screenY, w, h, rotation, assets, timestamp)
     } else if (type === 'particle') {
-      this.drawParticle(ctx, obj as Particle, screenX, screenY, w, h, assets, perspectiveScale, timestamp)
+      this._drawParticle(obj as Particle, screenX, screenY, w, h, perspectiveScale, assets, timestamp)
     }
-
-    ctx.restore()
   }
 
-  private drawRectangle(
-    ctx: CanvasRenderingContext2D,
-    obj: LveObject,
-    x: number,
-    y: number,
-    w: number,
-    h: number
+  // ─── 모델 행렬 헬퍼 ─────────────────────────────────────────────────────
+
+  /**
+   * 2D 직교 렌더링용 모델 행렬을 Float32Array(16)으로 반환합니다.
+   * column-major 순서 (WebGL 표준)
+   */
+  private _makeModelMatrix(x: number, y: number, w: number, h: number, rotDeg: number): Float32Array {
+    const cos = Math.cos((rotDeg * Math.PI) / 180)
+    const sin = Math.sin((rotDeg * Math.PI) / 180)
+    const m = new Float32Array(16)
+    // [0]  [4]  [8]  [12]
+    // [1]  [5]  [9]  [13]
+    // [2]  [6]  [10] [14]
+    // [3]  [7]  [11] [15]
+    m[0] = cos * w; m[4] = -sin * h; m[8] = 0; m[12] = x
+    m[1] = sin * w; m[5] = cos * h; m[9] = 0; m[13] = y
+    m[2] = 0; m[6] = 0; m[10] = 1; m[14] = 0
+    m[3] = 0; m[7] = 0; m[11] = 0; m[15] = 1
+    return m
+  }
+
+  /** ogl 카메라의 projectionMatrix를 Float32Array로 반환 */
+  private _projMatrix(): Float32Array {
+    return this.camera.projectionMatrix as unknown as Float32Array
+  }
+
+  // ─── Program uniform 드로우 헬퍼 ─────────────────────────────────────────
+
+  private _drawColorMesh(
+    program: Program,
+    x: number, y: number, w: number, h: number, rotDeg: number,
+    color: string, opacity: number,
   ) {
+    const [r, g, b, a] = parseCSSColor(color)
+    program.uniforms['uColor'].value = [r, g, b, a]
+    program.uniforms['uOpacity'].value = opacity
+    program.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h, rotDeg)
+    program.uniforms['uProjectionMatrix'].value = this._projMatrix()
+
+    const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program })
+    mesh.draw({ camera: this.camera })
+  }
+
+  private _drawTextureMesh(
+    texture: Texture,
+    x: number, y: number, w: number, h: number, rotDeg: number,
+    opacity: number,
+    flipY = false,
+    uvOffset: [number, number] = [0, 0],
+    uvScale: [number, number] = [1, 1],
+  ) {
+    const prog = this.textureProgram
+    prog.uniforms['uTexture'].value = texture
+    prog.uniforms['uOpacity'].value = opacity
+    prog.uniforms['uFlipY'].value = flipY ? 1 : 0
+    prog.uniforms['uUVOffset'].value = uvOffset
+    prog.uniforms['uUVScale'].value = uvScale
+    prog.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h, rotDeg)
+    prog.uniforms['uProjectionMatrix'].value = this._projMatrix()
+
+    const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program: prog })
+    mesh.draw({ camera: this.camera })
+  }
+
+  // ─── Rectangle ──────────────────────────────────────────────────────────
+
+  private _drawRectangle(obj: LveObject, x: number, y: number, w: number, h: number, rot: number) {
     const { style } = obj
-    const rx = x - w / 2
-    const ry = y - h / 2
-    const br = (obj as import('./objects/Rectangle.js').Rectangle).borderRadius ?? 0
-
-    ctx.beginPath()
-    if (br > 0 && ctx.roundRect) {
-      ctx.roundRect(rx, ry, w, h, br)
-    } else {
-      ctx.rect(rx, ry, w, h)
-    }
-
-    if (style.color) {
-      ctx.fillStyle = style.color
-      ctx.fill()
-    }
-
-    if (style.blur && style.blur > 0) {
-      ctx.filter = `blur(${style.blur}px)`
-    }
-
-    if (style.borderColor && style.borderWidth) {
-      ctx.strokeStyle = style.borderColor
-      ctx.lineWidth = style.borderWidth
-      ctx.stroke()
-    }
+    if (!style.color && !style.borderColor) return
+    const color = style.color ?? 'rgba(0,0,0,0)'
+    this._drawColorMesh(this.colorProgram, x, y, w, h, rot, color, style.opacity)
   }
 
-  private drawEllipse(
-    ctx: CanvasRenderingContext2D,
-    obj: LveObject,
-    x: number,
-    y: number,
-    w: number,
-    h: number
-  ) {
+  // ─── Ellipse ────────────────────────────────────────────────────────────
+
+  private _drawEllipse(obj: LveObject, x: number, y: number, w: number, h: number, rot: number) {
     const { style } = obj
-    ctx.beginPath()
-    ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2)
+    if (!style.color && !style.borderColor) return
+    const color = style.color ?? 'rgba(0,0,0,0)'
+    const [r, g, b, a] = parseCSSColor(color)
+    this.ellipseProgram.uniforms['uColor'].value = [r, g, b, a]
+    this.ellipseProgram.uniforms['uOpacity'].value = style.opacity
+    this.ellipseProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h, rot)
+    this.ellipseProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
 
-    if (style.color) {
-      ctx.fillStyle = style.color
-      ctx.fill()
-    }
-
-    if (style.borderColor && style.borderWidth) {
-      ctx.strokeStyle = style.borderColor
-      ctx.lineWidth = style.borderWidth
-      ctx.stroke()
-    }
+    const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program: this.ellipseProgram })
+    mesh.draw({ camera: this.camera })
   }
 
-  private drawText(
-    ctx: CanvasRenderingContext2D,
-    obj: LveObject,
-    x: number,
-    y: number,
-    perspectiveScale: number
-  ) {
+  // ─── Text (Offscreen Canvas → Texture) ──────────────────────────────────
+
+  private _drawText(obj: LveObject, x: number, y: number, perspectiveScale: number, rot: number, _timestamp: number) {
     const { style, attribute } = obj
+    const id = obj.attribute.id
+    const rawText = attribute.text ?? ''
+
+    // Offscreen canvas 크기 결정
     const baseFontSize = (style.fontSize ?? 16) * perspectiveScale
+    const maxW = style.width != null ? style.width * perspectiveScale : null
+    const maxH = style.height != null ? style.height * perspectiveScale : null
+
+    // 기존 캐시 조회
+    let entry = this.textCache.get(id)
+    const textKey = `${rawText}|${style.fontSize}|${style.color}|${style.fontFamily}|${perspectiveScale.toFixed(3)}|${maxW}|${maxH}`
+
+    let needRender = !entry || entry.lastText !== textKey
+
+    if (!entry) {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      const texture = new Texture(this.gl, { image: canvas, generateMipmaps: false })
+      const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program: this.textureProgram })
+      entry = { texture, canvas, ctx, lastText: '', mesh }
+      this.textCache.set(id, entry)
+    }
+
+    if (needRender) {
+      this._renderTextToCanvas(entry, rawText, style, baseFontSize, maxW, maxH)
+      entry.lastText = textKey
+    }
+
+    const cw = entry.canvas.width
+    const ch = entry.canvas.height
+    if (cw === 0 || ch === 0) return
+
+    this._drawTextureMesh(entry.texture, x, y, cw, ch, rot, style.opacity, false)
+  }
+
+  private _renderTextToCanvas(
+    entry: TextTextureEntry,
+    rawText: string,
+    style: LveObject['style'],
+    baseFontSize: number,
+    maxW: number | null,
+    maxH: number | null,
+  ) {
+    const { canvas, ctx } = entry
     const fontFamily = style.fontFamily ?? 'sans-serif'
     const baseFontWeight = style.fontWeight ?? 'normal'
     const baseFontStyle = style.fontStyle ?? 'normal'
     const baseColor = style.color ?? '#000000'
     const lineHeightMul = style.lineHeight ?? 1
     const textAlign = style.textAlign ?? 'left'
-    const rawText = attribute.text ?? ''
 
-    const maxW = style.width == null ? null : style.width * perspectiveScale
-    const maxH = style.height == null ? null : style.height * perspectiveScale
-
-    // ─── 마크업 파싱 ─────────────────────────────────────
     const spans = parseTextMarkup(rawText, {
       fontSize: baseFontSize,
       fontWeight: baseFontWeight,
@@ -221,15 +486,20 @@ export class Renderer {
       color: baseColor,
     })
 
-    // ─── 한 줄을 스팬 단위로 쪼개어 렌더링 단위 생성 ─────
-    // 각 논리 줄('\n' 기준)을 처리한 뒤 width wrap을 적용합니다.
-    interface RenderToken { text: string; span: TextSpan }
+    // shadow 지원: Canvas 2D에서 그대로 구현
+    const shadowColor = style.shadowColor
+    const shadowBlur = style.shadowBlur ?? 0
+    const shadowOffsetX = style.shadowOffsetX ?? 0
+    const shadowOffsetY = style.shadowOffsetY ?? 0
+
+    // ── 논리 줄 → word-wrap 렌더 줄 계산 ─────────────────────────────
+    interface RenderToken { text: string; span: ReturnType<typeof parseTextMarkup>[number] }
     interface RenderLine { tokens: RenderToken[]; lineH: number }
 
+    const spaceRe = /(\S+|\s+)/g
     const renderLines: RenderLine[] = []
-
-    // ① 스팬을 '\n' 기준 논리 줄로 분리
     const logicalLines: RenderToken[][] = [[]]
+
     for (const span of spans) {
       const parts = span.text.split('\n')
       parts.forEach((p, i) => {
@@ -238,8 +508,9 @@ export class Renderer {
       })
     }
 
-    // ② 각 논리 줄을 width 기반 word-wrap으로 분리
-    const spaceRe = /(\S+|\s+)/g
+    // sizes-only canvas for measuring
+    canvas.width = 2
+    canvas.height = 2
 
     for (const logLine of logicalLines) {
       let curLine: RenderToken[] = []
@@ -261,24 +532,19 @@ export class Renderer {
       }
 
       for (const token of logLine) {
-        const fs = (token.span.style.fontSize ?? baseFontSize)
+        const fs = token.span.style.fontSize ?? baseFontSize
         const fw = token.span.style.fontWeight ?? baseFontWeight
         const fi = token.span.style.fontStyle ?? baseFontStyle
         curH = Math.max(curH, fs * lineHeightMul)
-
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
 
         if (maxW === null) {
-          // auto width: 줄바꿈 없이 추가
           curLine.push(token)
         } else {
-          // word-wrap
           const words = token.text.match(spaceRe) ?? [token.text]
           for (const word of words) {
             const wordW = ctx.measureText(word).width
-            if (curW > 0 && curW + wordW > maxW) {
-              flushLine()
-            }
+            if (curW > 0 && curW + wordW > maxW) flushLine()
             curLine.push({ text: word, span: token.span })
             curW += wordW
           }
@@ -287,7 +553,6 @@ export class Renderer {
       flushLine()
     }
 
-    // ─── 줄 너비 미리 계산 (textAlign 에 필요) ────────────
     const measuredWidths = renderLines.map(rl => {
       let w = 0
       for (const tok of rl.tokens) {
@@ -301,39 +566,36 @@ export class Renderer {
     })
 
     const containerW = maxW ?? Math.max(...measuredWidths, 0)
-
-    // ─── 클리핑 영역 설정 ────────────────────────────────
     const totalH = renderLines.reduce((s, r) => s + r.lineH, 0)
-    const originX = x - containerW / 2
-    const originY = y - totalH / 2
 
-    if (maxW !== null || maxH !== null) {
-      const clipW = maxW ?? containerW
-      const clipH = maxH ?? totalH
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(originX, originY, clipW, clipH)
-      ctx.clip()
+    const canvasW = Math.ceil(maxW ?? containerW) + shadowBlur * 2 + Math.abs(shadowOffsetX)
+    const canvasH = Math.ceil(maxH ?? totalH) + shadowBlur * 2 + Math.abs(shadowOffsetY)
+
+    canvas.width = canvasW
+    canvas.height = canvasH
+    ctx.clearRect(0, 0, canvasW, canvasH)
+
+    if (shadowColor) {
+      ctx.shadowColor = shadowColor
+      ctx.shadowBlur = shadowBlur
+      ctx.shadowOffsetX = shadowOffsetX
+      ctx.shadowOffsetY = shadowOffsetY
     }
 
-    // ─── 실제 렌더링 ─────────────────────────────────────
+    const originX = shadowBlur + Math.max(0, shadowOffsetX) / 2
+    const originY = shadowBlur + Math.max(0, shadowOffsetY) / 2
+
     let curY = originY
     for (let li = 0; li < renderLines.length; li++) {
       const rl = renderLines[li]
-
-      // textAlign에 따른 시작 x 계산
       const lineW = measuredWidths[li]
       let lineStartX: number
-      if (textAlign === 'center') {
-        lineStartX = originX + (containerW - lineW) / 2
-      } else if (textAlign === 'right') {
-        lineStartX = originX + containerW - lineW
-      } else {
-        lineStartX = originX
-      }
+      if (textAlign === 'center') lineStartX = originX + (containerW - lineW) / 2
+      else if (textAlign === 'right') lineStartX = originX + containerW - lineW
+      else lineStartX = originX
 
       let penX = lineStartX
-      const baseline = curY + rl.lineH * 0.8 // 근사 baseline
+      const baseline = curY + rl.lineH * 0.8
 
       for (const tok of rl.tokens) {
         const fs = tok.span.style.fontSize ?? baseFontSize
@@ -349,128 +611,81 @@ export class Renderer {
 
         if (bc) {
           ctx.strokeStyle = bc
-          ctx.lineWidth = bw
+          ctx.lineWidth = bw as number
           ctx.strokeText(tok.text, penX, baseline)
         }
-
         penX += ctx.measureText(tok.text).width
       }
-
       curY += rl.lineH
     }
 
-    if (maxW !== null || maxH !== null) {
-      ctx.restore()
-    }
+    // Texture 업데이트
+    entry.texture.image = canvas
+    entry.texture.needsUpdate = true
   }
 
-  // ─── 에셋 드로잉 (image / particle) ───────────────────────
+  // ─── Image ──────────────────────────────────────────────────────────────
 
-  private drawAsset(
-    ctx: CanvasRenderingContext2D,
-    obj: LveImage,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    assets: LoadedAssets
-  ) {
+  private _drawAsset(obj: LveImage, x: number, y: number, w: number, h: number, rot: number, assets: LoadedAssets) {
     const src = obj._src
     const asset = src ? assets[src] : undefined
-
-    if (!asset) {
-      this.drawPlaceholder(ctx, x, y, w || 60, h || 60)
+    if (!asset || !(asset instanceof HTMLImageElement)) {
+      this._drawPlaceholder(x, y, w || 60, h || 60, rot)
       return
     }
 
-    const natW = asset instanceof HTMLImageElement
-      ? asset.naturalWidth
-      : (asset as HTMLVideoElement).videoWidth
-    const natH = asset instanceof HTMLImageElement
-      ? asset.naturalHeight
-      : (asset as HTMLVideoElement).videoHeight
+    const drawW = w || asset.naturalWidth
+    const drawH = h || asset.naturalHeight
+    const texture = this._getOrCreateAssetTexture(src!, asset)
 
-    const drawW = w || natW
-    const drawH = h || natH
-
-    ctx.drawImage(asset as CanvasImageSource, x - drawW / 2, y - drawH / 2, drawW, drawH)
-
-    if (obj.style.borderColor && obj.style.borderWidth) {
-      ctx.strokeStyle = obj.style.borderColor
-      ctx.lineWidth = obj.style.borderWidth
-      ctx.strokeRect(x - drawW / 2, y - drawH / 2, drawW, drawH)
-    }
+    this._drawTextureMesh(texture, x, y, drawW, drawH, rot, obj.style.opacity, false)
   }
 
-  // ─── 비디오 드로잉 ────────────────────────────────────────
+  // ─── Video ──────────────────────────────────────────────────────────────
 
-  private drawVideo(
-    ctx: CanvasRenderingContext2D,
-    obj: LveVideo,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    assets: LoadedAssets
-  ) {
+  private _drawVideo(obj: LveVideo, x: number, y: number, w: number, h: number, rot: number, assets: LoadedAssets) {
     const src = obj._src
     const asset = src ? assets[src] : undefined
-
     if (!asset || !(asset instanceof HTMLVideoElement)) {
-      this.drawPlaceholder(ctx, x, y, w || 60, h || 60)
+      this._drawPlaceholder(x, y, w || 60, h || 60, rot)
       return
     }
 
     const clip = obj._clip
 
-    // 재생 상태 동기화
     if (obj._playing) {
       if (clip) {
         asset.loop = clip.loop
-        // start 지정 시 초기화
-        if (asset.paused && clip.start != null) {
-          asset.currentTime = clip.start / 1000
-        }
+        if (asset.paused && clip.start != null) asset.currentTime = clip.start / 1000
       }
       if (asset.paused) asset.play().catch(() => { })
     } else {
       if (!asset.paused) asset.pause()
     }
 
-    // end 시각 도달 시 처리
     if (clip?.end != null && asset.currentTime >= clip.end / 1000) {
-      if (clip.loop) {
-        asset.currentTime = (clip.start ?? 0) / 1000
-      } else {
-        asset.pause()
-        obj.stop()
-      }
+      if (clip.loop) asset.currentTime = (clip.start ?? 0) / 1000
+      else { asset.pause(); obj.stop() }
     }
 
     const drawW = w || asset.videoWidth
     const drawH = h || asset.videoHeight
 
-    ctx.drawImage(asset, x - drawW / 2, y - drawH / 2, drawW, drawH)
-
-    if (obj.style.borderColor && obj.style.borderWidth) {
-      ctx.strokeStyle = obj.style.borderColor
-      ctx.lineWidth = obj.style.borderWidth
-      ctx.strokeRect(x - drawW / 2, y - drawH / 2, drawW, drawH)
+    // 비디오 텍스처는 매 프레임 업데이트
+    let tex = this.videoTextureCache.get(src!)
+    if (!tex) {
+      tex = new Texture(this.gl, { image: asset, generateMipmaps: false })
+      this.videoTextureCache.set(src!, tex)
     }
+    tex.image = asset
+    tex.needsUpdate = true
+
+    this._drawTextureMesh(tex, x, y, drawW, drawH, rot, obj.style.opacity)
   }
 
-  // ─── 스프라이트 시트 드로잉 ───────────────────────────────
+  // ─── Sprite ─────────────────────────────────────────────────────────────
 
-  private drawSprite(
-    ctx: CanvasRenderingContext2D,
-    sprite: Sprite,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    assets: LoadedAssets,
-    timestamp: number
-  ) {
+  private _drawSprite(sprite: Sprite, x: number, y: number, w: number, h: number, rot: number, assets: LoadedAssets, timestamp: number) {
     sprite.tick(timestamp)
 
     const clip = sprite._clip
@@ -479,105 +694,126 @@ export class Renderer {
 
     const asset = assets[src]
     if (!asset || !(asset instanceof HTMLImageElement)) {
-      this.drawPlaceholder(ctx, x, y, w || 60, h || 60)
+      this._drawPlaceholder(x, y, w || 60, h || 60, rot)
       return
     }
 
+    const texture = this._getOrCreateAssetTexture(src, asset)
+
     if (!clip) {
-      // 클립 미지정: 이미지 전체 렌더링
       const drawW = w || asset.naturalWidth
       const drawH = h || asset.naturalHeight
-      ctx.drawImage(asset, x - drawW / 2, y - drawH / 2, drawW, drawH)
+      this._drawTextureMesh(texture, x, y, drawW, drawH, rot, sprite.style.opacity)
       return
     }
 
     const { frameWidth, frameHeight } = clip
     const sheetCols = Math.floor(asset.naturalWidth / frameWidth)
-
     const frameIdx = sprite._currentFrame
     const col = frameIdx % sheetCols
     const row = Math.floor(frameIdx / sheetCols)
-    const sx = col * frameWidth
-    const sy = row * frameHeight
+    const uvOffsetX = (col * frameWidth) / asset.naturalWidth
+    const uvOffsetY = (row * frameHeight) / asset.naturalHeight
+    const uvScaleX = frameWidth / asset.naturalWidth
+    const uvScaleY = frameHeight / asset.naturalHeight
 
     const drawW = w || frameWidth
     const drawH = h || frameHeight
 
-    ctx.drawImage(
-      asset,
-      sx, sy, frameWidth, frameHeight,
-      x - drawW / 2, y - drawH / 2, drawW, drawH
+    this._drawTextureMesh(
+      texture,
+      x, y, drawW, drawH, rot,
+      sprite.style.opacity,
+      false,
+      [uvOffsetX, uvOffsetY],
+      [uvScaleX, uvScaleY],
     )
   }
 
-  // ─── 파티클 시스템 드로잉 ───────────────────────────────
+  // ─── Particle (Instanced) ────────────────────────────────────────────────
 
-  private drawParticle(
-    ctx: CanvasRenderingContext2D,
+  private _drawParticle(
     obj: Particle,
-    emX: number,
-    emY: number,
-    w: number,
-    h: number,
-    assets: LoadedAssets,
+    emX: number, emY: number,
+    w: number, h: number,
     perspectiveScale: number,
-    timestamp: number
+    assets: LoadedAssets,
+    timestamp: number,
   ) {
-    // tick 호출 — 인스턴스 스폰/업데이트/제거
     obj.tick(timestamp)
 
     const clip = obj._clip
     if (!clip) return
 
     const asset = assets[clip.src]
-    // 에셋 없으면 placeholder
     if (!asset || !(asset instanceof HTMLImageElement)) {
-      this.drawPlaceholder(ctx, emX, emY, w || 30, h || 30)
+      this._drawPlaceholder(emX, emY, w || 30, h || 30, 0)
       return
     }
 
-    const baseBlend = obj.style.blendMode ?? 'lighter'
+    const instances = obj._instances
+    if (instances.length === 0) return
+
     const natW = asset.naturalWidth
     const natH = asset.naturalHeight
-    const drawW = (w || natW) * perspectiveScale
-    const drawH = (h || natH) * perspectiveScale
+    // w/h는 이미 perspectiveScale이 반영된 픽셀 크기
+    const baseW = w || natW
+    const baseH = h || natH
 
-    for (const inst of obj._instances) {
+    const texture = this._getOrCreateAssetTexture(clip.src, asset)
+
+    // 블렌드 모드 설정
+    const blendMode = obj.style.blendMode ?? 'lighter'
+    if (blendMode === 'lighter') {
+      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE)
+    }
+
+    for (const inst of instances) {
       const age = timestamp - inst.born
       const t = Math.min(age / inst.lifespan, 1)
-      const scale = 1 - t          // 서서히 작아짐
-      const opacity = 1 - t        // 서서히 투명해짐
+      const scale = 1 - t
+      const opacity = 1 - t
       if (opacity <= 0 || scale <= 0) continue
 
-      const iw = drawW * scale
-      const ih = drawH * scale
+      // 에미터 위치 + 인스턴스 상대 오프셋 (Y는 Canvas 2D → WebGL 반전)
       const ix = emX + inst.x * perspectiveScale
-      const iy = emY + inst.y * perspectiveScale
+      const iy = emY - inst.y * perspectiveScale
 
-      ctx.save()
-      ctx.globalAlpha = obj.style.opacity * opacity
-      ctx.globalCompositeOperation = baseBlend as GlobalCompositeOperation
-      ctx.drawImage(asset, ix - iw / 2, iy - ih / 2, iw, ih)
-      ctx.restore()
+      const iw = baseW * scale
+      const ih = baseH * scale
+
+      this._drawTextureMesh(
+        texture,
+        ix, iy, iw, ih,
+        0,
+        obj.style.opacity * opacity,
+      )
     }
+
+    // 블렌드 복원
+    this.gl.blendFuncSeparate(
+      this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA,
+      this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA,
+    )
   }
 
+  // ─── Placeholder ────────────────────────────────────────────────────────
 
-  private drawPlaceholder(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number
-  ) {
-    ctx.strokeStyle = '#ff006688'
-    ctx.lineWidth = 1
-    ctx.strokeRect(x - w / 2, y - h / 2, w, h)
-    ctx.beginPath()
-    ctx.moveTo(x - w / 2, y - h / 2)
-    ctx.lineTo(x + w / 2, y + h / 2)
-    ctx.moveTo(x + w / 2, y - h / 2)
-    ctx.lineTo(x - w / 2, y + h / 2)
-    ctx.stroke()
+  private _drawPlaceholder(x: number, y: number, w: number, h: number, rot: number) {
+    this.placeholderProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h, rot)
+    this.placeholderProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
+    const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program: this.placeholderProgram })
+    mesh.draw({ camera: this.camera })
+  }
+
+  // ─── Texture 캐시 ────────────────────────────────────────────────────────
+
+  private _getOrCreateAssetTexture(src: string, asset: HTMLImageElement): Texture {
+    let tex = this.assetTextureCache.get(src)
+    if (!tex) {
+      tex = new Texture(this.gl, { image: asset, generateMipmaps: false })
+      this.assetTextureCache.set(src, tex)
+    }
+    return tex
   }
 }
