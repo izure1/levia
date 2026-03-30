@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lve4 - 우주 유영 테스트</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    #controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(10, 10, 30, 0.75);
+      border: 1px solid #2a2a50;
+      border-radius: 10px;
+      padding: 12px 20px;
+      color: #7ec8e3;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #controls strong {
+      display: block;
+      color: #fff;
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+
+    #back {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      color: #555;
+      font-size: 12px;
+      text-decoration: none;
+      z-index: 100;
+      pointer-events: auto;
+    }
+
+    #back:hover {
+      color: #7ec8e3;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="controls">
+    <strong>조작 방법</strong>
+    W/S : 상/하 이동<br>
+    A/D : 좌/우 이동<br>
+    Space : 전진<br>
+    Shift : 후진<br>
+    마우스 휠 : 카메라 회전
+  </div>
+
+  <a id="back" href="../">← 목록으로</a>
+  <script type="module" src="./main.js"></script>
+</body>
+
+</html>
