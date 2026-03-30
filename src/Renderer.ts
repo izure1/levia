@@ -628,7 +628,7 @@ export class Renderer {
     for (const logLine of logicalLines) {
       let curLine: RenderToken[] = []
       let curW = 0
-      let curH = baseFontSize * lineHeightMul
+      let curH = baseFontSize * TEXT_RENDER_SCALE * lineHeightMul
 
       const flushLine = () => {
         if (curLine.length > 0 || renderLines.length === 0) {
@@ -636,11 +636,11 @@ export class Renderer {
         }
         curLine = []
         curW = 0
-        curH = baseFontSize * lineHeightMul
+        curH = baseFontSize * TEXT_RENDER_SCALE * lineHeightMul
       }
 
       if (logLine.length === 0) {
-        renderLines.push({ tokens: [], lineH: baseFontSize * lineHeightMul })
+        renderLines.push({ tokens: [], lineH: baseFontSize * TEXT_RENDER_SCALE * lineHeightMul })
         continue
       }
 
