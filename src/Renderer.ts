@@ -114,6 +114,9 @@ interface TextTextureEntry {
   mesh: Mesh
 }
 
+const TEXT_RENDER_SCALE = 2
+
+
 // ─── Renderer ────────────────────────────────────────────────────────────────
 
 export class Renderer {
@@ -370,8 +373,8 @@ export class Renderer {
     // depth=0이면 1:1 스케일, focalLength만큼 떨어졌을 때 1:1 스케일
     const perspectiveScale = rawDepth === 0 ? 1 : focalLength / rawDepth
 
-    const screenX = (transform.position.x - camX) * perspectiveScale * transform.scale.x
-    const screenY = (transform.position.y - camY) * perspectiveScale * transform.scale.y
+    const screenX = (transform.position.x - camX) * perspectiveScale
+    const screenY = (transform.position.y - camY) * perspectiveScale
 
     const w = (style.width ?? 0) * perspectiveScale * transform.scale.x
     const h = (style.height ?? 0) * perspectiveScale * transform.scale.y
@@ -525,10 +528,9 @@ export class Renderer {
     const rawText = attribute.text ?? ''
 
     // 2x supersampling: z 애니메이션 중 canvas 재생성 없이 화질 확보
-    const RENDER_SCALE = 2
-    const baseFontSize = (style.fontSize ?? 16) * RENDER_SCALE
-    const maxW = style.width != null ? style.width * RENDER_SCALE : null
-    const maxH = style.height != null ? style.height * RENDER_SCALE : null
+    const baseFontSize = (style.fontSize ?? 16)
+    const maxW = style.width != null ? style.width * TEXT_RENDER_SCALE : null
+    const maxH = style.height != null ? style.height * TEXT_RENDER_SCALE : null
 
     let entry = this.textCache.get(id)
 
@@ -563,15 +565,15 @@ export class Renderer {
     const ch = entry.canvas.height
     if (cw === 0 || ch === 0) return
 
-    // 실제 월드 크기 기록 (RENDER_SCALE 역산, scale 반영)
+    // 실제 월드 크기 기록 (TEXT_RENDER_SCALE 역산, scale 반영)
     obj._renderedSize = {
-      w: (cw / RENDER_SCALE) * obj.transform.scale.x,
-      h: (ch / RENDER_SCALE) * obj.transform.scale.y,
+      w: (cw / TEXT_RENDER_SCALE) * obj.transform.scale.x,
+      h: (ch / TEXT_RENDER_SCALE) * obj.transform.scale.y,
     }
 
-    // canvas는 RENDER_SCALE 기준, 표시는 perspectiveScale 기준으로 보정
-    const displayScale = perspectiveScale / RENDER_SCALE
-    this._drawTextureMesh(entry.texture, x, y, cw * displayScale, ch * displayScale, rot, style.opacity, false)
+    // canvas는 TEXT_RENDER_SCALE 기준, 표시는 perspectiveScale 기준으로 보정
+    const displayScale = perspectiveScale / TEXT_RENDER_SCALE
+    this._drawTextureMesh(entry.texture, x, y, cw * displayScale * obj.transform.scale.x, ch * displayScale * obj.transform.scale.y, rot, style.opacity, false)
   }
 
   private _renderTextToCanvas(
@@ -599,9 +601,9 @@ export class Renderer {
 
     // shadow 지원: Canvas 2D에서 그대로 구현
     const shadowColor = style.shadowColor
-    const shadowBlur = style.shadowBlur ?? 0
-    const shadowOffsetX = style.shadowOffsetX ?? 0
-    const shadowOffsetY = style.shadowOffsetY ?? 0
+    const shadowBlur = (style.shadowBlur ?? 0) * TEXT_RENDER_SCALE
+    const shadowOffsetX = (style.shadowOffsetX ?? 0) * TEXT_RENDER_SCALE
+    const shadowOffsetY = (style.shadowOffsetY ?? 0) * TEXT_RENDER_SCALE
 
     // ── 논리 줄 → word-wrap 렌더 줄 계산 ─────────────────────────────
     interface RenderToken { text: string; span: ReturnType<typeof parseTextMarkup>[number] }
@@ -643,7 +645,7 @@ export class Renderer {
       }
 
       for (const token of logLine) {
-        const fs = token.span.style.fontSize ?? baseFontSize
+        const fs = (token.span.style.fontSize ?? baseFontSize) * TEXT_RENDER_SCALE
         const fw = token.span.style.fontWeight ?? baseFontWeight
         const fi = token.span.style.fontStyle ?? baseFontStyle
         curH = Math.max(curH, fs * lineHeightMul)
@@ -667,7 +669,7 @@ export class Renderer {
     const measuredWidths = renderLines.map(rl => {
       let w = 0
       for (const tok of rl.tokens) {
-        const fs = tok.span.style.fontSize ?? baseFontSize
+        const fs = (tok.span.style.fontSize ?? baseFontSize) * TEXT_RENDER_SCALE
         const fw = tok.span.style.fontWeight ?? baseFontWeight
         const fi = tok.span.style.fontStyle ?? baseFontStyle
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
@@ -709,12 +711,12 @@ export class Renderer {
       const baseline = curY + rl.lineH * 0.8
 
       for (const tok of rl.tokens) {
-        const fs = tok.span.style.fontSize ?? baseFontSize
+        const fs = (tok.span.style.fontSize ?? baseFontSize) * TEXT_RENDER_SCALE
         const fw = tok.span.style.fontWeight ?? baseFontWeight
         const fi = tok.span.style.fontStyle ?? baseFontStyle
         const fc = tok.span.style.color ?? baseColor
         const bc = tok.span.style.borderColor
-        const bw = tok.span.style.borderWidth ?? 1
+        const bw = (tok.span.style.borderWidth ?? 1) * TEXT_RENDER_SCALE
 
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
         ctx.fillStyle = fc
