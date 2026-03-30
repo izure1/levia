@@ -16,8 +16,24 @@ import { PhysicsEngine } from './PhysicsEngine.js'
 import type { LveObjectOptions, LoadedAssets } from './types.js'
 import type { RectangleOptions } from './objects/Rectangle.js'
 import { Renderer } from './Renderer.js'
+import { EventEmitter } from './EventEmitter.js'
 
-export class World {
+/**
+ * MouseEvent를 래핑하여 stopPropagation() 호출 여부를 추적합니다.
+ */
+function wrapMouseEvent(e: MouseEvent): MouseEvent & { _propagationStopped: boolean } {
+  const wrapped = e as MouseEvent & { _propagationStopped: boolean }
+  if (wrapped._propagationStopped !== undefined) return wrapped
+  wrapped._propagationStopped = false
+  const original = e.stopPropagation.bind(e)
+  e.stopPropagation = () => {
+    wrapped._propagationStopped = true
+    original()
+  }
+  return wrapped
+}
+
+export class World extends EventEmitter {
   private renderer: Renderer
   private objects: Set<LveObject> = new Set()
   private rafId: number | null = null
@@ -39,6 +55,7 @@ export class World {
   private _assets: LoadedAssets = {}
 
   constructor(canvas?: HTMLCanvasElement) {
+    super()
     const canvasEl = canvas ?? this.createCanvas()
     this._canvas = canvasEl
     this.renderer = new Renderer(canvasEl)
@@ -67,11 +84,16 @@ export class World {
   // ─── 마우스 이벤트 ────────────────────────────────
 
   private _setupMouseEvents(canvas: HTMLCanvasElement) {
+    // 객체에 이벤트를 emit하고, 전파가 막히지 않으면 world로 버블링합니다.
     const dispatch = (eventName: string, e: MouseEvent) => {
-      const hits = this._getHitObjects(e)
+      const wrapped = wrapMouseEvent(e)
+      const hits = this._getHitObjects(wrapped)
       for (const obj of hits) {
-        obj.emit(eventName, e)
+        obj.emit(eventName, wrapped)
+        if (wrapped._propagationStopped) return
       }
+      // 전파가 막히지 않으면 world로 버블링
+      this.emit(eventName, hits[0], wrapped)
     }
 
     canvas.addEventListener('click', (e) => dispatch('click', e))
@@ -81,16 +103,19 @@ export class World {
     canvas.addEventListener('mouseup', (e) => dispatch('mouseup', e))
 
     canvas.addEventListener('mousemove', (e) => {
-      const hits = this._getHitObjects(e)
+      const wrapped = wrapMouseEvent(e)
+      const hits = this._getHitObjects(wrapped)
       const hitIds = new Set(hits.map(o => o.attribute.id))
 
       // mouseover: 새로 진입한 객체
       for (const obj of hits) {
         if (!this._mouseOver.has(obj.attribute.id)) {
           this._mouseOver.add(obj.attribute.id)
-          obj.emit('mouseover', e)
+          obj.emit('mouseover', wrapped)
+          if (!wrapped._propagationStopped) this.emit('mouseover', obj, wrapped)
         }
-        obj.emit('mousemove', e)
+        obj.emit('mousemove', wrapped)
+        if (!wrapped._propagationStopped) this.emit('mousemove', obj, wrapped)
       }
 
       // mouseout: 이전에 over였는데 이번에 없는 객체
@@ -98,15 +123,22 @@ export class World {
         if (!hitIds.has(id)) {
           this._mouseOver.delete(id)
           const obj = Array.from(this.objects).find(o => o.attribute.id === id)
-          if (obj) obj.emit('mouseout', e)
+          if (obj) {
+            obj.emit('mouseout', wrapped)
+            if (!wrapped._propagationStopped) this.emit('mouseout', obj, wrapped)
+          }
         }
       }
     })
 
     canvas.addEventListener('mouseleave', (e: MouseEvent) => {
+      const wrapped = wrapMouseEvent(e)
       for (const id of Array.from(this._mouseOver)) {
         const obj = Array.from(this.objects).find(o => o.attribute.id === id)
-        if (obj) obj.emit('mouseout', e as MouseEvent)
+        if (obj) {
+          obj.emit('mouseout', wrapped)
+          if (!wrapped._propagationStopped) this.emit('mouseout', obj, wrapped)
+        }
       }
       this._mouseOver.clear()
     })

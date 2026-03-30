@@ -111,3 +111,21 @@ world.on('click', (obj, e) => {
   console.log('click', obj, e)
 })
 ```
+
+만일 특정 객체에서 발생한 마우스 이벤트를 e.stopPropagation()으로 막으면 전역에서 해당 이벤트를 수신할 수 없습니다.
+이벤트의 우선순위는 객체 -> 월드 순입니다.
+
+```typescript
+const world = new World()
+const obj = world.createRectangle()
+
+world.on('click', (obj, e) => {
+  console.log('click', obj, e)
+})
+
+obj.on('click', (e) => {
+  e.stopPropagation()
+})
+```
+
+만일 월드를 클릭했지만, 객체를 클릭하지 않았을 경우, obj는 undefined가 됩니다.

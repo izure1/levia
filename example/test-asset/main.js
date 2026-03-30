@@ -9855,7 +9855,18 @@ var Renderer2 = class {
 };
 
 // src/World.ts
-var World = class {
+function wrapMouseEvent(e) {
+  const wrapped = e;
+  if (wrapped._propagationStopped !== void 0) return wrapped;
+  wrapped._propagationStopped = false;
+  const original = e.stopPropagation.bind(e);
+  e.stopPropagation = () => {
+    wrapped._propagationStopped = true;
+    original();
+  };
+  return wrapped;
+}
+var World = class extends EventEmitter {
   renderer;
   objects = /* @__PURE__ */ new Set();
   rafId = null;
@@ -9874,6 +9885,7 @@ var World = class {
   /** 모든 Loader에서 로드된 에셋의 통합 맵 */
   _assets = {};
   constructor(canvas) {
+    super();
     const canvasEl = canvas ?? this.createCanvas();
     this._canvas = canvasEl;
     this.renderer = new Renderer2(canvasEl);
@@ -9898,10 +9910,13 @@ var World = class {
   // ─── 마우스 이벤트 ────────────────────────────────
   _setupMouseEvents(canvas) {
     const dispatch = (eventName, e) => {
-      const hits = this._getHitObjects(e);
+      const wrapped = wrapMouseEvent(e);
+      const hits = this._getHitObjects(wrapped);
       for (const obj of hits) {
-        obj.emit(eventName, e);
+        obj.emit(eventName, wrapped);
+        if (wrapped._propagationStopped) return;
       }
+      this.emit(eventName, hits[0], wrapped);
     };
     canvas.addEventListener("click", (e) => dispatch("click", e));
     canvas.addEventListener("dblclick", (e) => dispatch("dblclick", e));
@@ -9909,27 +9924,37 @@ var World = class {
     canvas.addEventListener("mousedown", (e) => dispatch("mousedown", e));
     canvas.addEventListener("mouseup", (e) => dispatch("mouseup", e));
     canvas.addEventListener("mousemove", (e) => {
-      const hits = this._getHitObjects(e);
+      const wrapped = wrapMouseEvent(e);
+      const hits = this._getHitObjects(wrapped);
       const hitIds = new Set(hits.map((o) => o.attribute.id));
       for (const obj of hits) {
         if (!this._mouseOver.has(obj.attribute.id)) {
           this._mouseOver.add(obj.attribute.id);
-          obj.emit("mouseover", e);
+          obj.emit("mouseover", wrapped);
+          if (!wrapped._propagationStopped) this.emit("mouseover", obj, wrapped);
         }
-        obj.emit("mousemove", e);
+        obj.emit("mousemove", wrapped);
+        if (!wrapped._propagationStopped) this.emit("mousemove", obj, wrapped);
       }
       for (const id of Array.from(this._mouseOver)) {
         if (!hitIds.has(id)) {
           this._mouseOver.delete(id);
           const obj = Array.from(this.objects).find((o) => o.attribute.id === id);
-          if (obj) obj.emit("mouseout", e);
+          if (obj) {
+            obj.emit("mouseout", wrapped);
+            if (!wrapped._propagationStopped) this.emit("mouseout", obj, wrapped);
+          }
         }
       }
     });
     canvas.addEventListener("mouseleave", (e) => {
+      const wrapped = wrapMouseEvent(e);
       for (const id of Array.from(this._mouseOver)) {
         const obj = Array.from(this.objects).find((o) => o.attribute.id === id);
-        if (obj) obj.emit("mouseout", e);
+        if (obj) {
+          obj.emit("mouseout", wrapped);
+          if (!wrapped._propagationStopped) this.emit("mouseout", obj, wrapped);
+        }
       }
       this._mouseOver.clear();
     });

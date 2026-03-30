@@ -43,9 +43,8 @@ function addBox(x: number, y: number) {
       height: 50,
       color: `hsl(${Math.random() * 360}, 80%, 60%)`,
       opacity: 0.9,
-      borderColor: '#ffffff',
-      borderWidth: 0,
-      margin: '10 20'
+      borderColor: 'red',
+      borderWidth: 3,
     },
     transform: {
       position: { x, y, z: 0 }
@@ -73,14 +72,8 @@ for (let i = 0; i < 10; i++) {
 }
 
 // 빈 배경 영역 클릭용 더미 오브젝트
-world.createRectangle({
-  style: {
-    width: 10000,
-    height: 10000,
-    color: 'rgba(0,0,0,0)',
-    zIndex: -1,
-  }
-}).on('click', (e) => {
+world.on('click', (obj, e) => {
+  if (obj) return
   const mx = e.clientX - window.innerWidth / 2;
   const my = window.innerHeight / 2 - e.clientY;
   addBox(mx, my);
