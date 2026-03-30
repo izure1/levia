@@ -316,6 +316,23 @@ export class World extends EventEmitter {
     }
   }
 
+  /**
+   * currentZ를 현재 카메라의 Z 좌표라고 가정할 때,
+   * targetZ 깊이에 있는 대상이 화면에서 value 크기만큼 보이려면
+   * 실제 값이 얼마가 되어야 하는지 원근 비율을 수학적으로 계산해 반환합니다.
+   * @param currentZ 카메라의 Z 좌표
+   * @param targetZ 목표 Z 좌표
+   * @param value 기준 크기 (화면에 보여질 목표 크기)
+   */
+  calcDepthRatio(currentZ: number, targetZ: number, value: number): number {
+    const depth = targetZ - currentZ
+    const scale = depth === 0 ? 1 : this.focalLength / depth
+
+    if (scale === 0) return value
+
+    return value / scale
+  }
+
   // ─── Object 생성 ─────────────────────────────────────────
 
   createCamera(options?: LveObjectOptions): Camera {
