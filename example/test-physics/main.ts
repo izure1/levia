@@ -43,8 +43,8 @@ function addBox(x: number, y: number) {
       height: 50,
       color: `hsl(${Math.random() * 360}, 80%, 60%)`,
       opacity: 0.9,
-      borderColor: 'red',
-      borderWidth: 3,
+      borderColor: 'rgb(255, 0, 0)',
+      borderWidth: 0,
     },
     transform: {
       position: { x, y, z: 0 }

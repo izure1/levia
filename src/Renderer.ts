@@ -79,6 +79,26 @@ function parseCSSColor(color: string): [number, number, number, number] {
       rgbMatch[4] != null ? parseFloat(rgbMatch[4]) : 1,
     ]
   }
+  // hsl(h, s%, l%) 또는 hsla(h, s%, l%, a)
+  const hslMatch = color.match(/hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+))?\s*\)/)
+  if (hslMatch) {
+    const h = parseFloat(hslMatch[1]) / 360
+    const s = parseFloat(hslMatch[2]) / 100
+    const l = parseFloat(hslMatch[3]) / 100
+    const a = hslMatch[4] != null ? parseFloat(hslMatch[4]) : 1
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1
+      if (t > 1) t -= 1
+      if (t < 1 / 6) return p + (q - p) * 6 * t
+      if (t < 1 / 2) return q
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+      return p
+    }
+    if (s === 0) return [l, l, l, a]
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    const p = 2 * l - q
+    return [hue2rgb(p, q, h + 1 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1 / 3), a]
+  }
   return [1, 1, 1, 1]
 }
 
@@ -414,8 +434,17 @@ export class Renderer {
   private _drawRectangle(obj: LveObject, x: number, y: number, w: number, h: number, rot: number) {
     const { style } = obj
     if (!style.color && !style.borderColor) return
-    const color = style.color ?? 'rgba(0,0,0,0)'
-    this._drawColorMesh(this.colorProgram, x, y, w, h, rot, color, style.opacity)
+
+    // 테두리 먼저 그리기 (더 큰 사각형)
+    if (style.borderColor && (style.borderWidth ?? 0) > 0) {
+      const bw = style.borderWidth!
+      this._drawColorMesh(this.colorProgram, x, y, w + bw * 2, h + bw * 2, rot, style.borderColor, style.opacity)
+    }
+
+    // 본체 그리기
+    if (style.color) {
+      this._drawColorMesh(this.colorProgram, x, y, w, h, rot, style.color, style.opacity)
+    }
   }
 
   // ─── Ellipse ────────────────────────────────────────────────────────────
@@ -423,14 +452,26 @@ export class Renderer {
   private _drawEllipse(obj: LveObject, x: number, y: number, w: number, h: number, rot: number) {
     const { style } = obj
     if (!style.color && !style.borderColor) return
-    const color = style.color ?? 'rgba(0,0,0,0)'
-    const [r, g, b, a] = parseCSSColor(color)
-    this.ellipseProgram.uniforms['uColor'].value = [r, g, b, a]
-    this.ellipseProgram.uniforms['uOpacity'].value = style.opacity
-    this.ellipseProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h, rot)
-    this.ellipseProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
 
-    this.ellipseMesh.draw({ camera: this.camera })
+    const drawEllipse = (ew: number, eh: number, color: string) => {
+      const [r, g, b, a] = parseCSSColor(color)
+      this.ellipseProgram.uniforms['uColor'].value = [r, g, b, a]
+      this.ellipseProgram.uniforms['uOpacity'].value = style.opacity
+      this.ellipseProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, ew, eh, rot)
+      this.ellipseProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
+      this.ellipseMesh.draw({ camera: this.camera })
+    }
+
+    // 테두리 먼저 그리기 (더 큰 타원)
+    if (style.borderColor && (style.borderWidth ?? 0) > 0) {
+      const bw = style.borderWidth!
+      drawEllipse(w + bw * 2, h + bw * 2, style.borderColor)
+    }
+
+    // 본체 그리기
+    if (style.color) {
+      drawEllipse(w, h, style.color)
+    }
   }
 
   // ─── Text (Offscreen Canvas → Texture) ──────────────────────────────────
