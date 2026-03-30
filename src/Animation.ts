@@ -1,4 +1,5 @@
-import type { EasingType } from './types.js'
+import type { EasingType, AnimationEvents } from './types.js'
+import { EventEmitter } from './EventEmitter.js'
 
 // ============================================================
 // Easing Functions
@@ -169,7 +170,7 @@ function resolveAllTargets(current: Record<string, any>, raw: DeepRecord): Recor
 
 export type AnimationCallback = (state: Record<string, any>) => void
 
-export class Animation {
+export class Animation extends EventEmitter<AnimationEvents> {
   private _initialTarget: DeepRecord
   private _rafId: number | null = null
   private _startTime: number | null = null
@@ -182,6 +183,7 @@ export class Animation {
   private _to: Record<string, any> = {}
 
   constructor(target: DeepRecord) {
+    super()
     this._initialTarget = target
   }
 
@@ -203,6 +205,7 @@ export class Animation {
     this._pausedElapsed = 0
     this._isPaused = false
 
+    this.emit('start')
     this._tick(null)
   }
 
@@ -214,12 +217,14 @@ export class Animation {
       cancelAnimationFrame(this._rafId)
       this._rafId = null
     }
+    this.emit('pause')
   }
 
   resume() {
     if (!this._isPaused) return
     this._isPaused = false
     this._startTime = null  // _tick에서 재설정
+    this.emit('resume')
     this._tick(null)
   }
 
@@ -227,6 +232,7 @@ export class Animation {
     if (this._rafId !== null) {
       cancelAnimationFrame(this._rafId)
       this._rafId = null
+      this.emit('stop')
     }
     this._startTime = null
     this._pausedElapsed = 0
@@ -246,6 +252,7 @@ export class Animation {
 
     const state = interpolate(this._from, this._to, easedT, this._initialTarget)
     this._callback?.(state)
+    this.emit('update', state)
 
     if (rawT < 1) {
       this._rafId = requestAnimationFrame((ts) => this._tick(ts))

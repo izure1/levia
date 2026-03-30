@@ -21,6 +21,9 @@ export class Sprite extends LveObject {
   /** 재생 중 여부 */
   _playing: boolean = false
 
+  /** 일시정지 여부 */
+  _paused: boolean = false
+
   constructor(options?: LveObjectOptions) {
     super('sprite', options)
   }
@@ -46,25 +49,42 @@ export class Sprite extends LveObject {
       console.warn(`[Sprite] 클립 '${name}'을 찾을 수 없습니다.`)
       return
     }
-    if (this._clipName === name && this._playing) return
+    if (this._clipName === name && this._playing && !this._paused) return
 
     this._clipName = name
     this._clip = clip
     this._currentFrame = clip.start
     this._lastFrameTime = 0
     this._playing = true
+    this._paused = false
+    this.emit('play')
+  }
+
+  /** 재생을 일시정지합니다. */
+  pause() {
+    if (!this._playing || this._paused) return
+    this._paused = true
+    this.emit('pause')
+  }
+
+  /** 일시정지를 재개합니다. */
+  resume() {
+    if (!this._paused) return
+    this._paused = false
+    this.emit('play')
   }
 
   /** 애니메이션을 정지합니다. */
   stop() {
     this._playing = false
+    this._paused = false
   }
 
   /**
    * Renderer에서 매 프레임 호출하여 현재 프레임 인덱스를 업데이트합니다.
    */
   tick(timestamp: number) {
-    if (!this._playing || !this._clip) return
+    if (!this._playing || this._paused || !this._clip) return
 
     const { frameRate, start, end, loop } = this._clip
     const interval = 1000 / frameRate
@@ -81,9 +101,11 @@ export class Sprite extends LveObject {
       if (this._currentFrame >= end) {
         if (loop) {
           this._currentFrame = start
+          this.emit('repeat')
         } else {
           this._currentFrame = end - 1
           this._playing = false
+          this.emit('ended')
         }
       }
     }

@@ -673,8 +673,13 @@ export class Renderer {
     }
 
     if (clip?.end != null && asset.currentTime >= clip.end / 1000) {
-      if (clip.loop) asset.currentTime = (clip.start ?? 0) / 1000
-      else { asset.pause(); obj.stop() }
+      if (clip.loop) {
+        asset.currentTime = (clip.start ?? 0) / 1000
+        obj._onRepeat()
+      } else {
+        asset.pause()
+        obj._onEnded()
+      }
     }
 
     const drawW = w || asset.videoWidth

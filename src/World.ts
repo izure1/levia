@@ -22,6 +22,9 @@ export class World {
   private objects: Set<LveObject> = new Set()
   private rafId: number | null = null
   private physics: PhysicsEngine = new PhysicsEngine()
+  private _canvas: HTMLCanvasElement | null = null
+  /** mouseover 상태 추적 (객체 id → boolean) */
+  private _mouseOver: Set<string> = new Set()
 
   /** 스프라이트 애니메이션 클립 매니저 */
   readonly spriteManager: SpriteManager = new SpriteManager()
@@ -37,11 +40,13 @@ export class World {
 
   constructor(canvas?: HTMLCanvasElement) {
     const canvasEl = canvas ?? this.createCanvas()
+    this._canvas = canvasEl
     this.renderer = new Renderer(canvasEl)
     this.loader = new Loader()
     this.loader.on('complete', ({ assets }) => {
       Object.assign(this._assets, assets)
     })
+    this._setupMouseEvents(canvasEl)
   }
 
   private createCanvas(): HTMLCanvasElement {
@@ -57,6 +62,112 @@ export class World {
     })
 
     return canvas
+  }
+
+  // ─── 마우스 이벤트 ────────────────────────────────
+
+  private _setupMouseEvents(canvas: HTMLCanvasElement) {
+    const dispatch = (eventName: string, e: MouseEvent) => {
+      const hits = this._getHitObjects(e)
+      for (const obj of hits) {
+        obj.emit(eventName, e)
+      }
+    }
+
+    canvas.addEventListener('click', (e) => dispatch('click', e))
+    canvas.addEventListener('dblclick', (e) => dispatch('dblclick', e))
+    canvas.addEventListener('contextmenu', (e) => dispatch('contextmenu', e))
+    canvas.addEventListener('mousedown', (e) => dispatch('mousedown', e))
+    canvas.addEventListener('mouseup', (e) => dispatch('mouseup', e))
+
+    canvas.addEventListener('mousemove', (e) => {
+      const hits = this._getHitObjects(e)
+      const hitIds = new Set(hits.map(o => o.attribute.id))
+
+      // mouseover: 새로 진입한 객체
+      for (const obj of hits) {
+        if (!this._mouseOver.has(obj.attribute.id)) {
+          this._mouseOver.add(obj.attribute.id)
+          obj.emit('mouseover', e)
+        }
+        obj.emit('mousemove', e)
+      }
+
+      // mouseout: 이전에 over였는데 이번에 없는 객체
+      for (const id of Array.from(this._mouseOver)) {
+        if (!hitIds.has(id)) {
+          this._mouseOver.delete(id)
+          const obj = Array.from(this.objects).find(o => o.attribute.id === id)
+          if (obj) obj.emit('mouseout', e)
+        }
+      }
+    })
+
+    canvas.addEventListener('mouseleave', (e: MouseEvent) => {
+      for (const id of Array.from(this._mouseOver)) {
+        const obj = Array.from(this.objects).find(o => o.attribute.id === id)
+        if (obj) obj.emit('mouseout', e as MouseEvent)
+      }
+      this._mouseOver.clear()
+    })
+  }
+
+  /**
+   * 화면좌표 기준으로 마우스 위치에 갹쳐지는 객체를 반환합니다. (AABB hit-test)
+   */
+  private _getHitObjects(e: MouseEvent): LveObject[] {
+    const canvas = this._canvas
+    if (!canvas) return []
+
+    // 캔버스 상대 마우스 좌표 (DPR 고려)
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const mouseX = (e.clientX - rect.left) * scaleX - canvas.width / 2
+    const mouseY = -((e.clientY - rect.top) * scaleY - canvas.height / 2)
+
+    // 카메라 위치
+    let camX = 0
+    let camY = 0
+    let camZ = 0
+    for (const obj of this.objects) {
+      if (obj.attribute.type === 'camera') {
+        camX = obj.transform.position.x
+        camY = obj.transform.position.y
+        camZ = obj.transform.position.z
+        break
+      }
+    }
+
+    const focalLength = 500
+    const result: LveObject[] = []
+
+    for (const obj of this.objects) {
+      if (obj.attribute.type === 'camera') continue
+      if (obj.style.display === 'none') continue
+      if (!obj.style.pointerEvents) continue
+
+      const { transform, style } = obj
+      const depth = transform.position.z - camZ
+      if (depth < 0) continue
+
+      const perspectiveScale = depth === 0 ? 1 : focalLength / depth
+      const screenX = (transform.position.x - camX) * perspectiveScale * transform.scale.x
+      const screenY = (transform.position.y - camY) * perspectiveScale * transform.scale.y
+      const hw = ((style.width ?? 0) * perspectiveScale * transform.scale.x) / 2
+      const hh = ((style.height ?? 0) * perspectiveScale * transform.scale.y) / 2
+
+      if (hw <= 0 || hh <= 0) continue
+
+      if (
+        mouseX >= screenX - hw && mouseX <= screenX + hw &&
+        mouseY >= screenY - hh && mouseY <= screenY + hh
+      ) {
+        result.push(obj)
+      }
+    }
+
+    return result
   }
 
   /**

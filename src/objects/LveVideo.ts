@@ -19,6 +19,9 @@ export class LveVideo extends LveObject {
   /** 재생 중 여부 */
   _playing: boolean = false
 
+  /** 일시정지 여부 */
+  _paused: boolean = false
+
   constructor(options?: LveObjectOptions) {
     super('video', options)
   }
@@ -49,12 +52,47 @@ export class LveVideo extends LveObject {
     this._clip = clip
     this._src = clip.src
     this._playing = true
+    this._paused = false
+    this.emit('play')
   }
 
   /**
-   * 재생을 정지합니다.
+   * 재생을 일시정지합니다.
+   */
+  pause() {
+    if (!this._playing || this._paused) return
+    this._paused = true
+    this._playing = false
+    this.emit('pause')
+  }
+
+  /**
+   * 재생을 정지합니다. loop=false일 때 'ended'를 emit합니다.
    */
   stop() {
+    const wasPlaying = this._playing
     this._playing = false
+    this._paused = false
+
+    if (wasPlaying && this._clip && !this._clip.loop) {
+      this.emit('ended')
+    }
+  }
+
+  /**
+   * Renderer에서 루프 완료 시 호출 — 'repeat' 이벤트를 emit합니다.
+   * @internal
+   */
+  _onRepeat() {
+    this.emit('repeat')
+  }
+
+  /**
+   * Renderer에서 재생 종료 시 호출 — 'ended' 이벤트를 emit합니다.
+   * @internal
+   */
+  _onEnded() {
+    this._playing = false
+    this.emit('ended')
   }
 }

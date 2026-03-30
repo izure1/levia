@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from './utils/uuid.js'
 import type Matter from 'matter-js'
 import { animateObject } from './Animation.js'
 import type { Animation } from './Animation.js'
+import { EventEmitter } from './EventEmitter.js'
 import type {
   Attribute,
   AnimateTarget,
@@ -9,6 +10,7 @@ import type {
   DatasetValue,
   EasingType,
   LveObjectOptions,
+  LveObjectEvents,
   Style,
   Transform,
   Vec3,
@@ -49,7 +51,47 @@ function makeStyle(partial?: Partial<Style>): Style {
   }
 }
 
-export abstract class LveObject {
+/**
+ * 객체의 얕은 프로퍼티 변경을 감지하여 이벤트를 발행하는 Proxy를 만듭니다.
+ */
+function makeTrackedProxy<T extends object>(
+  target: T,
+  emitter: EventEmitter,
+  eventName: string,
+): T {
+  return new Proxy(target, {
+    set(obj, prop, value) {
+      const prev = (obj as any)[prop]
+        ; (obj as any)[prop] = value
+      if (prev !== value) {
+        emitter.emit(eventName, String(prop), value, prev)
+      }
+      return true
+    },
+  })
+}
+
+/**
+ * Vec3 변경을 감지하는 Proxy (position/rotation/scale)
+ */
+function makeVec3Proxy(
+  vec: Vec3,
+  emitter: EventEmitter,
+  eventName: string,
+): Vec3 {
+  return new Proxy(vec, {
+    set(obj, prop, value) {
+      const prev = (obj as any)[prop]
+        ; (obj as any)[prop] = value
+      if (prev !== value) {
+        emitter.emit(eventName, String(prop), value, prev)
+      }
+      return true
+    },
+  })
+}
+
+export abstract class LveObject extends EventEmitter<LveObjectEvents> {
   readonly attribute: Attribute
   readonly dataset: Dataset
   readonly style: Style
@@ -59,7 +101,9 @@ export abstract class LveObject {
   _body: Matter.Body | null = null
 
   constructor(type: string, options?: LveObjectOptions) {
-    this.attribute = {
+    super()
+
+    const rawAttribute: Attribute = {
       type,
       id: uuidv4(),
       name: options?.attribute?.name ?? '',
@@ -76,18 +120,24 @@ export abstract class LveObject {
       collisionCategory: options?.attribute?.collisionCategory,
     }
 
-    this.dataset = Object.assign({}, options?.dataset)
+    const rawDataset = Object.assign({}, options?.dataset)
+    const rawStyle = makeStyle(options?.style)
+    const rawPosition = makeVec3(options?.transform?.position)
+    const rawRotation = makeVec3(options?.transform?.rotation)
+    const rawScale: Vec3 = {
+      x: options?.transform?.scale?.x ?? 1,
+      y: options?.transform?.scale?.y ?? 1,
+      z: options?.transform?.scale?.z ?? 1,
+    }
 
-    this.style = makeStyle(options?.style)
-
+    // Proxy로 감싸서 변경 감지
+    this.attribute = makeTrackedProxy(rawAttribute, this, 'attrmodified')
+    this.dataset = makeTrackedProxy(rawDataset, this, 'datamodified')
+    this.style = makeTrackedProxy(rawStyle, this, 'cssmodified')
     this.transform = {
-      position: makeVec3(options?.transform?.position),
-      rotation: makeVec3(options?.transform?.rotation),
-      scale: {
-        x: options?.transform?.scale?.x ?? 1,
-        y: options?.transform?.scale?.y ?? 1,
-        z: options?.transform?.scale?.z ?? 1,
-      },
+      position: makeVec3Proxy(rawPosition, this, 'positionmodified'),
+      rotation: makeVec3Proxy(rawRotation, this, 'rotationmodified'),
+      scale: makeVec3Proxy(rawScale, this, 'scalemodified'),
     }
   }
 

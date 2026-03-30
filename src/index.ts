@@ -3,6 +3,7 @@ export { Loader } from './Loader.js'
 export { Renderer } from './Renderer.js'
 export { LveObject } from './LveObject.js'
 export { Animation } from './Animation.js'
+export { EventEmitter } from './EventEmitter.js'
 export { AssetManager } from './AssetManager.js'
 export { SpriteManager } from './SpriteManager.js'
 export { VideoManager } from './VideoManager.js'
@@ -34,4 +35,6 @@ export type {
   LoadedAsset,
   LoadedAssets,
   LoaderEventType,
+  LveObjectEvents,
+  AnimationEvents,
 } from './types.js'

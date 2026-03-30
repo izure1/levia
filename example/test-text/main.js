@@ -4987,6 +4987,53 @@ function v4() {
   ].join("-");
 }
 
+// src/EventEmitter.ts
+var EventEmitter = class {
+  _listeners = /* @__PURE__ */ new Map();
+  on(event, callback) {
+    for (const ev of event.trim().split(/\s+/)) {
+      if (!ev) continue;
+      if (!this._listeners.has(ev)) this._listeners.set(ev, []);
+      this._listeners.get(ev).push({ cb: callback, once: false });
+    }
+    return this;
+  }
+  off(event, callback) {
+    for (const ev of event.trim().split(/\s+/)) {
+      if (!ev) continue;
+      const list = this._listeners.get(ev);
+      if (!list) continue;
+      const idx = list.findIndex((e) => e.cb === callback);
+      if (idx !== -1) list.splice(idx, 1);
+    }
+    return this;
+  }
+  once(event, callback) {
+    for (const ev of event.trim().split(/\s+/)) {
+      if (!ev) continue;
+      if (!this._listeners.has(ev)) this._listeners.set(ev, []);
+      this._listeners.get(ev).push({ cb: callback, once: true });
+    }
+    return this;
+  }
+  emit(event, ...args) {
+    for (const ev of event.trim().split(/\s+/)) {
+      if (!ev) continue;
+      const list = this._listeners.get(ev);
+      if (!list || list.length === 0) continue;
+      const toRemove = [];
+      for (let i = 0; i < list.length; i++) {
+        list[i].cb(...args);
+        if (list[i].once) toRemove.push(i);
+      }
+      for (let i = toRemove.length - 1; i >= 0; i--) {
+        list.splice(toRemove[i], 1);
+      }
+    }
+    return this;
+  }
+};
+
 // src/Animation.ts
 var easings = {
   linear: (t) => t,
@@ -5101,7 +5148,7 @@ function resolveAllTargets(current, raw) {
   }
   return resolved;
 }
-var Animation = class {
+var Animation = class extends EventEmitter {
   _initialTarget;
   _rafId = null;
   _startTime = null;
@@ -5113,6 +5160,7 @@ var Animation = class {
   _from = {};
   _to = {};
   constructor(target) {
+    super();
     this._initialTarget = target;
   }
   /**
@@ -5130,6 +5178,7 @@ var Animation = class {
     this._to = resolveAllTargets({}, this._initialTarget);
     this._pausedElapsed = 0;
     this._isPaused = false;
+    this.emit("start");
     this._tick(null);
   }
   pause() {
@@ -5140,17 +5189,20 @@ var Animation = class {
       cancelAnimationFrame(this._rafId);
       this._rafId = null;
     }
+    this.emit("pause");
   }
   resume() {
     if (!this._isPaused) return;
     this._isPaused = false;
     this._startTime = null;
+    this.emit("resume");
     this._tick(null);
   }
   stop() {
     if (this._rafId !== null) {
       cancelAnimationFrame(this._rafId);
       this._rafId = null;
+      this.emit("stop");
     }
     this._startTime = null;
     this._pausedElapsed = 0;
@@ -5166,6 +5218,7 @@ var Animation = class {
     const easedT = this._easingFn(rawT);
     const state = interpolate(this._from, this._to, easedT, this._initialTarget);
     this._callback?.(state);
+    this.emit("update", state);
     if (rawT < 1) {
       this._rafId = requestAnimationFrame((ts) => this._tick(ts));
     } else {
@@ -5248,7 +5301,31 @@ function makeStyle(partial) {
     blendMode: partial?.blendMode
   };
 }
-var LveObject = class {
+function makeTrackedProxy(target, emitter, eventName) {
+  return new Proxy(target, {
+    set(obj, prop, value) {
+      const prev = obj[prop];
+      obj[prop] = value;
+      if (prev !== value) {
+        emitter.emit(eventName, String(prop), value, prev);
+      }
+      return true;
+    }
+  });
+}
+function makeVec3Proxy(vec, emitter, eventName) {
+  return new Proxy(vec, {
+    set(obj, prop, value) {
+      const prev = obj[prop];
+      obj[prop] = value;
+      if (prev !== value) {
+        emitter.emit(eventName, String(prop), value, prev);
+      }
+      return true;
+    }
+  });
+}
+var LveObject = class extends EventEmitter {
   attribute;
   dataset;
   style;
@@ -5256,7 +5333,8 @@ var LveObject = class {
   /** matter-js 바디 참조 (PhysicsEngine에서 설정) */
   _body = null;
   constructor(type, options) {
-    this.attribute = {
+    super();
+    const rawAttribute = {
       type,
       id: v4(),
       name: options?.attribute?.name ?? "",
@@ -5272,16 +5350,22 @@ var LveObject = class {
       collisionMask: options?.attribute?.collisionMask,
       collisionCategory: options?.attribute?.collisionCategory
     };
-    this.dataset = Object.assign({}, options?.dataset);
-    this.style = makeStyle(options?.style);
+    const rawDataset = Object.assign({}, options?.dataset);
+    const rawStyle = makeStyle(options?.style);
+    const rawPosition = makeVec3(options?.transform?.position);
+    const rawRotation = makeVec3(options?.transform?.rotation);
+    const rawScale = {
+      x: options?.transform?.scale?.x ?? 1,
+      y: options?.transform?.scale?.y ?? 1,
+      z: options?.transform?.scale?.z ?? 1
+    };
+    this.attribute = makeTrackedProxy(rawAttribute, this, "attrmodified");
+    this.dataset = makeTrackedProxy(rawDataset, this, "datamodified");
+    this.style = makeTrackedProxy(rawStyle, this, "cssmodified");
     this.transform = {
-      position: makeVec3(options?.transform?.position),
-      rotation: makeVec3(options?.transform?.rotation),
-      scale: {
-        x: options?.transform?.scale?.x ?? 1,
-        y: options?.transform?.scale?.y ?? 1,
-        z: options?.transform?.scale?.z ?? 1
-      }
+      position: makeVec3Proxy(rawPosition, this, "positionmodified"),
+      rotation: makeVec3Proxy(rawRotation, this, "rotationmodified"),
+      scale: makeVec3Proxy(rawScale, this, "scalemodified")
     };
   }
   setDataset(key, value) {
@@ -5397,6 +5481,8 @@ var LveVideo = class extends LveObject {
   _src = null;
   /** 재생 중 여부 */
   _playing = false;
+  /** 일시정지 여부 */
+  _paused = false;
   constructor(options) {
     super("video", options);
   }
@@ -5424,12 +5510,43 @@ var LveVideo = class extends LveObject {
     this._clip = clip;
     this._src = clip.src;
     this._playing = true;
+    this._paused = false;
+    this.emit("play");
   }
   /**
-   * 재생을 정지합니다.
+   * 재생을 일시정지합니다.
+   */
+  pause() {
+    if (!this._playing || this._paused) return;
+    this._paused = true;
+    this._playing = false;
+    this.emit("pause");
+  }
+  /**
+   * 재생을 정지합니다. loop=false일 때 'ended'를 emit합니다.
    */
   stop() {
+    const wasPlaying = this._playing;
     this._playing = false;
+    this._paused = false;
+    if (wasPlaying && this._clip && !this._clip.loop) {
+      this.emit("ended");
+    }
+  }
+  /**
+   * Renderer에서 루프 완료 시 호출 — 'repeat' 이벤트를 emit합니다.
+   * @internal
+   */
+  _onRepeat() {
+    this.emit("repeat");
+  }
+  /**
+   * Renderer에서 재생 종료 시 호출 — 'ended' 이벤트를 emit합니다.
+   * @internal
+   */
+  _onEnded() {
+    this._playing = false;
+    this.emit("ended");
   }
 };
 
@@ -5447,6 +5564,8 @@ var Sprite = class extends LveObject {
   _lastFrameTime = 0;
   /** 재생 중 여부 */
   _playing = false;
+  /** 일시정지 여부 */
+  _paused = false;
   constructor(options) {
     super("sprite", options);
   }
@@ -5470,22 +5589,37 @@ var Sprite = class extends LveObject {
       console.warn(`[Sprite] \uD074\uB9BD '${name}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
       return;
     }
-    if (this._clipName === name && this._playing) return;
+    if (this._clipName === name && this._playing && !this._paused) return;
     this._clipName = name;
     this._clip = clip;
     this._currentFrame = clip.start;
     this._lastFrameTime = 0;
     this._playing = true;
+    this._paused = false;
+    this.emit("play");
+  }
+  /** 재생을 일시정지합니다. */
+  pause() {
+    if (!this._playing || this._paused) return;
+    this._paused = true;
+    this.emit("pause");
+  }
+  /** 일시정지를 재개합니다. */
+  resume() {
+    if (!this._paused) return;
+    this._paused = false;
+    this.emit("play");
   }
   /** 애니메이션을 정지합니다. */
   stop() {
     this._playing = false;
+    this._paused = false;
   }
   /**
    * Renderer에서 매 프레임 호출하여 현재 프레임 인덱스를 업데이트합니다.
    */
   tick(timestamp) {
-    if (!this._playing || !this._clip) return;
+    if (!this._playing || this._paused || !this._clip) return;
     const { frameRate, start, end, loop } = this._clip;
     const interval = 1e3 / frameRate;
     if (this._lastFrameTime === 0) {
@@ -5498,9 +5632,11 @@ var Sprite = class extends LveObject {
       if (this._currentFrame >= end) {
         if (loop) {
           this._currentFrame = start;
+          this.emit("repeat");
         } else {
           this._currentFrame = end - 1;
           this._playing = false;
+          this.emit("ended");
         }
       }
     }
@@ -5525,6 +5661,8 @@ var Particle = class extends LveObject {
   // loop=false 일 때 총 스폰 횟수 추적
   /** PhysicsEngine 참조 (strict 모드 전용) */
   _physics = null;
+  /** 일시정지 여부 */
+  _paused = false;
   constructor(options) {
     super("particle", options);
     this.strict = options?.strict ?? false;
@@ -5560,12 +5698,29 @@ var Particle = class extends LveObject {
     this._lastSpawnTime = 0;
     this._spawnCount = 0;
     this._instances = [];
+    this.emit("play");
+  }
+  /**
+   * 파티클 에미션을 일시정지합니다.
+   */
+  pause() {
+    if (!this._playing || this._paused) return;
+    this._paused = true;
+    this.emit("pause");
   }
   /**
    * 파티클 에미션을 정지합니다. 이미 생성된 인스턴스는 lifespan까지 유지됩니다.
    */
   stop() {
+    if (!this._playing && !this._paused) return;
+    const wasLooping = this._clip?.loop ?? false;
     this._playing = false;
+    this._paused = false;
+    if (wasLooping) {
+      this.emit("repeat");
+    } else {
+      this.emit("ended");
+    }
   }
   /**
    * Renderer에서 매 프레임 호출합니다.
@@ -5577,7 +5732,7 @@ var Particle = class extends LveObject {
     if (this._lastSpawnTime === 0) {
       this._lastSpawnTime = timestamp;
     }
-    if (this._playing) {
+    if (this._playing && !this._paused) {
       const elapsed = timestamp - this._lastSpawnTime;
       if (elapsed >= clip.interval) {
         this._spawn(timestamp);
@@ -9530,10 +9685,12 @@ var Renderer2 = class {
       if (!asset.paused) asset.pause();
     }
     if (clip?.end != null && asset.currentTime >= clip.end / 1e3) {
-      if (clip.loop) asset.currentTime = (clip.start ?? 0) / 1e3;
-      else {
+      if (clip.loop) {
+        asset.currentTime = (clip.start ?? 0) / 1e3;
+        obj._onRepeat();
+      } else {
         asset.pause();
-        obj.stop();
+        obj._onEnded();
       }
     }
     const drawW = w || asset.videoWidth;
@@ -9660,6 +9817,9 @@ var World = class {
   objects = /* @__PURE__ */ new Set();
   rafId = null;
   physics = new PhysicsEngine();
+  _canvas = null;
+  /** mouseover 상태 추적 (객체 id → boolean) */
+  _mouseOver = /* @__PURE__ */ new Set();
   /** 스프라이트 애니메이션 클립 매니저 */
   spriteManager = new SpriteManager();
   /** 비디오 클립 매니저 */
@@ -9672,11 +9832,13 @@ var World = class {
   _assets = {};
   constructor(canvas) {
     const canvasEl = canvas ?? this.createCanvas();
+    this._canvas = canvasEl;
     this.renderer = new Renderer2(canvasEl);
     this.loader = new Loader();
     this.loader.on("complete", ({ assets }) => {
       Object.assign(this._assets, assets);
     });
+    this._setupMouseEvents(canvasEl);
   }
   createCanvas() {
     const canvas = document.createElement("canvas");
@@ -9689,6 +9851,88 @@ var World = class {
       canvas.height = window.innerHeight;
     });
     return canvas;
+  }
+  // ─── 마우스 이벤트 ────────────────────────────────
+  _setupMouseEvents(canvas) {
+    const dispatch = (eventName, e) => {
+      const hits = this._getHitObjects(e);
+      for (const obj of hits) {
+        obj.emit(eventName, e);
+      }
+    };
+    canvas.addEventListener("click", (e) => dispatch("click", e));
+    canvas.addEventListener("dblclick", (e) => dispatch("dblclick", e));
+    canvas.addEventListener("contextmenu", (e) => dispatch("contextmenu", e));
+    canvas.addEventListener("mousedown", (e) => dispatch("mousedown", e));
+    canvas.addEventListener("mouseup", (e) => dispatch("mouseup", e));
+    canvas.addEventListener("mousemove", (e) => {
+      const hits = this._getHitObjects(e);
+      const hitIds = new Set(hits.map((o) => o.attribute.id));
+      for (const obj of hits) {
+        if (!this._mouseOver.has(obj.attribute.id)) {
+          this._mouseOver.add(obj.attribute.id);
+          obj.emit("mouseover", e);
+        }
+        obj.emit("mousemove", e);
+      }
+      for (const id of Array.from(this._mouseOver)) {
+        if (!hitIds.has(id)) {
+          this._mouseOver.delete(id);
+          const obj = Array.from(this.objects).find((o) => o.attribute.id === id);
+          if (obj) obj.emit("mouseout", e);
+        }
+      }
+    });
+    canvas.addEventListener("mouseleave", (e) => {
+      for (const id of Array.from(this._mouseOver)) {
+        const obj = Array.from(this.objects).find((o) => o.attribute.id === id);
+        if (obj) obj.emit("mouseout", e);
+      }
+      this._mouseOver.clear();
+    });
+  }
+  /**
+   * 화면좌표 기준으로 마우스 위치에 갹쳐지는 객체를 반환합니다. (AABB hit-test)
+   */
+  _getHitObjects(e) {
+    const canvas = this._canvas;
+    if (!canvas) return [];
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX - canvas.width / 2;
+    const mouseY = -((e.clientY - rect.top) * scaleY - canvas.height / 2);
+    let camX = 0;
+    let camY = 0;
+    let camZ = 0;
+    for (const obj of this.objects) {
+      if (obj.attribute.type === "camera") {
+        camX = obj.transform.position.x;
+        camY = obj.transform.position.y;
+        camZ = obj.transform.position.z;
+        break;
+      }
+    }
+    const focalLength = 500;
+    const result = [];
+    for (const obj of this.objects) {
+      if (obj.attribute.type === "camera") continue;
+      if (obj.style.display === "none") continue;
+      if (!obj.style.pointerEvents) continue;
+      const { transform, style } = obj;
+      const depth = transform.position.z - camZ;
+      if (depth < 0) continue;
+      const perspectiveScale = depth === 0 ? 1 : focalLength / depth;
+      const screenX = (transform.position.x - camX) * perspectiveScale * transform.scale.x;
+      const screenY = (transform.position.y - camY) * perspectiveScale * transform.scale.y;
+      const hw = (style.width ?? 0) * perspectiveScale * transform.scale.x / 2;
+      const hh = (style.height ?? 0) * perspectiveScale * transform.scale.y / 2;
+      if (hw <= 0 || hh <= 0) continue;
+      if (mouseX >= screenX - hw && mouseX <= screenX + hw && mouseY >= screenY - hh && mouseY <= screenY + hh) {
+        result.push(obj);
+      }
+    }
+    return result;
   }
   /**
    * 월드의 중력을 설정합니다.

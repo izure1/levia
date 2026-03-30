@@ -134,3 +134,43 @@ export interface AnimateTarget {
   dataset?: Record<string, any>
   [key: string]: any
 }
+
+// ============================================================
+// Event Maps
+// ============================================================
+
+/** LveObject (및 하위 클래스) 공통 이벤트 맵 */
+export interface LveObjectEvents {
+  [key: string]: any[]
+  // 속성 변경 이벤트
+  cssmodified: [key: string, value: any, prev: any]
+  attrmodified: [key: string, value: any, prev: any]
+  datamodified: [key: string, value: any, prev: any]
+  rotationmodified: [key: string, value: any, prev: any]
+  positionmodified: [key: string, value: any, prev: any]
+  scalemodified: [key: string, value: any, prev: any]
+  // 재생 이벤트 (video, sprite, particle)
+  play: []
+  pause: []
+  ended: []
+  repeat: []
+  // 마우스 이벤트
+  click: [e: MouseEvent]
+  dblclick: [e: MouseEvent]
+  contextmenu: [e: MouseEvent]
+  mousedown: [e: MouseEvent]
+  mouseup: [e: MouseEvent]
+  mousemove: [e: MouseEvent]
+  mouseover: [e: MouseEvent]
+  mouseout: [e: MouseEvent]
+}
+
+/** Animation 클래스 이벤트 맵 */
+export interface AnimationEvents {
+  [key: string]: any[]
+  start: []
+  pause: []
+  stop: []
+  resume: []
+  update: [state: Record<string, any>]
+}

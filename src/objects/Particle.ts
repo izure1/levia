@@ -54,6 +54,9 @@ export class Particle extends LveObject {
   /** PhysicsEngine 참조 (strict 모드 전용) */
   private _physics: PhysicsEngine | null = null
 
+  /** 일시정지 여부 */
+  private _paused: boolean = false
+
   constructor(options?: ParticleOptions) {
     super('particle', options)
     this.strict = options?.strict ?? false
@@ -92,13 +95,31 @@ export class Particle extends LveObject {
     this._lastSpawnTime = 0
     this._spawnCount = 0
     this._instances = []
+    this.emit('play')
+  }
+
+  /**
+   * 파티클 에미션을 일시정지합니다.
+   */
+  pause() {
+    if (!this._playing || this._paused) return
+    this._paused = true
+    this.emit('pause')
   }
 
   /**
    * 파티클 에미션을 정지합니다. 이미 생성된 인스턴스는 lifespan까지 유지됩니다.
    */
   stop() {
+    if (!this._playing && !this._paused) return
+    const wasLooping = this._clip?.loop ?? false
     this._playing = false
+    this._paused = false
+    if (wasLooping) {
+      this.emit('repeat')
+    } else {
+      this.emit('ended')
+    }
   }
 
   /**
@@ -116,7 +137,7 @@ export class Particle extends LveObject {
     }
 
     // ─── 스폰 처리 ───────────────────────────────────────
-    if (this._playing) {
+    if (this._playing && !this._paused) {
       const elapsed = timestamp - this._lastSpawnTime
       if (elapsed >= clip.interval) {
         this._spawn(timestamp)
