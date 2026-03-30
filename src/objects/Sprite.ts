@@ -3,6 +3,9 @@ import type { LveObjectOptions } from '../types.js'
 import type { SpriteClip, SpriteManager } from '../SpriteManager.js'
 
 export class Sprite extends LveObject {
+  /** 연결된 SpriteManager */
+  private _manager: SpriteManager | null = null
+
   /** 현재 재생 중인 클립 이름 */
   private _clipName: string | null = null
 
@@ -23,11 +26,22 @@ export class Sprite extends LveObject {
   }
 
   /**
-   * 지정한 이름의 애니메이션 클립을 재생합니다.
-   * SpriteManager 인스턴스와 연동됩니다.
+   * SpriteManager를 연결합니다.
    */
-  play(name: string, manager: SpriteManager) {
-    const clip = manager.get(name)
+  setManager(manager: SpriteManager) {
+    this._manager = manager
+  }
+
+  /**
+   * 지정한 이름의 애니메이션 클립을 재생합니다.
+   * setManager()를 먼저 호출해야 합니다.
+   */
+  play(name: string) {
+    if (!this._manager) {
+      console.warn('[Sprite] SpriteManager가 설정되지 않았습니다. setManager()를 먼저 호출하십시오.')
+      return
+    }
+    const clip = this._manager.get(name)
     if (!clip) {
       console.warn(`[Sprite] 클립 '${name}'을 찾을 수 없습니다.`)
       return

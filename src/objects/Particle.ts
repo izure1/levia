@@ -1,8 +1,225 @@
 import { LveObject } from '../LveObject.js'
 import type { LveObjectOptions } from '../types.js'
+import type { ParticleClip, ParticleManager } from '../ParticleManager.js'
+import type { PhysicsEngine } from '../PhysicsEngine.js'
+import Matter from 'matter-js'
+
+export interface ParticleOptions extends LveObjectOptions {
+  /**
+   * true이면 matter-js 기반 물리를 각 파티클 인스턴스에 적용합니다.
+   * false(기본)이면 내부 velocity 시뮬레이션을 사용합니다.
+   */
+  strict?: boolean
+}
+
+export interface ParticleInstance {
+  /** 에미터 기준 초기 스폰 x 오프셋 (px) */
+  spawnX: number
+  /** 에미터 기준 초기 스폰 y 오프셋 (px) */
+  spawnY: number
+  /** 에미터 기준 현재 x 좌표 (px) — tick마다 갱신 */
+  x: number
+  /** 에미터 기준 현재 y 좌표 (px) — tick마다 갱신 */
+  y: number
+  /** x 방향 속도 (px/ms) */
+  vx: number
+  /** y 방향 속도 (px/ms) */
+  vy: number
+  /** 생성 timestamp */
+  born: number
+  /** 생존 시간 (ms) */
+  lifespan: number
+  /** strict 모드 전용 matter-js 바디 */
+  body?: Matter.Body
+}
+
+const GRAVITY = 0.00015 // px/ms² (내부 시뮬레이션용 중력 가속도)
+const SPEED_RANGE = 0.25  // 초기 속도 범위 (px/ms)
 
 export class Particle extends LveObject {
-  constructor(options?: LveObjectOptions) {
+  /** strict 모드 여부 */
+  readonly strict: boolean
+
+  private _manager: ParticleManager | null = null
+  private _clipName: string | null = null
+  _clip: ParticleClip | null = null
+
+  /** 활성 파티클 인스턴스 목록 (Renderer에서 직접 참조) */
+  _instances: ParticleInstance[] = []
+
+  private _playing: boolean = false
+  private _lastSpawnTime: number = 0
+  private _spawnCount: number = 0   // loop=false 일 때 총 스폰 횟수 추적
+
+  /** PhysicsEngine 참조 (strict 모드 전용) */
+  private _physics: PhysicsEngine | null = null
+
+  constructor(options?: ParticleOptions) {
     super('particle', options)
+    this.strict = options?.strict ?? false
+  }
+
+  /**
+   * ParticleManager를 연결합니다.
+   */
+  setManager(manager: ParticleManager) {
+    this._manager = manager
+  }
+
+  /**
+   * PhysicsEngine을 연결합니다. strict=true 시 필요합니다.
+   */
+  setPhysics(physics: PhysicsEngine) {
+    this._physics = physics
+  }
+
+  /**
+   * 지정한 클립 이름으로 파티클 에미션을 시작합니다.
+   */
+  play(name: string) {
+    if (!this._manager) {
+      console.warn('[Particle] setManager()를 먼저 호출하십시오.')
+      return
+    }
+    const clip = this._manager.get(name)
+    if (!clip) {
+      console.warn(`[Particle] 클립 '${name}'을 찾을 수 없습니다.`)
+      return
+    }
+    this._clipName = name
+    this._clip = clip
+    this._playing = true
+    this._lastSpawnTime = 0
+    this._spawnCount = 0
+    this._instances = []
+  }
+
+  /**
+   * 파티클 에미션을 정지합니다. 이미 생성된 인스턴스는 lifespan까지 유지됩니다.
+   */
+  stop() {
+    this._playing = false
+  }
+
+  /**
+   * Renderer에서 매 프레임 호출합니다.
+   * 인스턴스 생성/업데이트/제거를 처리합니다.
+   */
+  tick(timestamp: number) {
+    if (!this._clip) return
+
+    const clip = this._clip
+
+    // 최초 호출 시 기준 시간 설정
+    if (this._lastSpawnTime === 0) {
+      this._lastSpawnTime = timestamp
+    }
+
+    // ─── 스폰 처리 ───────────────────────────────────────
+    if (this._playing) {
+      const elapsed = timestamp - this._lastSpawnTime
+      if (elapsed >= clip.interval) {
+        this._spawn(timestamp)
+        this._lastSpawnTime = timestamp
+        this._spawnCount++
+
+        // loop=false 이면 1회 스폰 후 에미션 정지
+        if (!clip.loop) {
+          this._playing = false
+        }
+      }
+    }
+
+    // ─── 인스턴스 업데이트 & 제거 ────────────────────────
+    const alive: ParticleInstance[] = []
+    for (const inst of this._instances) {
+      const age = timestamp - inst.born
+      if (age >= inst.lifespan) {
+        // 만료 → strict 모드이면 바디 제거
+        if (inst.body && this._physics) {
+          this._removeInstanceBody(inst)
+        }
+        continue
+      }
+
+      if (!inst.body) {
+        // 일반 모드: 초기 스폰 오프셋 + velocity 적분으로 위치 계산
+        const dt = timestamp - inst.born  // ms
+        inst.x = inst.spawnX + inst.vx * dt
+        inst.y = inst.spawnY + inst.vy * dt + 0.5 * GRAVITY * dt * dt
+      } else {
+        // strict 모드: matter-js 바디 위치를 상대 좌표로
+        const emX = this.transform.position.x
+        const emY = this.transform.position.y
+        inst.x = inst.body.position.x - emX
+        inst.y = inst.body.position.y - emY
+      }
+
+      alive.push(inst)
+    }
+    this._instances = alive
+  }
+
+  private _spawn(timestamp: number) {
+    const clip = this._clip!
+    const attr = this.attribute
+    const emX = this.transform.position.x
+    const emY = this.transform.position.y
+
+    // clip에서 스폰 범위 읽기 (미지정 시 0 → 에미터 중심에서만 생성)
+    const rangeW = clip.spawnWidth ?? 0
+    const rangeH = clip.spawnHeight ?? 0
+
+    for (let i = 0; i < clip.rate; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = Math.random() * SPEED_RANGE
+
+      // 에미터 범위 내 랜덤 스폰 위치 (중심 기준 ±range/2)
+      const offsetX = rangeW > 0 ? (Math.random() - 0.5) * rangeW : 0
+      const offsetY = rangeH > 0 ? (Math.random() - 0.5) * rangeH : 0
+
+      const inst: ParticleInstance = {
+        spawnX: offsetX,
+        spawnY: offsetY,
+        x: offsetX,
+        y: offsetY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        born: timestamp,
+        lifespan: clip.lifespan,
+      }
+
+      if (this.strict && this._physics) {
+        // strict 모드: 스폰 오프셋을 적용한 world 좌표에 바디 생성
+        const pw = this.style.width ? Math.min(this.style.width, this.style.height ?? this.style.width) / 4 : 4
+        const bodyOpts: any = {
+          density: attr.density ?? 0.001,
+          friction: attr.friction ?? 0,
+          restitution: attr.restitution ?? 0.3,
+          frictionAir: 0.03,
+          collisionFilter: {
+            group: attr.collisionGroup ?? 0,
+            mask: attr.collisionMask ?? 0xFFFFFFFF,
+            category: attr.collisionCategory ?? 0x0001,
+          },
+        }
+        const body = Matter.Bodies.circle(emX + offsetX, emY + offsetY, Math.max(pw, 2), bodyOpts)
+        // IBodyDefinition에 없는 필드는 직접 할당
+        if (attr.fixedRotation) Matter.Body.setInertia(body, Infinity)
+        if (attr.gravityScale != null) (body as any).gravityScale = attr.gravityScale
+        // 초기 속도 부여
+        Matter.Body.setVelocity(body, { x: inst.vx * 16, y: inst.vy * 16 })
+        Matter.Composite.add(this._physics.engine.world, body)
+        inst.body = body
+      }
+
+      this._instances.push(inst)
+    }
+  }
+
+  private _removeInstanceBody(inst: ParticleInstance) {
+    if (!inst.body || !this._physics) return
+    Matter.Composite.remove(this._physics.engine.world, inst.body)
+    inst.body = undefined
   }
 }

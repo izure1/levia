@@ -4065,7 +4065,7 @@ var require_matter = __commonJS({
                   }
                 );
               };
-              Render.status = function(context, x, y, width, height, count, label2, indicator, plotY) {
+              Render.status = function(context, x, y, width, height, count, label, indicator, plotY) {
                 context.strokeStyle = "#888";
                 context.fillStyle = "#444";
                 context.lineWidth = 1;
@@ -4082,7 +4082,7 @@ var require_matter = __commonJS({
                 context.textBaseline = "middle";
                 context.textAlign = "right";
                 context.fillStyle = "#eee";
-                context.fillText(label2, x + width, y - 5);
+                context.fillText(label, x + width, y - 5);
               };
               Render.constraints = function(constraints, context) {
                 var c = context;
@@ -5640,16 +5640,16 @@ var Renderer = class {
   render(objects, assets = {}, timestamp = 0) {
     const { ctx } = this;
     ctx.clearRect(0, 0, this.width, this.height);
-    let camera = null;
+    let camera2 = null;
     for (const obj of objects) {
       if (obj.attribute.type === "camera") {
-        camera = obj;
+        camera2 = obj;
         break;
       }
     }
-    const camX = camera?.transform.position.x ?? 0;
-    const camY = camera?.transform.position.y ?? 0;
-    const camZ = camera?.transform.position.z ?? 0;
+    const camX = camera2?.transform.position.x ?? 0;
+    const camY = camera2?.transform.position.y ?? 0;
+    const camZ = camera2?.transform.position.z ?? 0;
     const renderables = Array.from(objects).filter((o) => o.attribute.type !== "camera" && o.style.display !== "none").sort((a, b) => {
       const zdiff = a.transform.position.z - b.transform.position.z;
       return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex;
@@ -6149,78 +6149,93 @@ var World = class {
   }
 };
 
-// example/test-text/main.ts
+// example/test-particle/main.ts
+var W = window.innerWidth;
+var H = window.innerHeight;
+var CX = W / 2;
+var Z = 300;
 var world = new World();
-world.createCamera();
-function label(text, x, y, z) {
-  world.createText({
-    attribute: { text },
-    style: { color: "#aaaaaa", fontSize: 13, fontFamily: "monospace" },
-    transform: { position: { x, y, z } }
-  });
-}
-label("\u2460 \uAE30\uBCF8 \uD14D\uC2A4\uD2B8 (auto size)", -550, -280, 300);
-world.createText({
-  attribute: { text: "Hello, World!\nYou can use multiple lines." },
-  style: { color: "#ffffff", fontSize: 22, fontFamily: "sans-serif" },
-  transform: { position: { x: -550, y: -250, z: 300 } }
+var camera = world.createCamera();
+camera.transform.position.z = -100;
+await world.loader.load({
+  "star": "../asset/image/star.png"
 });
-label("\u2461 \uC778\uB77C\uC778 \uB9C8\uD06C\uC5C5 \uC2A4\uD0C0\uC77C", -550, -130, 300);
-world.createText({
-  attribute: {
-    text: 'Normal <style fontSize="28" fontWeight="bold" color="#7ec8e3">Bold Blue</style> and <style fontStyle="italic" color="#f4a261">Italic Orange</style> text.'
-  },
-  style: { color: "#ffffff", fontSize: 18, fontFamily: "sans-serif" },
-  transform: { position: { x: -550, y: -100, z: 300 } }
+world.particleManager.create({
+  name: "star-slow",
+  src: "star",
+  loop: true,
+  lifespan: 2e3,
+  interval: 300,
+  rate: 5,
+  spawnWidth: 300,
+  spawnHeight: 300
 });
-label("\u2462 \uC911\uCCA9 \uB9C8\uD06C\uC5C5 (\uBD80\uBAA8 \uC0C1\uC18D)", -550, 30, 300);
-world.createText({
-  attribute: {
-    text: '<style color="#e76f51" fontSize="22">Outer <style fontSize="14" fontWeight="300" fontStyle="italic">inner-lighter</style> back-to-outer</style>'
-  },
-  style: { color: "#ffffff", fontSize: 18, fontFamily: "sans-serif" },
-  transform: { position: { x: -550, y: 60, z: 300 } }
+world.particleManager.create({
+  name: "star-burst",
+  src: "star",
+  loop: true,
+  lifespan: 1e3,
+  interval: 100,
+  rate: 15
 });
-label("\u2463 borderColor / borderWidth", -550, 140, 300);
-world.createText({
-  attribute: { text: '<style fontSize="36" fontWeight="bold" color="#0a0a14" borderColor="#c77dff" borderWidth="2">Outlined Text</style>' },
-  style: { fontSize: 36, fontFamily: "sans-serif" },
-  transform: { position: { x: -550, y: 170, z: 300 } }
+world.particleManager.create({
+  name: "star-large",
+  src: "star",
+  loop: true,
+  lifespan: 3e3,
+  interval: 500,
+  rate: 3
 });
-label("\u2464 width + word-wrap + textAlign: center", 50, -280, 300);
-world.createRectangle({
-  style: { color: "#1a1a2e", width: 300, height: 150, borderColor: "#444", borderWidth: 1 },
-  transform: { position: { x: 200, y: -195, z: 299 } }
+var leftX = -CX / 2;
+world.createParticle({
+  style: { width: 20, height: 20, blendMode: "lighter" },
+  transform: { position: { x: leftX, y: 0, z: Z } }
+}).play("star-slow");
+world.createParticle({
+  style: { width: 12, height: 12, blendMode: "lighter" },
+  transform: { position: { x: leftX - 120, y: 60, z: Z } }
+}).play("star-burst");
+world.createParticle({
+  style: { width: 36, height: 36, blendMode: "lighter" },
+  transform: { position: { x: leftX + 120, y: -60, z: Z } }
+}).play("star-large");
+world.setGravity({ x: 0, y: 1 });
+world.particleManager.create({
+  name: "star-strict",
+  src: "star",
+  loop: true,
+  lifespan: 3e3,
+  interval: 250,
+  rate: 6
 });
-world.createText({
-  attribute: { text: "This is a long sentence that should wrap inside the fixed width container." },
-  style: { color: "#e0e0e0", fontSize: 18, fontFamily: "sans-serif", width: 300, textAlign: "center" },
-  transform: { position: { x: 50, y: -270, z: 300 } }
+world.particleManager.create({
+  name: "star-strict-fast",
+  src: "star",
+  loop: true,
+  lifespan: 1500,
+  interval: 150,
+  rate: 10
 });
-label("\u2465 width + height \u2192 \uD074\uB9AC\uD551", 50, 20, 300);
-world.createRectangle({
-  style: { color: "#1a1a2e", width: 300, height: 40, borderColor: "#e76f51", borderWidth: 1 },
-  transform: { position: { x: 200, y: 60, z: 299 } }
+var rightX = CX / 2;
+world.createParticle({
+  strict: true,
+  style: { width: 18, height: 18, blendMode: "lighter" },
+  transform: { position: { x: rightX, y: -60, z: Z } },
+  attribute: { restitution: 0.6, friction: 0.05, density: 2e-3, gravityScale: 0.8 }
+}).play("star-strict");
+world.createParticle({
+  strict: true,
+  style: { width: 12, height: 12, blendMode: "lighter" },
+  transform: { position: { x: rightX + 100, y: 30, z: Z } },
+  attribute: { restitution: 0.4, friction: 0.1, density: 1e-3, gravityScale: 1.2 }
+}).play("star-strict-fast");
+var floorY = H / 2 - 40;
+var floor = world.createRectangle({
+  attribute: { name: "floor", physics: "static" },
+  style: { width: 600, height: 20, color: "#1a1a3a" },
+  transform: { position: { x: rightX, y: floorY, z: Z } }
 });
-world.createText({
-  attribute: { text: "Line 1: visible\nLine 2: visible\nLine 3: clipped out\nLine 4: also clipped" },
-  style: { color: "#90e0ef", fontSize: 18, fontFamily: "sans-serif", width: 300, height: 40 },
-  transform: { position: { x: 50, y: 40, z: 300 } }
-});
-label("\u2466 textAlign \uBE44\uAD50", 50, 180, 300);
-var aligns = ["left", "center", "right"];
-var alignColors = ["#f4a261", "#2ec4b6", "#e71d36"];
-aligns.forEach((align, i) => {
-  world.createRectangle({
-    style: { color: "#1a1a2e", width: 200, height: 50, borderColor: "#555", borderWidth: 1 },
-    transform: { position: { x: 150, y: 220 + i * 70, z: 299 } }
-  });
-  world.createText({
-    attribute: { text: `align: ${align}` },
-    style: { color: alignColors[i], fontSize: 18, fontFamily: "sans-serif", width: 200, textAlign: align },
-    transform: { position: { x: 50, y: 210 + i * 70, z: 300 } }
-  });
-});
+floor.style.opacity = 0.3;
 world.start();
 /*! Bundled license information:
 

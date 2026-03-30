@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from './utils/uuid.js'
+import type Matter from 'matter-js'
 import type {
   Attribute,
   Dataset,
@@ -50,21 +51,25 @@ export abstract class LveObject {
   readonly style: Style
   readonly transform: Transform
 
+  /** matter-js 바디 참조 (PhysicsEngine에서 설정) */
+  _body: Matter.Body | null = null
+
   constructor(type: string, options?: LveObjectOptions) {
     this.attribute = {
       type,
       id: uuidv4(),
       name: options?.attribute?.name ?? '',
       className: options?.attribute?.className ?? '',
-      src: options?.attribute?.src,
       text: options?.attribute?.text,
-      loop: options?.attribute?.loop ?? false,
       physics: options?.attribute?.physics ?? null,
       density: options?.attribute?.density,
       friction: options?.attribute?.friction,
       restitution: options?.attribute?.restitution,
       fixedRotation: options?.attribute?.fixedRotation,
       gravityScale: options?.attribute?.gravityScale,
+      collisionGroup: options?.attribute?.collisionGroup,
+      collisionMask: options?.attribute?.collisionMask,
+      collisionCategory: options?.attribute?.collisionCategory,
     }
 
     this.dataset = Object.assign({}, options?.dataset)
@@ -88,5 +93,33 @@ export abstract class LveObject {
 
   getDataset(key: string): DatasetValue | undefined {
     return this.dataset[key]
+  }
+
+  /**
+   * 물리 바디에 힘을 적용합니다. attribute.physics가 설정된 경우에만 동작합니다.
+   */
+  applyForce(force: { x: number; y: number }) {
+    if (!this._body) {
+      console.warn('[LveObject] applyForce: 물리 바디가 없습니다. attribute.physics를 설정하십시오.')
+      return
+    }
+    const Matter = (globalThis as any).__Matter__
+    if (Matter) {
+      Matter.Body.applyForce(this._body, this._body.position, force)
+    }
+  }
+
+  /**
+   * 물리 바디의 속도를 설정합니다. attribute.physics가 설정된 경우에만 동작합니다.
+   */
+  setVelocity(velocity: { x: number; y: number }) {
+    if (!this._body) {
+      console.warn('[LveObject] setVelocity: 물리 바디가 없습니다. attribute.physics를 설정하십시오.')
+      return
+    }
+    const Matter = (globalThis as any).__Matter__
+    if (Matter) {
+      Matter.Body.setVelocity(this._body, velocity)
+    }
   }
 }

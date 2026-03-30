@@ -50,4 +50,25 @@ world.setGravity({
   x: 0,
   y: -9.8,
 })
+
+// 충돌체 설정 구현
+world.setCollisionFilter({
+  group: 1,
+  mask: -1,
+  category: 1,
+})
+
+const rect = world.createRectangle({
+  attribute: {
+    name: 'my-rectangle',
+    class: 'physics-object',
+    physics: 'dynamic',
+  }
+})
+
+rect.setCollisionFilter({
+  group: 1,
+  mask: -1,
+  category: 1,
+})
 ```

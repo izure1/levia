@@ -10,15 +10,12 @@
 import { World } from 'lve4'
 
 const world = new World()
-const loader = world.createLoader()
 
-await loader.loadAssets({
+await world.loader.loadAssets({
   'sprite': './img/sprite.png',
 })
 
-const spriteManager = world.createSpriteManager()
-
-spriteManager.create({
+world.spriteManager.create({
   name: 'walk-to-left',
   src: 'sprite',
   frameWidth: 100,
@@ -29,7 +26,7 @@ spriteManager.create({
   end: 10,
 })
 
-spriteManager.create({
+world.spriteManager.create({
   name: 'walk-to-right',
   src: 'sprite',
   frameWidth: 100,
@@ -43,7 +40,6 @@ spriteManager.create({
 const spriteObject = world.createSprite({
   attribute: {
     name: 'my-sprite',
-    src: 'sprite',
   },
   style: {
     width: 100,
@@ -61,9 +57,7 @@ spriteObject.play('walk-to-left')
 시작 프레임은 0이고, 마지막 프레임은 11입니다.
 
 ```typescript
-const spriteManager = world.createSpriteManager()
-
-spriteManager.create({
+world.spriteManager.create({
   name: 'walk-to-left',
   src: 'sprite',
   frameWidth: 100,

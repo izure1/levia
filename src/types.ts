@@ -7,15 +7,16 @@ export interface Attribute {
   id: string
   name: string
   className: string
-  src?: string
   text?: string
-  loop?: boolean
   physics?: 'dynamic' | 'static' | null
   density?: number
   friction?: number
   restitution?: number
   fixedRotation?: boolean
   gravityScale?: number
+  collisionGroup?: number
+  collisionMask?: number
+  collisionCategory?: number
 }
 
 // ============================================================

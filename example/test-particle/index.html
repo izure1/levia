@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lve4 - 파티클 테스트</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #06060f;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* 좌/우 레이블 패널 */
+    #labels {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .panel-label {
+      position: absolute;
+      top: 20px;
+      background: rgba(10, 10, 30, 0.75);
+      border: 1px solid #2a2a50;
+      border-radius: 10px;
+      padding: 12px 20px;
+      color: #c77dff;
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+
+    .panel-label.left {
+      left: 20px;
+    }
+
+    .panel-label.right {
+      right: 20px;
+    }
+
+    .panel-label strong {
+      display: block;
+      font-size: 1rem;
+      color: #7ec8e3;
+      margin-bottom: 4px;
+    }
+
+    /* 중앙 구분선 */
+    #divider {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1px;
+      height: 100%;
+      background: linear-gradient(to bottom, transparent, #2a2a5088, #2a2a5088, transparent);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    #back {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      color: #555;
+      font-size: 12px;
+      text-decoration: none;
+      z-index: 100;
+      pointer-events: auto;
+    }
+
+    #back:hover {
+      color: #7ec8e3;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="divider"></div>
+
+  <div id="labels">
+    <div class="panel-label left">
+      <strong>① 일반 모드 (normal)</strong>
+      내부 velocity 시뮬레이션<br>
+      가볍고 수백 개에도 성능 유지<br>
+      <span style="color:#888">blendMode: lighter</span>
+    </div>
+    <div class="panel-label right">
+      <strong>② strict 모드 (matter-js)</strong>
+      개별 인스턴스에 물리 바디 부여<br>
+      중력·반발력 적용, 바닥에서 bounce<br>
+      <span style="color:#888">restitution: 0.6</span>
+    </div>
+  </div>
+
+  <a id="back" href="../">← 목록으로</a>
+  <script type="module" src="./main.js"></script>
+</body>
+
+</html>

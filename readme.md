@@ -58,6 +58,10 @@ world.start()
 
 다음 [문서](./docs/sprite.md)를 확인하십시오.
 
+## 파티클 요소
+
+다음 [문서](./docs/particle.md)를 확인하십시오.
+
 ## 물리엔진
 
 다음 [문서](./docs/physics.md)를 확인하십시오.

@@ -1,6 +1,9 @@
 import type { LveObject } from './LveObject.js'
 import type { Camera } from './objects/Camera.js'
 import type { Sprite } from './objects/Sprite.js'
+import type { LveImage } from './objects/LveImage.js'
+import type { LveVideo } from './objects/LveVideo.js'
+import type { Particle } from './objects/Particle.js'
 import { parseTextMarkup } from './utils/textMarkup.js'
 import type { TextSpan } from './utils/textMarkup.js'
 import type { LoadedAssets } from './types.js'
@@ -117,10 +120,14 @@ export class Renderer {
       this.drawEllipse(ctx, obj, screenX, screenY, w, h)
     } else if (type === 'text') {
       this.drawText(ctx, obj, screenX, screenY, perspectiveScale)
-    } else if (type === 'image' || type === 'video' || type === 'particle') {
-      this.drawAsset(ctx, obj, screenX, screenY, w, h, assets)
+    } else if (type === 'image') {
+      this.drawAsset(ctx, obj as LveImage, screenX, screenY, w, h, assets)
+    } else if (type === 'video') {
+      this.drawVideo(ctx, obj as LveVideo, screenX, screenY, w, h, assets)
     } else if (type === 'sprite') {
       this.drawSprite(ctx, obj as Sprite, screenX, screenY, w, h, assets, timestamp)
+    } else if (type === 'particle') {
+      this.drawParticle(ctx, obj as Particle, screenX, screenY, w, h, assets, perspectiveScale, timestamp)
     }
 
     ctx.restore()
@@ -354,18 +361,18 @@ export class Renderer {
     }
   }
 
-  // ─── 에셋 드로잉 (image / video / particle) ───────────────
+  // ─── 에셋 드로잉 (image / particle) ───────────────────────
 
   private drawAsset(
     ctx: CanvasRenderingContext2D,
-    obj: LveObject,
+    obj: LveImage,
     x: number,
     y: number,
     w: number,
     h: number,
     assets: LoadedAssets
   ) {
-    const src = obj.attribute.src
+    const src = obj._src
     const asset = src ? assets[src] : undefined
 
     if (!asset) {
@@ -392,6 +399,63 @@ export class Renderer {
     }
   }
 
+  // ─── 비디오 드로잉 ────────────────────────────────────────
+
+  private drawVideo(
+    ctx: CanvasRenderingContext2D,
+    obj: LveVideo,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    assets: LoadedAssets
+  ) {
+    const src = obj._src
+    const asset = src ? assets[src] : undefined
+
+    if (!asset || !(asset instanceof HTMLVideoElement)) {
+      this.drawPlaceholder(ctx, x, y, w || 60, h || 60)
+      return
+    }
+
+    const clip = obj._clip
+
+    // 재생 상태 동기화
+    if (obj._playing) {
+      if (clip) {
+        asset.loop = clip.loop
+        // start 지정 시 초기화
+        if (asset.paused && clip.start != null) {
+          asset.currentTime = clip.start / 1000
+        }
+      }
+      if (asset.paused) asset.play().catch(() => { })
+    } else {
+      if (!asset.paused) asset.pause()
+    }
+
+    // end 시각 도달 시 처리
+    if (clip?.end != null && asset.currentTime >= clip.end / 1000) {
+      if (clip.loop) {
+        asset.currentTime = (clip.start ?? 0) / 1000
+      } else {
+        asset.pause()
+        obj.stop()
+      }
+    }
+
+    const drawW = w || asset.videoWidth
+    const drawH = h || asset.videoHeight
+
+    ctx.drawImage(asset, x - drawW / 2, y - drawH / 2, drawW, drawH)
+
+    if (obj.style.borderColor && obj.style.borderWidth) {
+      ctx.strokeStyle = obj.style.borderColor
+      ctx.lineWidth = obj.style.borderWidth
+      ctx.strokeRect(x - drawW / 2, y - drawH / 2, drawW, drawH)
+    }
+  }
+
   // ─── 스프라이트 시트 드로잉 ───────────────────────────────
 
   private drawSprite(
@@ -407,7 +471,7 @@ export class Renderer {
     sprite.tick(timestamp)
 
     const clip = sprite._clip
-    const src = clip?.src ?? sprite.attribute.src
+    const src = clip?.src
     if (!src) return
 
     const asset = assets[src]
@@ -443,7 +507,58 @@ export class Renderer {
     )
   }
 
-  // ─── 에셋 미로드 시 placeholder ──────────────────────────
+  // ─── 파티클 시스템 드로잉 ───────────────────────────────
+
+  private drawParticle(
+    ctx: CanvasRenderingContext2D,
+    obj: Particle,
+    emX: number,
+    emY: number,
+    w: number,
+    h: number,
+    assets: LoadedAssets,
+    perspectiveScale: number,
+    timestamp: number
+  ) {
+    // tick 호출 — 인스턴스 스폰/업데이트/제거
+    obj.tick(timestamp)
+
+    const clip = obj._clip
+    if (!clip) return
+
+    const asset = assets[clip.src]
+    // 에셋 없으면 placeholder
+    if (!asset || !(asset instanceof HTMLImageElement)) {
+      this.drawPlaceholder(ctx, emX, emY, w || 30, h || 30)
+      return
+    }
+
+    const baseBlend = obj.style.blendMode ?? 'lighter'
+    const natW = asset.naturalWidth
+    const natH = asset.naturalHeight
+    const drawW = (w || natW) * perspectiveScale
+    const drawH = (h || natH) * perspectiveScale
+
+    for (const inst of obj._instances) {
+      const age = timestamp - inst.born
+      const t = Math.min(age / inst.lifespan, 1)
+      const scale = 1 - t          // 서서히 작아짐
+      const opacity = 1 - t        // 서서히 투명해짐
+      if (opacity <= 0 || scale <= 0) continue
+
+      const iw = drawW * scale
+      const ih = drawH * scale
+      const ix = emX + inst.x * perspectiveScale
+      const iy = emY + inst.y * perspectiveScale
+
+      ctx.save()
+      ctx.globalAlpha = obj.style.opacity * opacity
+      ctx.globalCompositeOperation = baseBlend as GlobalCompositeOperation
+      ctx.drawImage(asset, ix - iw / 2, iy - ih / 2, iw, ih)
+      ctx.restore()
+    }
+  }
+
 
   private drawPlaceholder(
     ctx: CanvasRenderingContext2D,

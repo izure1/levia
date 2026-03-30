@@ -1,3 +1,5 @@
+import { AssetManager } from './AssetManager.js'
+
 export interface SpriteClipOptions {
   /** 애니메이션 클립 이름 */
   name: string
@@ -23,21 +25,12 @@ export interface SpriteClip extends SpriteClipOptions { }
  * 스프라이트 애니메이션 클립을 등록·관리합니다.
  * world.createSpriteManager()로 생성합니다.
  */
-export class SpriteManager {
-  private clips: Map<string, SpriteClip> = new Map()
-
+export class SpriteManager extends AssetManager<SpriteClipOptions, SpriteClip> {
   /**
    * 애니메이션 클립을 등록합니다.
    */
   create(options: SpriteClipOptions): this {
     this.clips.set(options.name, { ...options })
     return this
-  }
-
-  /**
-   * 이름으로 클립을 조회합니다.
-   */
-  get(name: string): SpriteClip | undefined {
-    return this.clips.get(name)
   }
 }

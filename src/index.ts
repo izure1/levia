@@ -2,7 +2,11 @@ export { World } from './World.js'
 export { Loader } from './Loader.js'
 export { Renderer } from './Renderer.js'
 export { LveObject } from './LveObject.js'
+export { AssetManager } from './AssetManager.js'
 export { SpriteManager } from './SpriteManager.js'
+export { VideoManager } from './VideoManager.js'
+export { ParticleManager } from './ParticleManager.js'
+export { PhysicsEngine } from './PhysicsEngine.js'
 
 // Objects
 export { Camera } from './objects/Camera.js'
