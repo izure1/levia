@@ -751,82 +751,25 @@ var World = class {
 };
 
 // example/test-asset/main.ts
-function generateSpriteSheet() {
-  const FRAMES = 12;
-  const FW = 80;
-  const FH = 80;
-  const c = document.createElement("canvas");
-  c.width = FW * FRAMES;
-  c.height = FH;
-  const ctx = c.getContext("2d");
-  for (let i = 0; i < FRAMES; i++) {
-    const hue = i / FRAMES * 360;
-    ctx.fillStyle = `hsl(${hue}, 60%, 25%)`;
-    ctx.fillRect(i * FW, 0, FW, FH);
-    ctx.fillStyle = `hsl(${hue}, 90%, 65%)`;
-    ctx.beginPath();
-    ctx.arc(i * FW + FW / 2, FH / 2, 26, 0, Math.PI * 2);
-    ctx.fill();
-    const eyeX = i * FW + FW / 2 + Math.round(Math.cos(i / FRAMES * Math.PI * 2) * 6);
-    const eyeY = FH / 2 - 8;
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.arc(eyeX - 6, eyeY, 5, 0, Math.PI * 2);
-    ctx.arc(eyeX + 6, eyeY, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#111";
-    ctx.beginPath();
-    ctx.arc(eyeX - 6, eyeY + 1, 2, 0, Math.PI * 2);
-    ctx.arc(eyeX + 6, eyeY + 1, 2, 0, Math.PI * 2);
-    ctx.fill();
-    const smile = Math.sin(i / FRAMES * Math.PI * 2 + Math.PI) * 6;
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(i * FW + FW / 2, FH / 2 + 6, 8, 0 + smile * 0.05, Math.PI - smile * 0.05);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = "10px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(`${i}`, i * FW + FW / 2, FH - 6);
-  }
-  return c.toDataURL("image/png");
-}
-function generateColorImage(color, w, h) {
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  const ctx = c.getContext("2d");
-  ctx.fillStyle = color;
-  ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = "rgba(255,255,255,0.3)";
-  ctx.lineWidth = 2;
-  for (let x = -h; x < w; x += 20) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x + h, h);
-    ctx.stroke();
-  }
-  ctx.strokeStyle = "rgba(255,255,255,0.6)";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(2, 2, w - 4, h - 4);
-  return c.toDataURL("image/png");
-}
 var world = new World();
 var camera = world.createCamera();
 camera.transform.position.z = -100;
 var loader = world.createLoader();
 var manager = world.createSpriteManager();
-var spriteSheetUrl = generateSpriteSheet();
-var imgRedUrl = generateColorImage("#c0392b", 160, 120);
-var imgBlueUrl = generateColorImage("#2980b9", 200, 150);
 await loader.load({
-  "sprite-sheet": spriteSheetUrl,
-  "img-red": imgRedUrl,
-  "img-blue": imgBlueUrl
+  "logo": "../asset/image/logo.png",
+  "sprite": "../asset/image/sprite.png"
 });
-manager.create({ name: "spin", src: "sprite-sheet", frameWidth: 80, frameHeight: 80, frameRate: 12, loop: true, start: 0, end: 12 });
-manager.create({ name: "slow-spin", src: "sprite-sheet", frameWidth: 80, frameHeight: 80, frameRate: 4, loop: true, start: 0, end: 12 });
+manager.create({
+  name: "play",
+  src: "sprite",
+  frameWidth: 44,
+  frameHeight: 40,
+  frameRate: 10,
+  loop: true,
+  start: 0,
+  end: 10
+});
 function label(text, x, y, z) {
   world.createText({
     attribute: { text },
@@ -834,20 +777,37 @@ function label(text, x, y, z) {
     transform: { position: { x, y, z } }
   });
 }
-label("\u2460 LveImage (img-red, 160\xD7120)", -500, -250, 300);
-world.createImage({ attribute: { src: "img-red" }, style: { width: 160, height: 120 }, transform: { position: { x: -420, y: -180, z: 300 } } });
-label("\u2461 LveImage (auto size)", -500, -30, 300);
-world.createImage({ attribute: { src: "img-blue" }, transform: { position: { x: -420, y: 40, z: 300 } } });
-label("\u2462 Placeholder (no src)", -500, 160, 300);
-world.createImage({ style: { width: 100, height: 100 }, transform: { position: { x: -450, y: 230, z: 300 } } });
-label("\u2463 Sprite (spin 12fps)", 50, -250, 300);
-var sprFast = world.createSprite({ attribute: { src: "sprite-sheet" }, style: { width: 100, height: 100 }, transform: { position: { x: 100, y: -180, z: 300 } } });
-sprFast.play("spin", manager);
-label("\u2464 Sprite (slow-spin 4fps)", 50, -30, 300);
-var sprSlow = world.createSprite({ attribute: { src: "sprite-sheet" }, style: { width: 120, height: 120 }, transform: { position: { x: 110, y: 60, z: 300 } } });
-sprSlow.play("slow-spin", manager);
-label("\u2465 \uC6D0\uACBD (z=600)", 250, 200, 300);
-world.createImage({ attribute: { src: "img-red" }, style: { width: 200, height: 150 }, transform: { position: { x: 350, y: 280, z: 600 } } });
+label("\u2460 LveImage \u2014 logo.png (auto size)", -500, -250, 300);
+world.createImage({
+  attribute: { src: "logo" },
+  transform: { position: { x: -380, y: -160, z: 300 } }
+});
+label("\u2461 LveImage \u2014 logo.png (200\xD7200)", -500, 20, 300);
+world.createImage({
+  attribute: { src: "logo" },
+  style: { width: 200, height: 200 },
+  transform: { position: { x: -400, y: 120, z: 300 } }
+});
+label("\u2462 Placeholder (no src)", -500, 250, 300);
+world.createImage({
+  style: { width: 80, height: 80 },
+  transform: { position: { x: -460, y: 310, z: 300 } }
+});
+label("\u2463 Sprite \u2014 sprite.png (10fps, 44\xD740)", 80, -250, 300);
+var spr = world.createSprite({
+  attribute: { src: "sprite" },
+  style: { width: 132, height: 120 },
+  // 3× 확대
+  transform: { position: { x: 180, y: -160, z: 300 } }
+});
+spr.play("play", manager);
+label("\u2464 Sprite \uC6D0\uACBD (z=600)", 80, 60, 300);
+var sprFar = world.createSprite({
+  attribute: { src: "sprite" },
+  style: { width: 132, height: 120 },
+  transform: { position: { x: 180, y: 160, z: 600 } }
+});
+sprFar.play("play", manager);
 window.addEventListener("mousemove", (e) => {
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;
