@@ -41,6 +41,8 @@ export interface Style {
   blur?: number
   borderColor?: string
   borderWidth?: number
+  outlineColor?: string
+  outlineWidth?: number
   fontSize?: number
   fontFamily?: string
   fontWeight?: string | number

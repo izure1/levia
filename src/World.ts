@@ -311,6 +311,8 @@ export class World extends EventEmitter {
       prevTime = timestamp
 
       this.renderer.render(this.objects, this._assets, timestamp)
+      // 렌더 후 실제 크기가 확정되면 물리 바디 크기를 동기화
+      this.physics.syncObjectSizes(this.objects)
       this.rafId = requestAnimationFrame(loop)
     }
 
@@ -325,8 +327,21 @@ export class World extends EventEmitter {
   }
 
   private _tryAddPhysics(obj: LveObject, w?: number, h?: number) {
-    if (obj.attribute.physics) {
-      this.physics.addBody(obj, w ?? 32, h ?? 32)
+    if (!obj.attribute.physics) return
+
+    this.physics.addBody(obj, w ?? 32, h ?? 32)
+
+    // 크기에 영향을 주는 속성 변경 시 물리 바디를 재생성합니다.
+    const resizeBody = () => {
+      const sw = (obj.style.width ?? w ?? 32) * obj.transform.scale.x
+      const sh = (obj.style.height ?? h ?? 32) * obj.transform.scale.y
+      this.physics.updateBodySize(obj, sw, sh)
     }
+
+    const CSS_RESIZE_KEYS = new Set(['width', 'height', 'borderWidth', 'margin'])
+    obj.on('cssmodified', (key) => {
+      if (CSS_RESIZE_KEYS.has(key)) resizeBody()
+    })
+    obj.on('scalemodified', () => resizeBody())
   }
 }

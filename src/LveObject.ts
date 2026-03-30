@@ -33,6 +33,8 @@ function makeStyle(partial?: Partial<Style>): Style {
     blur: partial?.blur,
     borderColor: partial?.borderColor,
     borderWidth: partial?.borderWidth,
+    outlineColor: partial?.outlineColor,
+    outlineWidth: partial?.outlineWidth,
     fontSize: partial?.fontSize,
     fontFamily: partial?.fontFamily,
     fontWeight: partial?.fontWeight,
@@ -99,6 +101,12 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
 
   /** matter-js 바디 참조 (PhysicsEngine에서 설정) */
   _body: Matter.Body | null = null
+
+  /**
+   * Renderer가 매 프레임 기록하는 실제 렌더 크기 (월드 좌표 기준, scale 포함, perspectiveScale 제외)
+   * style.width/height 미지정 시 naturalWidth 등의 값이 들어옵니다.
+   */
+  _renderedSize: { w: number; h: number } | null = null
 
   constructor(type: string, options?: LveObjectOptions) {
     super()

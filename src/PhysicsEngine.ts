@@ -35,6 +35,8 @@ export class PhysicsEngine {
   private bodyMap: Map<string, Matter.Body> = new Map()
   private objMap: Map<string, LveObject> = new Map()
   private prevTime: number = 0
+  /** syncObjectSizes에서 크기 변경 감지용 - border/margin 제외한 순수 w, h */
+  private lastSizeMap: Map<string, { w: number; h: number }> = new Map()
 
   constructor() {
     this.engine = Matter.Engine.create()
@@ -73,8 +75,9 @@ export class PhysicsEngine {
 
     // style.margin을 파싱하여 물리 바디 크기에 반영
     const m = parseMargin(obj.style.margin)
-    const physW = (w || 32) + m.left + m.right
-    const physH = (h || 32) + m.top + m.bottom
+    const bw = (obj.style.borderWidth ?? 0) * 2
+    const physW = (w || 32) + m.left + m.right + bw
+    const physH = (h || 32) + m.top + m.bottom + bw
 
     // 박스 또는 원으로 바디 생성 (type 기반)
     let body: Matter.Body
@@ -100,6 +103,64 @@ export class PhysicsEngine {
   }
 
   /**
+   * 물리 바디의 크기를 재계산하여 재생성합니다.
+   * 현재 위치, 속도, 각도를 유지합니다.
+   * w, h는 style.width * scale, style.height * scale 기준 (margin/border 미포함)
+   */
+  updateBodySize(obj: LveObject, w: number, h: number) {
+    const prevBody = this.bodyMap.get(obj.attribute.id)
+    if (!prevBody) return
+
+    // 현재 물리 상태 저장
+    const pos = { ...prevBody.position }
+    const vel = { ...prevBody.velocity }
+    const angle = prevBody.angle
+    const angularVelocity = prevBody.angularVelocity
+
+    // 기존 body 제거 (objMap/bodyMap에서도 제거)
+    Matter.Composite.remove(this.engine.world, prevBody)
+    this.bodyMap.delete(obj.attribute.id)
+    obj._body = null
+
+    // 위치를 물리 바디 좌표로 임시 반영
+    const savedX = obj.transform.position.x
+    const savedY = obj.transform.position.y
+    obj.transform.position.x = pos.x
+    obj.transform.position.y = pos.y
+
+    // 새 크기로 재생성
+    this.addBody(obj, w, h)
+
+    // transform을 원래대로 복원 (syncToObjects가 덮어쓸 것)
+    obj.transform.position.x = savedX
+    obj.transform.position.y = savedY
+
+    // 물리 상태 복원
+    const newBody = this.bodyMap.get(obj.attribute.id)
+    if (!newBody) return
+    Matter.Body.setPosition(newBody, pos)
+    Matter.Body.setVelocity(newBody, vel)
+    Matter.Body.setAngle(newBody, angle)
+    Matter.Body.setAngularVelocity(newBody, angularVelocity)
+  }
+
+  /**
+   * LveObject._renderedSize 기반으로 물리 바디 크기를 동기화합니다.
+   * 매 프레임 World에서 호출되며, 크기가 변경된 경우에만 updateBodySize를 호출합니다.
+   */
+  syncObjectSizes(objects: Iterable<LveObject>) {
+    const EPS = 0.5
+    for (const obj of objects) {
+      if (!obj._body || !obj._renderedSize) continue
+      const { w, h } = obj._renderedSize
+      const last = this.lastSizeMap.get(obj.attribute.id)
+      if (last && Math.abs(last.w - w) < EPS && Math.abs(last.h - h) < EPS) continue
+      this.lastSizeMap.set(obj.attribute.id, { w, h })
+      this.updateBodySize(obj, w, h)
+    }
+  }
+
+  /**
    * LveObject의 물리 바디를 제거합니다.
    */
   removeBody(obj: LveObject) {
@@ -108,6 +169,7 @@ export class PhysicsEngine {
     Matter.Composite.remove(this.engine.world, body)
     this.bodyMap.delete(obj.attribute.id)
     this.objMap.delete(obj.attribute.id)
+    this.lastSizeMap.delete(obj.attribute.id)
     obj._body = null
   }
 

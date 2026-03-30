@@ -481,14 +481,30 @@ export class Renderer {
     const id = obj.attribute.id
     const rawText = attribute.text ?? ''
 
-    // Offscreen canvas 크기 결정
-    const baseFontSize = (style.fontSize ?? 16) * perspectiveScale
-    const maxW = style.width != null ? style.width * perspectiveScale : null
-    const maxH = style.height != null ? style.height * perspectiveScale : null
+    // 2x supersampling: z 애니메이션 중 canvas 재생성 없이 화질 확보
+    const RENDER_SCALE = 2
+    const baseFontSize = (style.fontSize ?? 16) * RENDER_SCALE
+    const maxW = style.width != null ? style.width * RENDER_SCALE : null
+    const maxH = style.height != null ? style.height * RENDER_SCALE : null
 
-    // 기존 캐시 조회
+    // 캐시 키: perspectiveScale 미포함 (draw 시점에만 적용)
     let entry = this.textCache.get(id)
-    const textKey = `${rawText}|${style.fontSize}|${style.color}|${style.fontFamily}|${perspectiveScale.toFixed(3)}|${maxW}|${maxH}`
+    const textKey = [
+      rawText,
+      style.fontSize,
+      style.color,
+      style.fontFamily,
+      style.fontWeight,
+      style.fontStyle,
+      style.lineHeight,
+      style.textAlign,
+      maxW,
+      maxH,
+      style.shadowColor ?? '',
+      style.shadowBlur ?? 0,
+      style.shadowOffsetX ?? 0,
+      style.shadowOffsetY ?? 0,
+    ].join('|')
 
     let needRender = !entry || entry.lastText !== textKey
 
@@ -510,7 +526,15 @@ export class Renderer {
     const ch = entry.canvas.height
     if (cw === 0 || ch === 0) return
 
-    this._drawTextureMesh(entry.texture, x, y, cw, ch, rot, style.opacity, false)
+    // 실제 월드 크기 기록 (RENDER_SCALE 역산, scale 반영)
+    obj._renderedSize = {
+      w: (cw / RENDER_SCALE) * obj.transform.scale.x,
+      h: (ch / RENDER_SCALE) * obj.transform.scale.y,
+    }
+
+    // canvas는 RENDER_SCALE 기준, 표시는 perspectiveScale 기준으로 보정
+    const displayScale = perspectiveScale / RENDER_SCALE
+    this._drawTextureMesh(entry.texture, x, y, cw * displayScale, ch * displayScale, rot, style.opacity, false)
   }
 
   private _renderTextToCanvas(
@@ -686,6 +710,13 @@ export class Renderer {
 
     const drawW = w || asset.naturalWidth
     const drawH = h || asset.naturalHeight
+
+    // 실제 월드 크기 기록: w/h는 perspectiveScale*scale이 반영된 screen 크기이므로 scale로만 역산
+    obj._renderedSize = {
+      w: drawW / obj.transform.scale.x,
+      h: drawH / obj.transform.scale.y,
+    }
+
     const texture = this._getOrCreateAssetTexture(src!, asset)
 
     this._drawTextureMesh(texture, x, y, drawW, drawH, rot, obj.style.opacity, false)
@@ -725,6 +756,12 @@ export class Renderer {
 
     const drawW = w || asset.videoWidth
     const drawH = h || asset.videoHeight
+
+    // 실제 월드 크기 기록 (scale로만 역산)
+    obj._renderedSize = {
+      w: drawW / obj.transform.scale.x,
+      h: drawH / obj.transform.scale.y,
+    }
 
     // 비디오 텍스처는 매 프레임 업데이트
     let tex = this.videoTextureCache.get(src!)
