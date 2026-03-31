@@ -251,6 +251,26 @@ export class World extends EventEmitter<WorldEvents> {
         return { obj, dx, dy, dz }
       })
       .filter(data => data.dz >= 0)
+      .filter(data => {
+        // 1차 고속 필터링: Bounding Box (AABB) 기반 Early Exit
+        const perspectiveScale = data.dz === 0 ? 1 : focalLength / data.dz
+        const screenX = data.dx * perspectiveScale
+        const screenY = data.dy * perspectiveScale
+
+        // 실제 크기가 아직 0이면(예: 이미지 로드 전) 무조건 패스
+        const baseW = data.obj._renderedSize?.w ?? data.obj.style.width ?? 100
+        const baseH = data.obj._renderedSize?.h ?? data.obj.style.height ?? 100
+        const w = baseW * perspectiveScale * Math.abs(data.obj.transform.scale.x)
+        const h = baseH * perspectiveScale * Math.abs(data.obj.transform.scale.y)
+
+        // 회전 및 피벗을 모두 커버하는 넉넉한 충돌 안전 반경 (대각선 근사치 w + h)
+        // 화면 위치(screenX, screenY)에서 마우스가 이 반경을 벗어나면 절대 충돌할 수 없음
+        const safeRadius = w + h
+        if (Math.abs(mouseX - screenX) > safeRadius || Math.abs(mouseY - screenY) > safeRadius) {
+          return false
+        }
+        return true
+      })
       .sort((a, b) => {
         const zdiff = b.dz - a.dz
         return zdiff !== 0 ? zdiff : a.obj.style.zIndex - b.obj.style.zIndex
@@ -453,6 +473,7 @@ export class World extends EventEmitter<WorldEvents> {
     }
     this.objects.add(cam)
     this._tryAddPhysics(cam)
+    this.renderer.markSortDirty()
     return cam
   }
 
@@ -460,6 +481,8 @@ export class World extends EventEmitter<WorldEvents> {
     const rect = new Rectangle(options)
     this.objects.add(rect)
     this._tryAddPhysics(rect, options?.style?.width, options?.style?.height)
+    this._trackSortDirty(rect)
+    this.renderer.markSortDirty()
     return rect
   }
 
@@ -467,18 +490,24 @@ export class World extends EventEmitter<WorldEvents> {
     const el = new Ellipse(options)
     this.objects.add(el)
     this._tryAddPhysics(el, options?.style?.width, options?.style?.height)
+    this._trackSortDirty(el)
+    this.renderer.markSortDirty()
     return el
   }
 
   createText(options?: LveObjectOptions): Text {
     const text = new Text(options)
     this.objects.add(text)
+    this._trackSortDirty(text)
+    this.renderer.markSortDirty()
     return text
   }
 
   createImage(options?: LveObjectOptions): LveImage {
     const img = new LveImage(options)
     this.objects.add(img)
+    this._trackSortDirty(img)
+    this.renderer.markSortDirty()
     return img
   }
 
@@ -486,6 +515,8 @@ export class World extends EventEmitter<WorldEvents> {
     const video = new LveVideo(options)
     video.setManager(this.videoManager)
     this.objects.add(video)
+    this._trackSortDirty(video)
+    this.renderer.markSortDirty()
     return video
   }
 
@@ -493,6 +524,8 @@ export class World extends EventEmitter<WorldEvents> {
     const sprite = new Sprite(options)
     sprite.setManager(this.spriteManager)
     this.objects.add(sprite)
+    this._trackSortDirty(sprite)
+    this.renderer.markSortDirty()
     return sprite
   }
 
@@ -501,12 +534,15 @@ export class World extends EventEmitter<WorldEvents> {
     particle.setPhysics(this.physics)
     particle.setManager(this.particleManager)
     this.objects.add(particle)
+    this._trackSortDirty(particle)
+    this.renderer.markSortDirty()
     return particle
   }
 
   removeObject(obj: LveObject) {
     this.physics.removeBody(obj)
     this.objects.delete(obj)
+    this.renderer.markSortDirty()
   }
 
   start() {
@@ -533,6 +569,18 @@ export class World extends EventEmitter<WorldEvents> {
       cancelAnimationFrame(this.rafId)
       this.rafId = null
     }
+  }
+
+  /**
+   * 객체의 Z 좌표 또는 zIndex 변경 시 Z-Sort 캐시를 무효화합니다.
+   */
+  private _trackSortDirty(obj: LveObject) {
+    obj.on('positionmodified', (axis: string) => {
+      if (axis === 'z') this.renderer.markSortDirty()
+    })
+    obj.on('cssmodified', (key: string) => {
+      if (key === 'zIndex') this.renderer.markSortDirty()
+    })
   }
 
   private _tryAddPhysics(obj: LveObject, w?: number, h?: number) {

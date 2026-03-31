@@ -174,24 +174,45 @@ export class Renderer {
   private videoTextureCache = new Map<string, Texture>()
 
   // --- Auto-Batching State ---
-  private _batchMaxSize = 30000;
-  private _batchMat0 = new Float32Array(this._batchMaxSize * 4);
-  private _batchMat1 = new Float32Array(this._batchMaxSize * 4);
-  private _batchMat2 = new Float32Array(this._batchMaxSize * 4);
-  private _batchMat3 = new Float32Array(this._batchMaxSize * 4);
-  private _batchOpacityFlip = new Float32Array(this._batchMaxSize * 2);
-  private _batchUVParams = new Float32Array(this._batchMaxSize * 4);
-  private _batchCount = 0;
-  private _batchTexture: Texture | null = null;
-  private _batchBlendMode: string = 'source-over';
-  private _instancedGeo!: Geometry;
-  private _instancedMesh!: Mesh;
+  private readonly _batchMaxSize = 30000
+  private _batchMat0!: Float32Array
+  private _batchMat1!: Float32Array
+  private _batchMat2!: Float32Array
+  private _batchMat3!: Float32Array
+  private _batchOpacityFlip!: Float32Array
+  private _batchUVParams!: Float32Array
+  private _batchCount = 0
+  private _batchTexture: Texture | null = null
+  private _batchBlendMode: string = 'source-over'
+  private _instancedGeo!: Geometry
+  private _instancedMesh!: Mesh
+
+  // --- Z-Sort Cache (Dirty-Flag) ---
+  /** 정렬 순서가 캐시된 객체 배열 (카메라 거리 기준 내림차순) */
+  private _sortedObjects: LveObject[] = []
+  /** true이면 다음 프레임에 재정렬 */
+  private _sortDirty = true
+  /** 마지막으로 정렬에 사용된 카메라 회전값 */
+  private _lastCamRotX = 0
+  private _lastCamRotY = 0
+  private _lastCamRotZ = 0
+  /** 마지막 정렬 시 객체 수 */
+  private _lastObjCount = -1
 
   /** 원근 투영 초점 거리. 카메라 기본 Z는 -focalLength 로 설정됩니다. */
   readonly focalLength: number
 
   constructor(canvas: HTMLCanvasElement, focalLength: number = 100) {
     this.focalLength = focalLength
+
+    const N = this._batchMaxSize
+    this._batchMat0 = new Float32Array(N * 4)
+    this._batchMat1 = new Float32Array(N * 4)
+    this._batchMat2 = new Float32Array(N * 4)
+    this._batchMat3 = new Float32Array(N * 4)
+    this._batchOpacityFlip = new Float32Array(N * 2)
+    this._batchUVParams = new Float32Array(N * 4)
+
     this.ogl = new OGLRenderer({
       canvas,
       width: canvas.width,
@@ -222,6 +243,14 @@ export class Renderer {
 
   get width() { return this.ogl.width }
   get height() { return this.ogl.height }
+
+  /**
+   * Z-Sort 캐시를 무효화합니다.
+   * 객체의 position.z 또는 zIndex가 변경될 때 World에서 호출합니다.
+   */
+  markSortDirty() {
+    this._sortDirty = true
+  }
 
   setSize(w: number, h: number) {
     this.ogl.setSize(w, h)
@@ -405,14 +434,52 @@ export class Renderer {
       return { dx, dy, dz }
     }
 
-    // z 기준 오름차순 정렬 (변환된 dz 기준)
-    const renderables = Array.from(objects)
-      .filter(o => o.attribute.type !== 'camera' && o.style.display !== 'none')
-      .map(o => ({ obj: o, ...getCamTransformed(o) }))
-      .sort((a, b) => {
-        const zdiff = b.dz - a.dz
-        return zdiff !== 0 ? zdiff : a.obj.style.zIndex - b.obj.style.zIndex
-      })
+    // ─── Z-Sort: Dirty-Flag 기반 캐시 ────────────────────
+    // 카메라 이동만으로는 객체 간 dz 차이가 바뀌지 않으므로(cam 위치 항이 소거됨)
+    // 카메라 회전 or 객체 수 변화 or 외부 markSortDirty() 시에만 재정렬합니다.
+    const rotChanged = camRotX !== this._lastCamRotX
+      || camRotY !== this._lastCamRotY
+      || camRotZ !== this._lastCamRotZ
+    const countChanged = objects.size !== this._lastObjCount
+
+    if (this._sortDirty || rotChanged || countChanged) {
+      this._lastCamRotX = camRotX
+      this._lastCamRotY = camRotY
+      this._lastCamRotZ = camRotZ
+      this._lastObjCount = objects.size
+      this._sortDirty = false
+
+      // 카메라 회전이 없으면 절대 Z 좌표 기준으로 정렬할 수 있습니다. (cam.z 항 소거)
+      // 카메라 회전이 있으면 현재 프레임의 실제 dz를 구해 정렬합니다.
+      const useAbsoluteZ = (camRotX === 0 && camRotY === 0 && camRotZ === 0)
+
+      if (useAbsoluteZ) {
+        this._sortedObjects = Array.from(objects)
+          .filter(o => o.attribute.type !== 'camera')
+          .sort((a, b) => {
+            const zdiff = b.transform.position.z - a.transform.position.z
+            return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex
+          })
+      } else {
+        // 회전이 있으면 실제 dz 계산 후 정렬
+        this._sortedObjects = Array.from(objects)
+          .filter(o => o.attribute.type !== 'camera')
+          .map(o => ({ o, dz: getCamTransformed(o).dz }))
+          .sort((a, b) => {
+            const zdiff = b.dz - a.dz
+            return zdiff !== 0 ? zdiff : a.o.style.zIndex - b.o.style.zIndex
+          })
+          .map(x => x.o)
+      }
+    }
+
+    // 캐시된 순서로 renderables 구성 (정렬 없음, dz 계산만)
+    const renderables: Array<{ obj: LveObject; dx: number; dy: number; dz: number }> = []
+    for (const obj of this._sortedObjects) {
+      if (obj.style.display === 'none') continue
+      const { dx, dy, dz } = getCamTransformed(obj)
+      if (dz >= 0) renderables.push({ obj, dx, dy, dz })
+    }
 
     // 화면 클리어
     this.gl.clearColor(0, 0, 0, 0)
@@ -700,7 +767,7 @@ export class Renderer {
     const needRender = !entry
       || (obj._dirtyTexture && (
         obj._textureIdleCount >= TEXTURE_DEBOUNCE_FRAMES    // 디바운스: K프레임 동안 변경 없음 → 마무리
-        || obj._textureThrottleCount >= TEXTURE_THROTTLE_FRAMES // 스로틄: N프레임 초과 → 강제 업데이트
+        || obj._textureThrottleCount >= TEXTURE_THROTTLE_FRAMES // 스로틀링: N프레임 초과 → 강제 업데이트
       ))
 
     if (!entry) {
