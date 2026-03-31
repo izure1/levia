@@ -344,10 +344,13 @@ export class World extends EventEmitter<WorldEvents> {
   }
 
   /**
-   * 월드의 카메라를 특정 객체로 지정합니다. 카메라 객체 외에도 다른 객체를 지정할 수 있습니다.
+   * 월드의 카메라를 특정 객체로 지정합니다. 카메라 객체만 지정할 수 있습니다.
    * `null`을 할당하면 기본 동작으로 돌아갑니다.
    */
   set camera(camera: LveObject | null) {
+    if (camera !== null && camera.attribute.type !== 'camera') {
+      throw new Error('The assigned object must be of camera type.');
+    }
     this._activeCamera = camera
   }
 
