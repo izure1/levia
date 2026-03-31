@@ -573,6 +573,7 @@ export class World extends EventEmitter<WorldEvents> {
       this.renderer.render(this.objects, this._assets, timestamp, this.camera)
       // 렌더 후 실제 크기가 확정되면 물리 바디 크기를 동기화
       this.physics.syncObjectSizes(this.objects)
+      this.emit('update', timestamp)
       this.rafId = requestAnimationFrame(loop)
     }
 

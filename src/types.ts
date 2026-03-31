@@ -190,4 +190,5 @@ export interface WorldEvents {
   mousemove: [obj: LveObject | undefined, e: MouseEvent]
   mouseover: [obj: LveObject | undefined, e: MouseEvent]
   mouseout: [obj: LveObject | undefined, e: MouseEvent]
+  update: [timestamp: number]
 }

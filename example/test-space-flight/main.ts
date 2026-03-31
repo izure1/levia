@@ -54,7 +54,7 @@ window.addEventListener('wheel', (e) => {
 
 const SPEED = 0.00015
 
-const loop = () => {
+world.on('update', () => {
   // W, S: y축 제어 (상하 변경)
   if (keys['w']) camera.applyForce({ y: SPEED })
   if (keys['s']) camera.applyForce({ y: -SPEED })
@@ -66,9 +66,6 @@ const loop = () => {
   // Space, Shift: z축 제어 (깊이 변경: Z방향 전/후진)
   if (keys[' ']) camera.transform.position.z += (SPEED * 10000)    // Space로 직진
   if (keys['shift']) camera.transform.position.z -= (SPEED * 10000) // Shift로 후진
-
-  requestAnimationFrame(loop)
-}
-requestAnimationFrame(loop)
+})
 
 world.start()

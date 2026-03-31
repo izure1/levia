@@ -251,31 +251,34 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
    * 계층 구조(Hierarchy)의 자식으로 다른 LveObject를 추가합니다.
    * 부모 객체의 3D 매트릭스 변환을 완전히 상속받게 됩니다.
    */
-  addChild(child: LveObject) {
+  addChild(child: LveObject): this {
     if (child.parent) {
       child.parent.removeChild(child)
     }
     child.parent = this
     this.children.add(child)
+    return this
   }
 
   /**
    * 자식 객체를 삭제합니다.
    */
-  removeChild(child: LveObject) {
+  removeChild(child: LveObject): this {
     if (child.parent === this) {
       child.parent = null
       this.children.delete(child)
     }
+    return this
   }
 
   /**
    * 현재 부모 객체로부터 독립합니다.
    */
-  removeFromParent() {
+  removeFromParent(): this {
     if (this.parent) {
       this.parent.removeChild(this)
     }
+    return this
   }
 
   /**
@@ -415,17 +418,15 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
   private _followOffset?: { x?: number; y?: number; z?: number }
   private _followListener?: (axis: string, val: number) => void
 
-  private _stickTarget?: LveObject
-  private _stickOffset?: { transform?: { position?: Partial<Vec3>, rotation?: Partial<Vec3>, scale?: Partial<Vec3> } }
-  private _stickListener?: (axis: string, val: number) => void
+
 
   private _followers: Set<LveObject> = new Set()
 
   /**
-   * 자신이 따라다니거나 들러붙은 객체를 반환합니다. 없다면 undefined를 반환합니다.
+   * 자신이 따라다니는 객체를 반환합니다. 없다면 undefined를 반환합니다.
    */
   get following(): LveObject | undefined {
-    return this._followTarget || this._stickTarget
+    return this._followTarget
   }
 
   /**
@@ -435,87 +436,14 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
     return Array.from(this._followers)
   }
 
-  /**
-   * 대상(target)에 들러붙어(마치 DOM 자식 요소처럼)
-   * 대상의 위치, 회전, 스케일에 완전히 종속되어 동작합니다.
-   */
-  stick(target: LveObject, offset?: { transform?: { position?: Partial<Vec3>, rotation?: Partial<Vec3>, scale?: Partial<Vec3> } }) {
-    this.unstick()
-    this.unfollow() // follow와 stick은 배타적이어야 하므로 기존 추적을 풉니다.
 
-    this._stickTarget = target
-    this._stickOffset = offset
-    target._followers.add(this)
-
-    this._stickListener = () => {
-      const posOffset = this._stickOffset?.transform?.position
-      const rotOffset = this._stickOffset?.transform?.rotation
-      const scaleOffset = this._stickOffset?.transform?.scale
-
-      // 1. 스케일 적용 반영
-      const targetScale = target.transform.scale
-      this.transform.scale.x = targetScale.x * (scaleOffset?.x ?? 1)
-      this.transform.scale.y = targetScale.y * (scaleOffset?.y ?? 1)
-      this.transform.scale.z = targetScale.z * (scaleOffset?.z ?? 1)
-
-      // 2. 회전 적용 반영
-      const targetRot = target.transform.rotation
-      this.transform.rotation.x = targetRot.x + (rotOffset?.x ?? 0)
-      this.transform.rotation.y = targetRot.y + (rotOffset?.y ?? 0)
-      this.transform.rotation.z = targetRot.z + (rotOffset?.z ?? 0)
-
-      // 3. 위치 적용 반영 (부모 스케일이 반영된 오프셋을 부모의 회전각만큼 3D 회전시켜 더함)
-      const dx = (posOffset?.x ?? 0) * targetScale.x
-      const dy = (posOffset?.y ?? 0) * targetScale.y
-      const dz = (posOffset?.z ?? 0) * targetScale.z
-
-      const rX = targetRot.x * Math.PI / 180
-      const rY = targetRot.y * Math.PI / 180
-      const rZ = targetRot.z * Math.PI / 180
-
-      // Lve4 World.ts 렌더 투영과 동일한 방식(Mat4)으로 부모의 회전을 적용하여 완벽히 일치시킵니다.
-      // 시각적 자전(시계)과 수학적 공전(반시계)의 오차를 해결하기 위해 각도를 역산합니다.
-      const m = new Mat4()
-      m.rotate(rZ, new OglVec3(0, 0, 1))
-      m.rotate(-rY, new OglVec3(0, 1, 0))
-      m.rotate(-rX, new OglVec3(1, 0, 0))
-
-      const mArr = m as unknown as Float32Array
-      // 오프셋(dx, dy, dz)을 3D 매트릭스로 회전 변환
-      const finalX = mArr[0] * dx + mArr[4] * dy + mArr[8] * dz
-      const finalY = mArr[1] * dx + mArr[5] * dy + mArr[9] * dz
-      const finalZ = mArr[2] * dx + mArr[6] * dy + mArr[10] * dz
-
-      this.transform.position.x = target.transform.position.x + finalX
-      this.transform.position.y = target.transform.position.y + finalY
-      this.transform.position.z = target.transform.position.z + finalZ
-    }
-
-    // 대상의 좌표계 변경(위치, 회전, 스케일)을 모두 추적합니다.
-    target.on('positionmodified rotationmodified scalemodified', this._stickListener as any)
-    this._stickListener('', 0)
-  }
-
-  /**
-   * 대상에 들러붙은 동작을 해제합니다.
-   */
-  unstick() {
-    if (this._stickTarget && this._stickListener) {
-      this._stickTarget.off('positionmodified rotationmodified scalemodified', this._stickListener as any)
-      this._stickTarget._followers.delete(this)
-      this._stickTarget = undefined
-      this._stickListener = undefined
-      this._stickOffset = undefined
-    }
-  }
 
   /**
    * 다른 LveObject를 일정 거리를 두고 따라다닙니다.
    * 기존에 따라다니던 객체가 있다면 새로운 객체로 덮어씁니다.
    */
-  follow(target: LveObject, offset?: { x?: number; y?: number; z?: number }) {
+  follow(target: LveObject, offset?: { x?: number; y?: number; z?: number }): this {
     this.unfollow()
-    this.unstick() // stick과 배타적
 
     this._followTarget = target
     this._followOffset = offset
@@ -543,12 +471,13 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
 
     target.on('positionmodified', this._followListener as any)
     this._followListener('', 0)
+    return this
   }
 
   /**
    * 대상을 따라다니는 동작을 중지합니다.
    */
-  unfollow() {
+  unfollow(): this {
     if (this._followTarget && this._followListener) {
       this._followTarget.off('positionmodified', this._followListener as any)
       this._followTarget._followers.delete(this)
@@ -556,17 +485,18 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
       this._followListener = undefined
       this._followOffset = undefined
     }
+    return this
   }
 
   /**
-   * 자신을 따라다니거나 들러붙은 특정 오브젝트의 추적을 끊어냅니다. (unfollow / unstick 시킴)
+   * 자신을 따라다니는 특정 오브젝트의 추적을 끊어냅니다. (unfollow 시킴)
    * @param follower 제거할 추적 객체
    */
-  kick(follower: LveObject) {
+  kick(follower: LveObject): this {
     if (this._followers.has(follower)) {
       follower.unfollow()
-      follower.unstick()
     }
+    return this
   }
 
   /**
