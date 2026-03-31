@@ -437,7 +437,10 @@ export class Renderer {
         sortedObjects.push(o)
       }
       sortedObjects.sort((a, b) => {
-        const zdiff = b.transform.position.z - a.transform.position.z
+        // 계층 구조 지원 _worldMatrix의 변환된 Z좌표 기준 정렬 (-1로 원상 복구)
+        const mA = a._worldMatrix as unknown as Float32Array
+        const mB = b._worldMatrix as unknown as Float32Array
+        const zdiff = (-mB[14]) - (-mA[14])
         return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex
       })
       this._sortedObjects = sortedObjects
@@ -456,7 +459,8 @@ export class Renderer {
     // obj.z > camZ 인 것만 (카메라 앞에 있는 것)
     for (let i = 0, len = this._sortedObjects.length; i < len; i++) {
       const obj = this._sortedObjects[i]
-      if (obj.transform.position.z <= camZ) continue
+      const mArr = obj._worldMatrix as unknown as Float32Array
+      if (-mArr[14] <= camZ) continue
       this._drawObject(obj, assets, timestamp)
     }
     this._flushBatch()
@@ -473,16 +477,20 @@ export class Renderer {
 
     const baseW = obj._renderedSize?.w ?? style.width ?? 0
     const baseH = obj._renderedSize?.h ?? style.height ?? 0
-    const w = baseW * transform.scale.x
-    const h = baseH * transform.scale.y
+
+    // 변환(Scale 등)은 이미 _worldMatrix 내부에 계층적으로 완전 곱해져 있으므로
+    // 기본 메시 구성은 스케일 1 수준인 base값만 던져주어 중복 연산을 배제합니다.
+    const w = baseW
+    const h = baseH
 
     // 현재 렌더링 상태 저장 (Model Matrix 계산용)
     this._activeObj = obj
     this._activeRenderW = w
     this._activeRenderH = h
 
-    const px = transform.position.x
-    const py = transform.position.y
+    // _worldMatrix 기반 계산이므로, 더 이상 지역 x,y 속성이 개별 필요치 않습니다.
+    const px = 0
+    const py = 0
 
     const type = obj.attribute.type
 
@@ -521,27 +529,24 @@ export class Renderer {
    */
   private _makeModelMatrix(x: number, y: number, w: number, h: number, zOffset: number = 0): Float32Array {
     const obj = this._activeObj
-    const rot = obj.transform.rotation
     const pivot = obj.transform.pivot
 
-    this._modelMat.identity()
-    // 1. 월드 좌표로 이동 (Z는 네게이트: OGL -Z=앞, 구 시스템 +Z=앞)
-    // 파티클 등 인스턴스의 개별 Z 오프셋을 더해줌
-    this._tmpVec[0] = x; this._tmpVec[1] = y; this._tmpVec[2] = -(obj.transform.position.z + zOffset)
-    this._modelMat.translate(this._tmpVec)
+    // 1. 객체의 _worldMatrix를 기반으로 시작합니다. (계층 회전, 이동, 크기 완벽 포함)
+    this._modelMat.copy(obj._worldMatrix)
 
-    // 2. 객체의 고유 회전 적용
-    if (rot.z) this._modelMat.rotate(rot.z * Math.PI / 180, AXIS_Z)
-    if (rot.y) this._modelMat.rotate(rot.y * Math.PI / 180, AXIS_Y)
-    if (rot.x) this._modelMat.rotate(rot.x * Math.PI / 180, AXIS_X)
+    // 2. 파티클 등 로컬단에서 발생하는 개별 렌더 뎁스 추가
+    if (zOffset !== 0) {
+      this._tmpVec[0] = 0; this._tmpVec[1] = 0; this._tmpVec[2] = -zOffset;
+      this._modelMat.translate(this._tmpVec)
+    }
 
-    // 3. Pivot 오프셋
-    this._tmpVec[0] = (0.5 - pivot.x) * this._activeRenderW
-    this._tmpVec[1] = -(0.5 - pivot.y) * this._activeRenderH
+    // 3. 자식의 렌더 피벗 오프셋 처리. 모델 매트릭스에 이미 적용된 스케일보다 앞서서 로컬 좌표계 크기에 맞춘 위치 조작.
+    this._tmpVec[0] = (0.5 - pivot.x) * w
+    this._tmpVec[1] = -(0.5 - pivot.y) * h
     this._tmpVec[2] = 0
     this._modelMat.translate(this._tmpVec)
 
-    // 4. 쿼드 스케일링
+    // 4. 메시 사이즈 확보를 위한 기본 쿼드 스케일링
     this._tmpVec[0] = w; this._tmpVec[1] = h; this._tmpVec[2] = 1
     this._modelMat.scale(this._tmpVec)
 

@@ -31,25 +31,26 @@ stage1()
 // 2. 부모 객체에 들러붙는 자식 1 (원 모양)
 const childA = world.createEllipse({
   style: { color: '#00cecb', width: 60, height: 60 },
-  transform: { position: { x: 0, y: 0, z: 0 } },
+  transform: { position: { x: 0, y: 80, z: 0 } },
 })
-// 부모의 좌표계 상에서 y방향 80만큼 떨어진 위치에 종속
-childA.stick(parentBox, { transform: { position: { x: 0, y: 80 } } })
+// 부모의 트리 자식으로 소속됩니다
+parentBox.addChild(childA)
 
 // 3. 부모 객체에 들러붙는 자식 2 (텍스트)
 const childB = world.createText({
   attribute: { text: 'Sticked!' },
   style: { color: '#ffed66', fontSize: 24, fontWeight: 'bold' },
+  // 부모 공간(로컬)의 좌표 기준
+  transform: { position: { x: 100, y: 0, z: 0 }, rotation: { z: -45 } }
 })
-// 부모의 좌표계 우측 100 위치 + 약간 비스듬하게 회전한 상대 좌표 부여
-childB.stick(parentBox, { transform: { position: { x: 100, y: 0 }, rotation: { z: -45 } } })
+parentBox.addChild(childB)
 
 // 4. 자식의 자식 (손자의 종속 확인)
 const grandChild = world.createEllipse({
-  style: { color: '#c77dff', width: 20, height: 20 }
+  style: { color: '#c77dff', width: 20, height: 20 },
+  transform: { position: { x: 0, y: 50, z: 0 }, scale: { x: 1.5, y: 1.5, z: 1 } }
 })
-// childA의 위로 50만큼 떨어진 곳에 들러붙음
-grandChild.stick(childA, { transform: { position: { x: 0, y: 50 }, scale: { x: 1.5, y: 1.5 } } })
+childA.addChild(grandChild)
 
 // 5. 클릭 시 X축 360도 회전 테스트 (3D 공전 궤도 확인용)
 const instructionText = world.createText({

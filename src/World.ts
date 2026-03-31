@@ -223,12 +223,17 @@ export class World extends EventEmitter<WorldEvents> {
     }
 
     // z 기준 내림차순 정렬을 위해 모든 변환 사전 계산 (상단 객체 우선 판정)
+    // OGL 행렬은 열우선이므로 obj._worldMatrix의 [12, 13, 14]가 월드 좌표(x, y, z)입니다.
     const objectsData = Array.from(this.objects)
       .filter(obj => obj.attribute.type !== 'camera' && obj.style.display !== 'none' && obj.style.pointerEvents)
       .map(obj => {
-        let dx = obj.transform.position.x - camX
-        let dy = obj.transform.position.y - camY
-        let dz = obj.transform.position.z - camZ
+        const mat = obj._worldMatrix as unknown as Float32Array
+        // Lve4와 OpenGL 좌표계 연결 과정에서 역방향된 z를 본래 양수 스케일로 복원 (-1 곱함)
+        const wx = mat[12], wy = mat[13], wz = -mat[14]
+
+        let dx = wx - camX
+        let dy = wy - camY
+        let dz = wz - camZ
 
         if (radY !== 0) {
           const cosY = Math.cos(radY), sinY = Math.sin(radY)
@@ -557,6 +562,13 @@ export class World extends EventEmitter<WorldEvents> {
         this.physics.step(timestamp)
       }
       prevTime = timestamp
+
+      // 렌더링 전 모든 루트 객체(부모 없는 객체)와 카메라의 월드 매트릭스를 계층 구조에 맞게 최신화
+      for (const obj of this.objects) {
+        if (!obj.parent) {
+          obj.updateMatrixWorld()
+        }
+      }
 
       this.renderer.render(this.objects, this._assets, timestamp, this.camera)
       // 렌더 후 실제 크기가 확정되면 물리 바디 크기를 동기화

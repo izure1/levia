@@ -144,6 +144,15 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
    */
   _physicsThrottleCount: number = 0
 
+  /** 부모 객체 (계층 구조) */
+  parent: LveObject | null = null
+  /** 자식 객체 목록 */
+  children: Set<LveObject> = new Set()
+
+  /** 로컬 변환 매트릭스 (자신의 position, rotation, scale) */
+  _localMatrix: Mat4 = new Mat4()
+  /** 부모의 반영이 끝난 최종 월드 매트릭스 */
+  _worldMatrix: Mat4 = new Mat4()
 
   constructor(type: string, options?: LveObjectOptions) {
     super()
@@ -200,7 +209,6 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
     }
 
     // Proxy 이벤트에서 룩업 테이블 기반으로 dirty flag 갱신
-    // dirty를 세울 때 idle 카운터를 0으로 리셋하여 디바운스 기준점 재설정
     this.on('cssmodified', (key) => {
       const flags = STYLE_DIRTY_MAP[key]
       if (!flags) return
@@ -237,6 +245,68 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
       this._dirtyPhysics = true
       this._physicsIdleCount = 0
     })
+  }
+
+  /**
+   * 계층 구조(Hierarchy)의 자식으로 다른 LveObject를 추가합니다.
+   * 부모 객체의 3D 매트릭스 변환을 완전히 상속받게 됩니다.
+   */
+  addChild(child: LveObject) {
+    if (child.parent) {
+      child.parent.removeChild(child)
+    }
+    child.parent = this
+    this.children.add(child)
+  }
+
+  /**
+   * 자식 객체를 삭제합니다.
+   */
+  removeChild(child: LveObject) {
+    if (child.parent === this) {
+      child.parent = null
+      this.children.delete(child)
+    }
+  }
+
+  /**
+   * 현재 부모 객체로부터 독립합니다.
+   */
+  removeFromParent() {
+    if (this.parent) {
+      this.parent.removeChild(this)
+    }
+  }
+
+  /**
+   * 객체의 로컬 트랜스폼 및 피벗을 이용해 월드 매트릭스를 재귀적으로 계산 및 갱신합니다.
+   * World.ts 의 렌더 루프 전에 루트 노드로부터 호출되어야 합니다.
+   */
+  updateMatrixWorld(force: boolean = false) {
+    const pos = this.transform.position
+    const rot = this.transform.rotation
+    const scale = this.transform.scale
+
+    // 1. 자신의 로컬 매트릭스 갱신 (Z -> Y -> X 순서로 회전)
+    this._localMatrix.identity()
+    // Lve4의 관행(+Z가 앞)을 OpenGL 호환(-Z가 앞)으로 동기화하기 위해 -pos.z 적용
+    this._localMatrix.translate(new OglVec3(pos.x, pos.y, -pos.z))
+    if (rot.z) this._localMatrix.rotate(rot.z * Math.PI / 180, new OglVec3(0, 0, 1))
+    if (rot.y) this._localMatrix.rotate(rot.y * Math.PI / 180, new OglVec3(0, 1, 0))
+    if (rot.x) this._localMatrix.rotate(rot.x * Math.PI / 180, new OglVec3(1, 0, 0))
+    this._localMatrix.scale(new OglVec3(scale.x, scale.y, scale.z))
+
+    // 2. 부모가 존재할 경우 월드 매트릭스 상속 계산 (world = parent.world * local)
+    if (this.parent) {
+      this._worldMatrix.multiply(this.parent._worldMatrix, this._localMatrix)
+    } else {
+      this._worldMatrix.copy(this._localMatrix)
+    }
+
+    // 3. 하위 자식 목록에 대해 재귀 갱신 (preserve-3d 구조)
+    for (const child of this.children) {
+      child.updateMatrixWorld(force)
+    }
   }
 
   setDataset(key: string, value: DatasetValue) {
@@ -404,10 +474,11 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
       const rZ = targetRot.z * Math.PI / 180
 
       // Lve4 World.ts 렌더 투영과 동일한 방식(Mat4)으로 부모의 회전을 적용하여 완벽히 일치시킵니다.
+      // 시각적 자전(시계)과 수학적 공전(반시계)의 오차를 해결하기 위해 각도를 역산합니다.
       const m = new Mat4()
-      if (rZ) m.rotate(rZ, new OglVec3(0, 0, 1))
-      if (rY) m.rotate(rY, new OglVec3(0, 1, 0))
-      if (rX) m.rotate(rX, new OglVec3(1, 0, 0))
+      m.rotate(rZ, new OglVec3(0, 0, 1))
+      m.rotate(-rY, new OglVec3(0, 1, 0))
+      m.rotate(-rX, new OglVec3(1, 0, 0))
 
       const mArr = m as unknown as Float32Array
       // 오프셋(dx, dy, dz)을 3D 매트릭스로 회전 변환
