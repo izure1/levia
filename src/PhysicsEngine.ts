@@ -44,6 +44,21 @@ export class PhysicsEngine {
 
   constructor() {
     this.engine = Matter.Engine.create()
+
+    // matter-js는 기본적으로 engine.gravity를 모든 바디에 일괄 적용합니다 (force = mass * gravity.y * gravity.scale).
+    // attribute.gravityScale이 개별 설정된 바디에 대해 각 바디의 최종 중력이 원래 중력 * gravityScale이 되도록
+    // 해당 차이만큼의 추가 힘을 매번 업데이트 전 적용합니다.
+    Matter.Events.on(this.engine, 'beforeUpdate', () => {
+      const gravity = this.engine.gravity
+      for (const body of this.bodyMap.values()) {
+        const scale = (body as any).gravityScale
+        if (scale !== undefined && scale !== 1 && !body.isStatic) {
+          const m = body.mass
+          body.force.x += m * gravity.x * gravity.scale * (scale - 1)
+          body.force.y += m * gravity.y * gravity.scale * (scale - 1)
+        }
+      }
+    })
   }
 
   /**

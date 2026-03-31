@@ -182,6 +182,7 @@ export class Renderer {
   private _batchCount = 0
   private _batchTexture: Texture | null = null
   private _batchBlendMode: string = 'source-over'
+  private _currentBlendMode: string = ''
   private _instancedGeo!: Geometry
   private _instancedMesh!: Mesh
 
@@ -378,10 +379,9 @@ export class Renderer {
       this.gl.clearColor(0, 0, 0, 1)
       this.gl.clear(this.gl.COLOR_BUFFER_BIT)
       this.gl.enable(this.gl.BLEND)
-      this.gl.blendFuncSeparate(
-        this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA,
-        this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA,
-      )
+
+      this._currentBlendMode = '';
+      this._setBlendMode('source-over');
 
       // 경고 텍스트 렌더링
       if (!this._noCameraText) {
@@ -447,10 +447,10 @@ export class Renderer {
     this.gl.clearColor(0, 0, 0, 0)
     this.gl.clear(this.gl.COLOR_BUFFER_BIT)
     this.gl.enable(this.gl.BLEND)
-    this.gl.blendFuncSeparate(
-      this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA,
-      this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA,
-    )
+
+    // 블렌드상태 초기화
+    this._currentBlendMode = '';
+    this._setBlendMode('source-over');
 
     // 캐시된 순서로 렌더링
     // obj.z > camZ 인 것만 (카메라 앞에 있는 것)
@@ -585,6 +585,103 @@ export class Renderer {
     return this.camera.projectionMatrix as unknown as Float32Array
   }
 
+  private _setBlendMode(mode: string = 'source-over') {
+    if (this._currentBlendMode === mode) return;
+    this._currentBlendMode = mode;
+
+    const gl = this.gl;
+    let eq: number = gl.FUNC_ADD;
+    let src: number = gl.SRC_ALPHA;
+    let dst: number = gl.ONE_MINUS_SRC_ALPHA;
+    let srcA: number = gl.ONE;
+    let dstA: number = gl.ONE_MINUS_SRC_ALPHA;
+
+    switch (mode) {
+      case 'source-over':
+        src = gl.SRC_ALPHA; dst = gl.ONE_MINUS_SRC_ALPHA;
+        srcA = gl.ONE; dstA = gl.ONE_MINUS_SRC_ALPHA;
+        break;
+      case 'source-in':
+        src = gl.DST_ALPHA; dst = gl.ZERO;
+        srcA = gl.DST_ALPHA; dstA = gl.ZERO;
+        break;
+      case 'source-out':
+        src = gl.ONE_MINUS_DST_ALPHA; dst = gl.ZERO;
+        srcA = gl.ONE_MINUS_DST_ALPHA; dstA = gl.ZERO;
+        break;
+      case 'source-atop':
+        src = gl.DST_ALPHA; dst = gl.ONE_MINUS_SRC_ALPHA;
+        srcA = gl.DST_ALPHA; dstA = gl.ONE_MINUS_SRC_ALPHA;
+        break;
+      case 'destination-over':
+        src = gl.ONE_MINUS_DST_ALPHA; dst = gl.ONE;
+        srcA = gl.ONE_MINUS_DST_ALPHA; dstA = gl.ONE;
+        break;
+      case 'destination-in':
+        src = gl.ZERO; dst = gl.SRC_ALPHA;
+        srcA = gl.ZERO; dstA = gl.SRC_ALPHA;
+        break;
+      case 'destination-out':
+        src = gl.ZERO; dst = gl.ONE_MINUS_SRC_ALPHA;
+        srcA = gl.ZERO; dstA = gl.ONE_MINUS_SRC_ALPHA;
+        break;
+      case 'lighter':
+        src = gl.SRC_ALPHA; dst = gl.ONE;
+        srcA = gl.ONE; dstA = gl.ONE;
+        break;
+      case 'copy':
+        src = gl.ONE; dst = gl.ZERO;
+        srcA = gl.ONE; dstA = gl.ZERO;
+        break;
+      case 'xor':
+        src = gl.ONE_MINUS_DST_ALPHA; dst = gl.ONE_MINUS_SRC_ALPHA;
+        srcA = gl.ONE_MINUS_DST_ALPHA; dstA = gl.ONE_MINUS_SRC_ALPHA;
+        break;
+      case 'multiply':
+        src = gl.DST_COLOR; dst = gl.ONE_MINUS_SRC_ALPHA;
+        srcA = gl.DST_COLOR; dstA = gl.ONE_MINUS_SRC_ALPHA;
+        break;
+      case 'screen':
+        src = gl.ONE; dst = gl.ONE_MINUS_SRC_COLOR;
+        srcA = gl.ONE; dstA = gl.ONE_MINUS_SRC_COLOR;
+        break;
+      case 'lighten': {
+        const ext = gl.getExtension('EXT_blend_minmax');
+        eq = (gl as any).MAX ?? (ext ? (ext as any).MAX_EXT : gl.FUNC_ADD) ?? gl.FUNC_ADD;
+        src = gl.ONE; dst = gl.ONE;
+        srcA = gl.ONE; dstA = gl.ONE;
+        break;
+      }
+      case 'darken': {
+        const ext = gl.getExtension('EXT_blend_minmax');
+        eq = (gl as any).MIN ?? (ext ? (ext as any).MIN_EXT : gl.FUNC_ADD) ?? gl.FUNC_ADD;
+        src = gl.ONE; dst = gl.ONE;
+        srcA = gl.ONE; dstA = gl.ONE;
+        break;
+      }
+      case 'overlay':
+      case 'color-dodge':
+      case 'color-burn':
+      case 'hard-light':
+      case 'soft-light':
+      case 'difference':
+      case 'exclusion':
+        if (mode === 'exclusion' || mode === 'difference') {
+          src = gl.ONE_MINUS_DST_COLOR; dst = gl.ONE_MINUS_SRC_COLOR;
+          srcA = gl.ONE_MINUS_DST_COLOR; dstA = gl.ONE_MINUS_SRC_COLOR;
+        } else {
+          src = gl.SRC_ALPHA; dst = gl.ONE_MINUS_SRC_ALPHA;
+          srcA = gl.ONE; dstA = gl.ONE_MINUS_SRC_ALPHA;
+        }
+        break;
+      default:
+        break;
+    }
+
+    gl.blendEquation(eq);
+    gl.blendFuncSeparate(src, dst, srcA, dstA);
+  }
+
   // ─── Program uniform 드로우 헬퍼 ─────────────────────────────────────────
 
   private _flushBatch() {
@@ -593,9 +690,7 @@ export class Renderer {
     this.instancedProgram.uniforms['uTexture'].value = this._batchTexture;
     this.instancedProgram.uniforms['uProjectionMatrix'].value = this._projMatrix();
 
-    if (this._batchBlendMode === 'lighter') {
-      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE);
-    }
+    this._setBlendMode(this._batchBlendMode);
 
     const geo = this._instancedGeo;
     geo.instancedCount = this._batchCount;
@@ -609,13 +704,6 @@ export class Renderer {
 
     this._instancedMesh.draw({ camera: this.camera });
 
-    if (this._batchBlendMode === 'lighter') {
-      this.gl.blendFuncSeparate(
-        this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA,
-        this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA
-      );
-    }
-
     this._batchCount = 0;
     this._batchTexture = null;
   }
@@ -626,6 +714,7 @@ export class Renderer {
     color: string, opacity: number,
   ) {
     this._flushBatch();
+    this._setBlendMode(this._activeObj?.style?.blendMode ?? 'source-over');
     const [r, g, b, a] = parseCSSColor(color)
     program.uniforms['uColor'].value = [r, g, b, a]
     program.uniforms['uOpacity'].value = opacity
@@ -702,6 +791,7 @@ export class Renderer {
 
   private _drawEllipse(obj: LveObject, x: number, y: number, w: number, h: number) {
     this._flushBatch();
+    this._setBlendMode(this._activeObj?.style?.blendMode ?? 'source-over');
     const { style } = obj
     if (!style.color && !style.borderColor && !style.outlineColor) return
 
@@ -1134,6 +1224,7 @@ export class Renderer {
 
   private _drawPlaceholder(x: number, y: number, w: number, h: number) {
     this._flushBatch();
+    this._setBlendMode(this._activeObj?.style?.blendMode ?? 'source-over');
     this.placeholderProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h)
     this.placeholderProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
     this.placeholderMesh.draw({ camera: this.camera })
