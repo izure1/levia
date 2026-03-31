@@ -1057,25 +1057,41 @@ export class Renderer {
 
   private _drawAsset(obj: LveImage, x: number, y: number, w: number, h: number, perspectiveScale: number, assets: LoadedAssets) {
     const src = obj._src
-    const asset = src ? assets[src] : undefined
-    if (!asset || !(asset instanceof HTMLImageElement)) {
+    const oldSrc = obj._transitionOldSrc
+    const progress = obj._transitionProgress ?? 0
+
+    const drawAssetInner = (assetSrc: string, drawOpacity: number) => {
+      const asset = assets[assetSrc]
+      if (!asset || !(asset instanceof HTMLImageElement)) {
+        if (!oldSrc || assetSrc === src) {
+          this._drawPlaceholder(x, y, w || 60, h || 60)
+        }
+        return
+      }
+
+      const drawW = w || asset.naturalWidth * perspectiveScale
+      const drawH = h || asset.naturalHeight * perspectiveScale
+
+      obj._renderedSize = {
+        w: drawW / perspectiveScale,
+        h: drawH / perspectiveScale,
+      }
+
+      const texture = this._getOrCreateAssetTexture(assetSrc, asset)
+      this._drawTextureMesh(texture, x, y, drawW, drawH, drawOpacity, false)
+    }
+
+    // 트랜지션 중이면 이전 이미지와 새 이미지를 모두 그린다
+    if (oldSrc) {
+      drawAssetInner(oldSrc, obj.style.opacity * (1 - progress))
+      if (src) {
+        drawAssetInner(src, obj.style.opacity * progress)
+      }
+    } else if (src) {
+      drawAssetInner(src, obj.style.opacity)
+    } else {
       this._drawPlaceholder(x, y, w || 60, h || 60)
-      return
     }
-
-    // style.width/height 미지정 시 naturalSize에 perspectiveScale 적용
-    // scale은 _worldMatrix에 이미 포함되어 있으므로 여기서 곱하지 않음
-    const drawW = w || asset.naturalWidth * perspectiveScale
-    const drawH = h || asset.naturalHeight * perspectiveScale
-
-    obj._renderedSize = {
-      w: drawW / perspectiveScale,
-      h: drawH / perspectiveScale,
-    }
-
-    const texture = this._getOrCreateAssetTexture(src!, asset)
-
-    this._drawTextureMesh(texture, x, y, drawW, drawH, obj.style.opacity, false)
   }
 
   // ─── Video ──────────────────────────────────────────────────────────────

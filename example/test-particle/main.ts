@@ -113,10 +113,10 @@ world.createParticle({
 }).play('star-strict-fast')
 
 // static 바닥 (파티클 bounce)
-const floorY = H / 2 - 40
+const floorY = -(H / 2 - 40)
 const floor = world.createRectangle({
   attribute: { name: 'floor', physics: 'static' },
-  style: { width: 600, height: 20, color: '#1a1a3a' },
+  style: { width: 600, height: 20, color: '#fff' },
   transform: { position: { x: rightX, y: floorY, z: Z } },
 })
 floor.style.opacity = 0.3
