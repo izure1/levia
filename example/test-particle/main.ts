@@ -25,6 +25,7 @@ world.particleManager.create({
   lifespan: 2000,
   interval: 300,
   rate: 5,
+  impulse: 0.1,
 })
 
 world.particleManager.create({
@@ -34,6 +35,7 @@ world.particleManager.create({
   lifespan: 1000,
   interval: 100,
   rate: 15,
+  impulse: 0.4,
 })
 
 world.particleManager.create({
@@ -43,6 +45,7 @@ world.particleManager.create({
   lifespan: 3000,
   interval: 500,
   rate: 3,
+  impulse: 0.2,
 })
 
 const leftX = -CX / 2
@@ -78,6 +81,7 @@ world.particleManager.create({
   lifespan: 3000,
   interval: 250,
   rate: 6,
+  impulse: 0.3,
 })
 
 world.particleManager.create({
@@ -87,6 +91,7 @@ world.particleManager.create({
   lifespan: 1500,
   interval: 150,
   rate: 10,
+  impulse: 0.5,
 })
 
 const rightX = CX / 2

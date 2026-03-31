@@ -1,5 +1,10 @@
 import { AssetManager } from './AssetManager.js'
 
+export interface SizeRange {
+  min: number
+  max: number
+}
+
 export interface ParticleClipOptions {
   /** 클립 이름 */
   name: string
@@ -13,10 +18,19 @@ export interface ParticleClipOptions {
   interval: number
   /** 한 번에 생성되는 파티클 수 */
   rate: number
-  /** 스폰 범위 너비 (px). 미지정 시 0 (에미터 중심에서만 생성) */
-  spawnWidth?: number
-  /** 스폰 범위 높이 (px). 미지정 시 0 (에미터 중심에서만 생성) */
-  spawnHeight?: number
+  /** 스폰 범위 X (px). 미지정 시 0 (에미터 중심에서만 생성) */
+  spawnX?: number
+  /** 스폰 범위 Y (px). 미지정 시 0 (에미터 중심에서만 생성) */
+  spawnY?: number
+  /** 스폰 범위 Z (px). 미지정 시 0 (에미터 중심에서만 생성) */
+  spawnZ?: number
+  /** 파티클 생성 시 초기 발사 속도의 최대 강도 */
+  impulse: number
+  /** 파티클 크기 시작/종료 범위 지정 */
+  size?: {
+    start?: SizeRange
+    end?: SizeRange
+  }
 }
 
 export interface ParticleClip extends ParticleClipOptions { }

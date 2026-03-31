@@ -17,14 +17,24 @@ export interface ParticleInstance {
   spawnX: number
   /** 에미터 기준 초기 스폰 y 오프셋 (px) */
   spawnY: number
+  /** 에미터 기준 초기 스폰 z 오프셋 (px) */
+  spawnZ: number
   /** 에미터 기준 현재 x 좌표 (px) — tick마다 갱신 */
   x: number
   /** 에미터 기준 현재 y 좌표 (px) — tick마다 갱신 */
   y: number
+  /** 에미터 기준 현재 z 좌표 (px) — tick마다 갱신 */
+  z: number
   /** x 방향 속도 (px/ms) */
   vx: number
   /** y 방향 속도 (px/ms) */
   vy: number
+  /** z 방향 속도 (px/ms) */
+  vz: number
+  /** 시작 크기 배율 */
+  startSize: number
+  /** 종료 크기 배율 */
+  endSize: number
   /** 생성 timestamp */
   born: number
   /** 생존 시간 (ms) */
@@ -34,7 +44,6 @@ export interface ParticleInstance {
 }
 
 const GRAVITY = 0.00015 // px/ms² (내부 시뮬레이션용 중력 가속도)
-const SPEED_RANGE = 0.25  // 초기 속도 범위 (px/ms)
 
 export class Particle extends LveObject {
   /** strict 모드 여부 */
@@ -155,6 +164,11 @@ export class Particle extends LveObject {
     }
 
     // ─── 인스턴스 업데이트 & 제거 ────────────────────────
+    // 비물리 모드라도 월드의 물리엔진 중력 가속도와 객체의 gravityScale을 추적하여 반영합니다.
+    const gScale = this.attribute.gravityScale ?? 1
+    const gX = this._physics ? (this._physics.engine.gravity.x * this._physics.engine.gravity.scale) / 16.666 : 0
+    const gY = this._physics ? (this._physics.engine.gravity.y * this._physics.engine.gravity.scale) / 16.666 : GRAVITY
+
     const alive: ParticleInstance[] = []
     for (const inst of this._instances) {
       const age = timestamp - inst.born
@@ -169,14 +183,16 @@ export class Particle extends LveObject {
       if (!inst.body) {
         // 일반 모드: 초기 스폰 오프셋 + velocity 적분으로 위치 계산
         const dt = timestamp - inst.born  // ms
-        inst.x = inst.spawnX + inst.vx * dt
-        inst.y = inst.spawnY + inst.vy * dt + 0.5 * GRAVITY * dt * dt
+        inst.x = inst.spawnX + inst.vx * dt + 0.5 * (gX * gScale) * dt * dt
+        inst.y = inst.spawnY + inst.vy * dt + 0.5 * (gY * gScale) * dt * dt
+        inst.z = inst.spawnZ + inst.vz * dt
       } else {
         // strict 모드: matter-js 바디 위치를 상대 좌표로
         const emX = this.transform.position.x
         const emY = this.transform.position.y
         inst.x = inst.body.position.x - emX
         inst.y = inst.body.position.y - emY
+        inst.z = inst.spawnZ // matter.js는 2D이므로 z 보존
       }
 
       alive.push(inst)
@@ -191,24 +207,38 @@ export class Particle extends LveObject {
     const emY = this.transform.position.y
 
     // clip에서 스폰 범위 읽기 (미지정 시 0 → 에미터 중심에서만 생성)
-    const rangeW = clip.spawnWidth ?? 0
-    const rangeH = clip.spawnHeight ?? 0
+    const rangeX = clip.spawnX ?? 0
+    const rangeY = clip.spawnY ?? 0
+    const rangeZ = clip.spawnZ ?? 0
 
     for (let i = 0; i < clip.rate; i++) {
       const angle = Math.random() * Math.PI * 2
-      const speed = Math.random() * SPEED_RANGE
+      const speed = Math.random() * clip.impulse
+
+      const startSzMin = clip.size?.start?.min ?? 1
+      const startSzMax = clip.size?.start?.max ?? 1
+      const endSzMin = clip.size?.end?.min ?? 0
+      const endSzMax = clip.size?.end?.max ?? 0
+      const startSize = startSzMin + Math.random() * (startSzMax - startSzMin)
+      const endSize = endSzMin + Math.random() * (endSzMax - endSzMin)
 
       // 에미터 범위 내 랜덤 스폰 위치 (중심 기준 ±range/2)
-      const offsetX = rangeW > 0 ? (Math.random() - 0.5) * rangeW : 0
-      const offsetY = rangeH > 0 ? (Math.random() - 0.5) * rangeH : 0
+      const offsetX = rangeX > 0 ? (Math.random() - 0.5) * rangeX : 0
+      const offsetY = rangeY > 0 ? (Math.random() - 0.5) * rangeY : 0
+      const offsetZ = rangeZ > 0 ? (Math.random() - 0.5) * rangeZ : 0
 
       const inst: ParticleInstance = {
         spawnX: offsetX,
         spawnY: offsetY,
+        spawnZ: offsetZ,
         x: offsetX,
         y: offsetY,
+        z: offsetZ,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
+        vz: 0,
+        startSize,
+        endSize,
         born: timestamp,
         lifespan: clip.lifespan,
       }
@@ -222,7 +252,7 @@ export class Particle extends LveObject {
           restitution: attr.restitution ?? 0.3,
           frictionAir: 0.03,
           collisionFilter: {
-            group: attr.collisionGroup ?? 0,
+            group: attr.collisionGroup ?? -1,
             mask: attr.collisionMask ?? 0xFFFFFFFF,
             category: attr.collisionCategory ?? 0x0001,
           },

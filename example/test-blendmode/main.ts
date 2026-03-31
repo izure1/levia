@@ -26,7 +26,6 @@ const currentModeLabel = world.createText({
 
 // 중앙 디스플레이 (크게)
 const dest = world.createImage({
-  style: { width: 300, height: 300 },
   transform: { position: { x: 0, y: 0, z: 0 } }
 })
 dest.play('logo')
@@ -35,17 +34,23 @@ world.particleManager.create({
   name: 'star-anti-gravity',
   src: 'star',
   loop: true,
-  lifespan: 3000,
+  lifespan: 6000,
   interval: 500,
   rate: 1,
-  spawnWidth: 220,
-  spawnHeight: 20
+  impulse: 0,
+  spawnX: 400,
+  spawnY: 20,
+  spawnZ: 100,
+  size: {
+    start: { min: 0.5, max: 1.5 },
+    end: { min: 1, max: 1.5 }
+  }
 })
 
 const src = world.createParticle({
   strict: true,
   attribute: { gravityScale: 0, friction: 0.005, density: 0.001 },
-  style: { width: 100, height: 100, blendMode: 'source-over', zIndex: 1 },
+  style: { blendMode: 'source-over', zIndex: 1 },
   transform: { position: { x: 0, y: -150, z: 0 } }
 }).play('star-anti-gravity')
 

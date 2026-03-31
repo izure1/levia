@@ -93,6 +93,7 @@ world.particleManager.create({
   lifespan: 1500,
   interval: 200,
   rate: 8,
+  impulse: 0.25,
 })
 
 label('⑦ Particle — flame (일반 모드)', -200, 60, 0)

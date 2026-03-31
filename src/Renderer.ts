@@ -519,14 +519,15 @@ export class Renderer {
    * 객체의 고유 TRS(Translation, Rotation, Scale, Pivot)만으로 Model Matrix를 생성합니다.
    * 카메라 정보는 View Matrix에서 처리됩니다.
    */
-  private _makeModelMatrix(x: number, y: number, w: number, h: number): Float32Array {
+  private _makeModelMatrix(x: number, y: number, w: number, h: number, zOffset: number = 0): Float32Array {
     const obj = this._activeObj
     const rot = obj.transform.rotation
     const pivot = obj.transform.pivot
 
     this._modelMat.identity()
     // 1. 월드 좌표로 이동 (Z는 네게이트: OGL -Z=앞, 구 시스템 +Z=앞)
-    this._tmpVec[0] = x; this._tmpVec[1] = y; this._tmpVec[2] = -obj.transform.position.z
+    // 파티클 등 인스턴스의 개별 Z 오프셋을 더해줌
+    this._tmpVec[0] = x; this._tmpVec[1] = y; this._tmpVec[2] = -(obj.transform.position.z + zOffset)
     this._modelMat.translate(this._tmpVec)
 
     // 2. 객체의 고유 회전 적용
@@ -731,6 +732,7 @@ export class Renderer {
     flipY = false,
     uvOffset: [number, number] = [0, 0],
     uvScale: [number, number] = [1, 1],
+    zOffset: number = 0
   ) {
     const blendMode = this._activeObj?.style?.blendMode ?? 'source-over';
 
@@ -741,7 +743,7 @@ export class Renderer {
     this._batchTexture = texture;
     this._batchBlendMode = blendMode;
 
-    const m = this._makeModelMatrix(x, y, w, h);
+    const m = this._makeModelMatrix(x, y, w, h, zOffset);
     const idx = this._batchCount;
     const idx4 = idx * 4;
     const idx2 = idx * 2;
@@ -1200,7 +1202,7 @@ export class Renderer {
     for (const inst of instances) {
       const age = timestamp - inst.born
       const t = Math.min(age / inst.lifespan, 1)
-      const scale = 1 - t
+      const scale = inst.startSize + (inst.endSize - inst.startSize) * t
       const opacity = 1 - t
       if (opacity <= 0 || scale <= 0) continue
 
@@ -1215,6 +1217,8 @@ export class Renderer {
         texture,
         ix, iy, iw, ih,
         obj.style.opacity * opacity,
+        false, [0, 0], [1, 1],
+        inst.z || 0
       )
     }
 
