@@ -29,25 +29,28 @@ export abstract class BaseTransition<T = any> extends EventEmitter<AnimationEven
     })
   }
 
-  stop() {
+  stop(): this {
     if (this._anim) {
       this._anim.stop()
       this._anim = null
       this.emit('stop')
     }
+    return this
   }
 
-  pause() {
+  pause(): this {
     if (this._anim) {
       this._anim.pause()
       this.emit('pause')
     }
+    return this
   }
 
-  resume() {
+  resume(): this {
     if (this._anim) {
       this._anim.resume()
       this.emit('resume')
     }
+    return this
   }
 }

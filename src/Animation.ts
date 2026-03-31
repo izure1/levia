@@ -193,7 +193,7 @@ export class Animation extends EventEmitter<AnimationEvents> {
    * @param duration 지속 시간 (ms)
    * @param easing 이징 함수 이름 (기본값: 'linear')
    */
-  start(callback: AnimationCallback, duration: number, easing: EasingType = 'linear') {
+  start(callback: AnimationCallback, duration: number, easing: EasingType = 'linear'): this {
     this.stop()
     this._callback = callback
     this._duration = duration
@@ -207,10 +207,11 @@ export class Animation extends EventEmitter<AnimationEvents> {
 
     this.emit('start')
     this._tick(null)
+    return this
   }
 
-  pause() {
-    if (this._isPaused || this._startTime === null) return
+  pause(): this {
+    if (this._isPaused || this._startTime === null) return this
     this._isPaused = true
     this._pausedElapsed += performance.now() - this._startTime
     if (this._rafId !== null) {
@@ -218,17 +219,19 @@ export class Animation extends EventEmitter<AnimationEvents> {
       this._rafId = null
     }
     this.emit('pause')
+    return this
   }
 
-  resume() {
-    if (!this._isPaused) return
+  resume(): this {
+    if (!this._isPaused) return this
     this._isPaused = false
     this._startTime = null  // _tick에서 재설정
     this.emit('resume')
     this._tick(null)
+    return this
   }
 
-  stop() {
+  stop(): this {
     if (this._rafId !== null) {
       cancelAnimationFrame(this._rafId)
       this._rafId = null
@@ -237,6 +240,7 @@ export class Animation extends EventEmitter<AnimationEvents> {
     this._startTime = null
     this._pausedElapsed = 0
     this._isPaused = false
+    return this
   }
 
   private _tick(timestamp: number | null) {

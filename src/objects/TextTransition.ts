@@ -4,14 +4,14 @@ import { BaseTransition } from './BaseTransition.js'
 export class TextTransition extends BaseTransition<Text> {
   constructor(target: Text) { super(target) }
 
-  start(newText: string, charDurationMs: number) {
+  start(newText: string, charDurationMs: number): this {
     if (this._anim) this._anim.stop()
 
     if (charDurationMs <= 0 || this.target.attribute.text === newText) {
       this.target.attribute.text = newText
       this.target._transitionProgress = 1
       this.target._dirtyTexture = true
-      return
+      return this
     }
 
     this.target.attribute.text = newText
@@ -32,5 +32,6 @@ export class TextTransition extends BaseTransition<Text> {
         this.target._dirtyTexture = true
       }
     )
+    return this
   }
 }

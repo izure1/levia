@@ -5,7 +5,7 @@ import type { EasingType } from '../types.js'
 export class FadeTransition extends BaseTransition<LveObject> {
   constructor(target: LveObject) { super(target) }
 
-  start(durationMs: number, easing: EasingType | undefined, type: 'in' | 'out') {
+  start(durationMs: number, easing: EasingType | undefined, type: 'in' | 'out'): this {
     if (this._anim) this._anim.stop()
 
     if (type === 'out') {
@@ -35,5 +35,6 @@ export class FadeTransition extends BaseTransition<LveObject> {
         }
       )
     }
+    return this
   }
 }
