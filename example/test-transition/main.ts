@@ -52,10 +52,14 @@ image.on('click', (e) => {
   const nextText = isToggled ? '새로운 텍스트가 여러 줄로\n서서히 등장해야 합니다.\n<style color="yellow" letterSpacing="10">스타일 태그</style>도 가능!' : '이미지 클릭!'
 
   // 1초(1000ms) 동안 크로스페이드
-  image.transition(nextSrc, 1000)
+  image.transition(nextSrc, 1000).on('end', () => {
+    console.log('이미지 전환 완료!')
+  })
 
   // 3초(3000ms) 동안 텍스트 그라데이션 타이핑 효과
-  textObj.transition(nextText, 3000)
+  textObj.transition(nextText, 3000).on('end', () => {
+    console.log('텍스트 전환 완료!')
+  })
 })
 
 world.start()

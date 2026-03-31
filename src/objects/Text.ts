@@ -18,11 +18,11 @@ export class Text extends LveObject {
    * @param newText 변경할 새 텍스트
    * @param durationMs 전환에 걸리는 시간(밀리초)
    */
-  transition(newText: string, durationMs: number): this {
+  transition(newText: string, durationMs: number): TextTransition {
     if (!this._transitioner) {
       this._transitioner = new TextTransition(this)
     }
     this._transitioner.start(newText, durationMs)
-    return this
+    return this._transitioner
   }
 }
