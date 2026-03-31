@@ -247,6 +247,44 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
   }
 
   /**
+   * 객체에 하나 이상의 클래스를 추가합니다. (공백으로 구분)
+   * 이미 존재하는 클래스는 무시됩니다.
+   */
+  addClass(classNames: string) {
+    if (!classNames) return
+    const currentClasses = (this.attribute.className || '').split(/\s+/).filter(Boolean)
+    const newClasses = classNames.split(/\s+/).filter(Boolean)
+
+    let changed = false
+    for (const cls of newClasses) {
+      if (!currentClasses.includes(cls)) {
+        currentClasses.push(cls)
+        changed = true
+      }
+    }
+
+    if (changed) {
+      this.attribute.className = currentClasses.join(' ')
+    }
+  }
+
+  /**
+   * 객체에서 하나 이상의 클래스를 제거합니다. (공백으로 구분)
+   * 존재하지 않는 클래스는 무시됩니다.
+   */
+  removeClass(classNames: string) {
+    if (!classNames || !this.attribute.className) return
+    const currentClasses = this.attribute.className.split(/\s+/).filter(Boolean)
+    const removeClasses = classNames.split(/\s+/).filter(Boolean)
+
+    const newClasses = currentClasses.filter(c => !removeClasses.includes(c))
+
+    if (currentClasses.length !== newClasses.length) {
+      this.attribute.className = newClasses.join(' ')
+    }
+  }
+
+  /**
    * 물리 바디에 힘을 적용합니다. attribute.physics가 설정된 경우에만 동작합니다.
    */
   applyForce(force: { x?: number; y?: number }) {

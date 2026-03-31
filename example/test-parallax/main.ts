@@ -62,7 +62,7 @@ world.createText({
 world.createText({
   attribute: { text: '2.5D Parallax Engine' },
   style: { color: '#c77dff', opacity: 0.8, fontSize: 22, fontFamily: 'Segoe UI, sans-serif', textAlign: 'center' },
-  transform: { position: { x: -120, y: 60, z: 200 } },
+  transform: { position: { x: -100, y: 60, z: 200 } },
 })
 
 window.addEventListener('mousemove', (e) => {
