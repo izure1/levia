@@ -12,6 +12,7 @@ export interface TextSpanStyle {
   color?: string
   borderColor?: string
   borderWidth?: number
+  letterSpacing?: number
 }
 
 export interface TextSpan {
@@ -34,6 +35,7 @@ function parseAttrs(attrStr: string): TextSpanStyle {
       case 'color': style.color = val; break
       case 'borderColor': style.borderColor = val; break
       case 'borderWidth': style.borderWidth = parseFloat(val); break
+      case 'letterSpacing': style.letterSpacing = parseFloat(val); break
     }
   }
   return style

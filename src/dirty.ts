@@ -11,22 +11,23 @@ export type DirtyKind = 'texture' | 'physics'
 
 export const STYLE_DIRTY_MAP: Readonly<Record<string, DirtyKind[]>> = {
   // 텍스처만 재생성
-  fontSize: ['texture', 'physics'],
   color: ['texture'],
-  fontFamily: ['texture', 'physics'],
-  fontWeight: ['texture', 'physics'],
-  fontStyle: ['texture', 'physics'],
-  lineHeight: ['texture', 'physics'],
   textAlign: ['texture'],
   shadowColor: ['texture'],
   shadowBlur: ['texture'],
   shadowOffsetX: ['texture'],
   shadowOffsetY: ['texture'],
   // 텍스처 + 물리 바디 재계산
+  fontSize: ['texture', 'physics'],
+  fontFamily: ['texture', 'physics'],
+  fontWeight: ['texture', 'physics'],
+  fontStyle: ['texture', 'physics'],
+  lineHeight: ['texture', 'physics'],
+  letterSpacing: ['texture', 'physics'],
   width: ['texture', 'physics'],
   height: ['texture', 'physics'],
-  // 물리 바디만 재계산
   borderWidth: ['texture', 'physics'],
+  // 물리 바디만 재계산
   margin: ['physics'],
 }
 

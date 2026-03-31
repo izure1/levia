@@ -59,6 +59,7 @@ export interface Style {
   shadowOffsetY?: number
   zIndex: number
   blendMode?: GlobalCompositeOperation
+  letterSpacing?: number
 }
 
 // ============================================================

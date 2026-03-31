@@ -49,7 +49,7 @@ image.on('click', (e) => {
   e.stopImmediatePropagation()
   isToggled = !isToggled
   const nextSrc = isToggled ? 'transition_after' : 'transition_before'
-  const nextText = isToggled ? '새로운 텍스트가 여러 줄로\n서서히 등장해야 합니다.\n<style color="yellow">스타일 태그</style>도 가능!' : '이미지 클릭!'
+  const nextText = isToggled ? '새로운 텍스트가 여러 줄로\n서서히 등장해야 합니다.\n<style color="yellow" letterSpacing="10">스타일 태그</style>도 가능!' : '이미지 클릭!'
 
   // 1초(1000ms) 동안 크로스페이드
   image.transition(nextSrc, 1000)

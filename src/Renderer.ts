@@ -911,6 +911,7 @@ export class Renderer {
       color: baseColor,
       borderColor: style.borderColor,
       borderWidth: style.borderWidth,
+      letterSpacing: style.letterSpacing,
     })
 
     // shadow 지원: Canvas 2D에서 그대로 구현
@@ -962,8 +963,10 @@ export class Renderer {
         const fs = (token.span.style.fontSize ?? baseFontSize) * TEXT_RENDER_SCALE
         const fw = token.span.style.fontWeight ?? baseFontWeight
         const fi = token.span.style.fontStyle ?? baseFontStyle
+        const ls = (token.span.style.letterSpacing ?? style.letterSpacing ?? 0) * TEXT_RENDER_SCALE
         curH = Math.max(curH, fs * lineHeightMul)
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
+        ctx.letterSpacing = `${ls}px`
 
         if (maxW === null) {
           curLine.push(token)
@@ -986,7 +989,9 @@ export class Renderer {
         const fs = (tok.span.style.fontSize ?? baseFontSize) * TEXT_RENDER_SCALE
         const fw = tok.span.style.fontWeight ?? baseFontWeight
         const fi = tok.span.style.fontStyle ?? baseFontStyle
+        const ls = (tok.span.style.letterSpacing ?? style.letterSpacing ?? 0) * TEXT_RENDER_SCALE
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
+        ctx.letterSpacing = `${ls}px`
         w += ctx.measureText(tok.text).width
       }
       return w
@@ -1038,8 +1043,10 @@ export class Renderer {
         const fc = tok.span.style.color ?? baseColor
         const bc = tok.span.style.borderColor
         const bw = (tok.span.style.borderWidth ?? 1) * TEXT_RENDER_SCALE
+        const ls = (tok.span.style.letterSpacing ?? style.letterSpacing ?? 0) * TEXT_RENDER_SCALE
 
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
+        ctx.letterSpacing = `${ls}px`
 
         if (bc) {
           ctx.lineJoin = 'round'

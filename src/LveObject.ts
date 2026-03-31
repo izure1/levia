@@ -56,6 +56,7 @@ function makeStyle(partial?: Partial<Style>): Style {
     shadowOffsetY: partial?.shadowOffsetY,
     zIndex: partial?.zIndex ?? 0,
     blendMode: partial?.blendMode,
+    letterSpacing: partial?.letterSpacing ?? 0,
   }
 }
 
