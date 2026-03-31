@@ -13,7 +13,8 @@ export class LveImage extends LveObject {
    * 표시할 에셋 키를 지정합니다.
    * @param src 에셋 맵 키
    */
-  play(src: string) {
+  play(src: string): this {
     this._src = src
+    return this
   }
 }

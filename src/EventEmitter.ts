@@ -1,6 +1,4 @@
-export interface EventMap {
-  [key: string]: any[]
-}
+export type EventMap = Record<string, any[]>
 
 type EventCallback<TArgs extends any[]> = (...args: TArgs) => void
 
@@ -9,13 +7,13 @@ interface ListenerEntry {
   once: boolean
 }
 
-export class EventEmitter<TEvents extends EventMap = EventMap> {
+export class EventEmitter<TEvents extends Record<string, any> = EventMap> {
   private _listeners: Map<string, ListenerEntry[]> = new Map()
 
   /**
    * 이벤트 리스너를 등록합니다. 스페이스로 구분하여 여러 이벤트를 동시에 등록할 수 있습니다.
    */
-  on<K extends string & keyof TEvents>(event: K, callback: EventCallback<TEvents[K]>): this
+  on<K extends keyof TEvents>(event: K, callback: EventCallback<TEvents[K] extends any[] ? TEvents[K] : any[]>): this
   on(event: string, callback: EventCallback<any[]>): this
   on(event: string, callback: EventCallback<any[]>): this {
     for (const ev of event.trim().split(/\s+/)) {
@@ -29,7 +27,7 @@ export class EventEmitter<TEvents extends EventMap = EventMap> {
   /**
    * 이벤트 리스너를 제거합니다. 스페이스로 구분하여 여러 이벤트를 동시에 해제할 수 있습니다.
    */
-  off<K extends string & keyof TEvents>(event: K, callback: EventCallback<TEvents[K]>): this
+  off<K extends keyof TEvents>(event: K, callback: EventCallback<TEvents[K] extends any[] ? TEvents[K] : any[]>): this
   off(event: string, callback: EventCallback<any[]>): this
   off(event: string, callback: EventCallback<any[]>): this {
     for (const ev of event.trim().split(/\s+/)) {
@@ -45,7 +43,7 @@ export class EventEmitter<TEvents extends EventMap = EventMap> {
   /**
    * 한 번만 실행되는 이벤트 리스너를 등록합니다.
    */
-  once<K extends string & keyof TEvents>(event: K, callback: EventCallback<TEvents[K]>): this
+  once<K extends keyof TEvents>(event: K, callback: EventCallback<TEvents[K] extends any[] ? TEvents[K] : any[]>): this
   once(event: string, callback: EventCallback<any[]>): this
   once(event: string, callback: EventCallback<any[]>): this {
     for (const ev of event.trim().split(/\s+/)) {
@@ -59,7 +57,7 @@ export class EventEmitter<TEvents extends EventMap = EventMap> {
   /**
    * 이벤트를 발행합니다. 스페이스로 구분하여 여러 이벤트를 동시에 발행할 수 있습니다.
    */
-  emit<K extends string & keyof TEvents>(event: K, ...args: TEvents[K]): this
+  emit<K extends keyof TEvents>(event: K, ...args: TEvents[K] extends any[] ? TEvents[K] : any[]): this
   emit(event: string, ...args: any[]): this
   emit(event: string, ...args: any[]): this {
     for (const ev of event.trim().split(/\s+/)) {

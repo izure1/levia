@@ -249,28 +249,28 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
   /**
    * 물리 바디에 힘을 적용합니다. attribute.physics가 설정된 경우에만 동작합니다.
    */
-  applyForce(force: { x: number; y: number }) {
+  applyForce(force: { x?: number; y?: number }) {
     if (!this._body) {
       console.warn('[LveObject] applyForce: 물리 바디가 없습니다. attribute.physics를 설정하십시오.')
       return
     }
     const Matter = (globalThis as any).__Matter__
     if (Matter) {
-      Matter.Body.applyForce(this._body, this._body.position, force)
+      Matter.Body.applyForce(this._body, this._body.position, { x: force.x ?? 0, y: force.y ?? 0 })
     }
   }
 
   /**
    * 물리 바디의 속도를 설정합니다. attribute.physics가 설정된 경우에만 동작합니다.
    */
-  setVelocity(velocity: { x: number; y: number }) {
+  setVelocity(velocity: { x?: number; y?: number }) {
     if (!this._body) {
       console.warn('[LveObject] setVelocity: 물리 바디가 없습니다. attribute.physics를 설정하십시오.')
       return
     }
     const Matter = (globalThis as any).__Matter__
     if (Matter) {
-      Matter.Body.setVelocity(this._body, velocity)
+      Matter.Body.setVelocity(this._body, { x: velocity.x ?? this._body.velocity.x, y: velocity.y ?? this._body.velocity.y })
     }
   }
 

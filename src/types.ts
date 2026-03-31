@@ -1,6 +1,7 @@
 // ============================================================
 // Attribute
 // ============================================================
+import type { LveObject } from './LveObject.js'
 
 export interface Attribute {
   type: string
@@ -145,7 +146,6 @@ export interface AnimateTarget {
 
 /** LveObject (및 하위 클래스) 공통 이벤트 맵 */
 export interface LveObjectEvents {
-  [key: string]: any[]
   // 속성 변경 이벤트
   cssmodified: [key: string, value: any, prev: any]
   attrmodified: [key: string, value: any, prev: any]
@@ -172,10 +172,21 @@ export interface LveObjectEvents {
 
 /** Animation 클래스 이벤트 맵 */
 export interface AnimationEvents {
-  [key: string]: any[]
   start: []
   pause: []
   stop: []
   resume: []
   update: [state: Record<string, any>]
+}
+
+/** World 클래스 이벤트 맵 */
+export interface WorldEvents {
+  click: [obj: LveObject | undefined, e: MouseEvent]
+  dblclick: [obj: LveObject | undefined, e: MouseEvent]
+  contextmenu: [obj: LveObject | undefined, e: MouseEvent]
+  mousedown: [obj: LveObject | undefined, e: MouseEvent]
+  mouseup: [obj: LveObject | undefined, e: MouseEvent]
+  mousemove: [obj: LveObject | undefined, e: MouseEvent]
+  mouseover: [obj: LveObject | undefined, e: MouseEvent]
+  mouseout: [obj: LveObject | undefined, e: MouseEvent]
 }

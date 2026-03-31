@@ -13,7 +13,7 @@ import { SpriteManager } from './SpriteManager.js'
 import { VideoManager } from './VideoManager.js'
 import { ParticleManager } from './ParticleManager.js'
 import { PhysicsEngine } from './PhysicsEngine.js'
-import type { LveObjectOptions, LoadedAssets, Attribute } from './types.js'
+import type { LveObjectOptions, LoadedAssets, Attribute, WorldEvents } from './types.js'
 import type { RectangleOptions } from './objects/Rectangle.js'
 import { Renderer } from './Renderer.js'
 import { EventEmitter } from './EventEmitter.js'
@@ -50,7 +50,7 @@ function wrapMouseEvent(e: MouseEvent): MouseEvent & { _propagationStopped: bool
   return wrapped
 }
 
-export class World extends EventEmitter {
+export class World extends EventEmitter<WorldEvents> {
   private renderer: Renderer
   private objects: Set<LveObject> = new Set()
   private rafId: number | null = null

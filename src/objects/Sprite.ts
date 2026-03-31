@@ -39,17 +39,17 @@ export class Sprite extends LveObject {
    * 지정한 이름의 애니메이션 클립을 재생합니다.
    * setManager()를 먼저 호출해야 합니다.
    */
-  play(name: string) {
+  play(name: string): this {
     if (!this._manager) {
       console.warn('[Sprite] SpriteManager가 설정되지 않았습니다. setManager()를 먼저 호출하십시오.')
-      return
+      return this
     }
     const clip = this._manager.get(name)
     if (!clip) {
       console.warn(`[Sprite] 클립 '${name}'을 찾을 수 없습니다.`)
-      return
+      return this
     }
-    if (this._clipName === name && this._playing && !this._paused) return
+    if (this._clipName === name && this._playing && !this._paused) return this
 
     this._clipName = name
     this._clip = clip
@@ -58,26 +58,30 @@ export class Sprite extends LveObject {
     this._playing = true
     this._paused = false
     this.emit('play')
+    return this
   }
 
   /** 재생을 일시정지합니다. */
-  pause() {
-    if (!this._playing || this._paused) return
+  pause(): this {
+    if (!this._playing || this._paused) return this
     this._paused = true
     this.emit('pause')
+    return this
   }
 
   /** 일시정지를 재개합니다. */
-  resume() {
-    if (!this._paused) return
+  resume(): this {
+    if (!this._paused) return this
     this._paused = false
     this.emit('play')
+    return this
   }
 
   /** 애니메이션을 정지합니다. */
-  stop() {
+  stop(): this {
     this._playing = false
     this._paused = false
+    return this
   }
 
   /**

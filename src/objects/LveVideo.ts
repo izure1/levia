@@ -37,15 +37,15 @@ export class LveVideo extends LveObject {
    * 지정한 이름의 비디오 클립을 재생합니다.
    * setManager()를 먼저 호출해야 합니다.
    */
-  play(name: string) {
+  play(name: string): this {
     if (!this._manager) {
       console.warn('[LveVideo] VideoManager가 설정되지 않았습니다. setManager()를 먼저 호출하십시오.')
-      return
+      return this
     }
     const clip = this._manager.get(name)
     if (!clip) {
       console.warn(`[LveVideo] 클립 '${name}'을 찾을 수 없습니다.`)
-      return
+      return this
     }
 
     this._clipName = name
@@ -54,22 +54,24 @@ export class LveVideo extends LveObject {
     this._playing = true
     this._paused = false
     this.emit('play')
+    return this
   }
 
   /**
    * 재생을 일시정지합니다.
    */
-  pause() {
-    if (!this._playing || this._paused) return
+  pause(): this {
+    if (!this._playing || this._paused) return this
     this._paused = true
     this._playing = false
     this.emit('pause')
+    return this
   }
 
   /**
    * 재생을 정지합니다. loop=false일 때 'ended'를 emit합니다.
    */
-  stop() {
+  stop(): this {
     const wasPlaying = this._playing
     this._playing = false
     this._paused = false
@@ -77,6 +79,7 @@ export class LveVideo extends LveObject {
     if (wasPlaying && this._clip && !this._clip.loop) {
       this.emit('ended')
     }
+    return this
   }
 
   /**

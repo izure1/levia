@@ -79,15 +79,15 @@ export class Particle extends LveObject {
   /**
    * 지정한 클립 이름으로 파티클 에미션을 시작합니다.
    */
-  play(name: string) {
+  play(name: string): this {
     if (!this._manager) {
       console.warn('[Particle] setManager()를 먼저 호출하십시오.')
-      return
+      return this
     }
     const clip = this._manager.get(name)
     if (!clip) {
       console.warn(`[Particle] 클립 '${name}'을 찾을 수 없습니다.`)
-      return
+      return this
     }
     this._clipName = name
     this._clip = clip
@@ -96,22 +96,24 @@ export class Particle extends LveObject {
     this._spawnCount = 0
     this._instances = []
     this.emit('play')
+    return this
   }
 
   /**
    * 파티클 에미션을 일시정지합니다.
    */
-  pause() {
-    if (!this._playing || this._paused) return
+  pause(): this {
+    if (!this._playing || this._paused) return this
     this._paused = true
     this.emit('pause')
+    return this
   }
 
   /**
    * 파티클 에미션을 정지합니다. 이미 생성된 인스턴스는 lifespan까지 유지됩니다.
    */
-  stop() {
-    if (!this._playing && !this._paused) return
+  stop(): this {
+    if (!this._playing && !this._paused) return this
     const wasLooping = this._clip?.loop ?? false
     this._playing = false
     this._paused = false
@@ -120,6 +122,7 @@ export class Particle extends LveObject {
     } else {
       this.emit('ended')
     }
+    return this
   }
 
   /**
