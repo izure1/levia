@@ -531,25 +531,27 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
     return animateObject(source, normalized as any, duration, easing)
   }
 
-  private _fadeTransition?: import('./objects/FadeTransition.js').FadeTransition
+  private _fadeTransition?: FadeTransition
 
   /**
    * 객체를 부드럽게 나타나게 합니다 (display: block 이후 투명도 0 -> 1).
    */
-  fadeIn(durationMs: number, easing?: EasingType) {
+  fadeIn(durationMs: number, easing?: EasingType): FadeTransition {
     if (!this._fadeTransition) {
       this._fadeTransition = new FadeTransition(this)
     }
     this._fadeTransition.start(durationMs, easing, 'in')
+    return this._fadeTransition
   }
 
   /**
    * 객체를 부드럽게 사라지게 합니다 (투명도 1 -> 0 이후 display: none).
    */
-  fadeOut(durationMs: number, easing?: EasingType) {
+  fadeOut(durationMs: number, easing?: EasingType): FadeTransition {
     if (!this._fadeTransition) {
       this._fadeTransition = new FadeTransition(this)
     }
     this._fadeTransition.start(durationMs, easing, 'out')
+    return this._fadeTransition
   }
 }
