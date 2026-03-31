@@ -340,6 +340,82 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
     this._body.torque += torque
   }
 
+  private _followTarget?: LveObject
+  private _followOffset?: { x?: number; y?: number; z?: number }
+  private _followListener?: (axis: string, val: number) => void
+  private _followers: Set<LveObject> = new Set()
+
+  /**
+   * 자신이 따라다니는 객체를 반환합니다. 없다면 undefined를 반환합니다.
+   */
+  get following(): LveObject | undefined {
+    return this._followTarget
+  }
+
+  /**
+   * 현재 자신을 따라다니는 모든 객체를 배열로 반환합니다.
+   */
+  get followers(): LveObject[] {
+    return Array.from(this._followers)
+  }
+
+  /**
+   * 다른 LveObject를 일정 거리를 두고 따라다닙니다.
+   * 기존에 따라다니던 객체가 있다면 새로운 객체로 덮어씁니다.
+   */
+  follow(target: LveObject, offset?: { x?: number; y?: number; z?: number }) {
+    this.unfollow()
+    this._followTarget = target
+    this._followOffset = offset
+    target._followers.add(this)
+
+    this._followListener = () => {
+      if (this._followOffset?.x !== undefined) {
+        this.transform.position.x = target.transform.position.x + this._followOffset.x
+      } else {
+        this.transform.position.x = target.transform.position.x
+      }
+
+      if (this._followOffset?.y !== undefined) {
+        this.transform.position.y = target.transform.position.y + this._followOffset.y
+      } else {
+        this.transform.position.y = target.transform.position.y
+      }
+
+      if (this._followOffset?.z !== undefined) {
+        this.transform.position.z = target.transform.position.z + this._followOffset.z
+      } else {
+        this.transform.position.z = target.transform.position.z
+      }
+    }
+
+    target.on('positionmodified', this._followListener as any)
+    this._followListener('', 0)
+  }
+
+  /**
+   * 대상을 따라다니는 동작을 중지합니다.
+   */
+  unfollow() {
+    if (this._followTarget && this._followListener) {
+      this._followTarget.off('positionmodified', this._followListener as any)
+      this._followTarget._followers.delete(this)
+      this._followTarget = undefined
+      this._followListener = undefined
+      this._followOffset = undefined
+    }
+  }
+
+  /**
+   * 자신을 따라다니는 특정 오브젝트의 추적을 끊어냅니다. (unfollow 시킴)
+   * @param follower 제거할 추적 객체
+   */
+  kick(follower: LveObject) {
+    if (this._followers.has(follower)) {
+      follower.unfollow()
+    }
+  }
+
   /**
    * 객체의 속성을 애니메이션으로 부드럽게 변경합니다.
    * @param target 변경할 속성과 목표값 (숫자 or 복합 대입 연산자 문자열)

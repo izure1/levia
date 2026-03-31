@@ -176,6 +176,7 @@ export interface AnimationEvents {
   pause: []
   stop: []
   resume: []
+  end: []
   update: [state: Record<string, any>]
 }
 

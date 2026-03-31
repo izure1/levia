@@ -258,6 +258,7 @@ export class Animation extends EventEmitter<AnimationEvents> {
       this._rafId = requestAnimationFrame((ts) => this._tick(ts))
     } else {
       this._rafId = null
+      this.emit('end')
     }
   }
 }
@@ -303,6 +304,7 @@ export function animateObject(
       (anim as any)._rafId = requestAnimationFrame((ts) => tick(ts))
     } else {
       (anim as any)._rafId = null
+      anim.emit('end')
     }
   }
 
