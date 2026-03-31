@@ -902,6 +902,8 @@ export class Renderer {
       fontWeight: baseFontWeight,
       fontStyle: baseFontStyle,
       color: baseColor,
+      borderColor: style.borderColor,
+      borderWidth: style.borderWidth,
     })
 
     // shadow 지원: Canvas 2D에서 그대로 구현
@@ -1024,14 +1026,17 @@ export class Renderer {
         const bw = (tok.span.style.borderWidth ?? 1) * TEXT_RENDER_SCALE
 
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
-        ctx.fillStyle = fc
-        ctx.fillText(tok.text, penX, baseline)
 
         if (bc) {
+          ctx.lineJoin = 'round'
+          ctx.miterLimit = 2
           ctx.strokeStyle = bc
-          ctx.lineWidth = bw as number
+          ctx.lineWidth = bw * 2
           ctx.strokeText(tok.text, penX, baseline)
         }
+
+        ctx.fillStyle = fc
+        ctx.fillText(tok.text, penX, baseline)
         penX += ctx.measureText(tok.text).width
       }
       curY += rl.lineH

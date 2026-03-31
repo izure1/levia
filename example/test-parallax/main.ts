@@ -18,6 +18,9 @@ for (const layer of layers) {
   for (let i = 0; i < layer.count; i++) {
     const color = layer.colors[Math.floor(Math.random() * layer.colors.length)]
     world.createEllipse({
+      attribute: {
+        className: 'parallax-layer'
+      },
       style: {
         color,
         opacity: rand(0.3, 0.8),
@@ -39,6 +42,9 @@ for (const layer of layers) {
 for (let i = 0; i < 25; i++) {
   const size = rand(4, 18)
   world.createRectangle({
+    attribute: {
+      className: 'parallax-layer'
+    },
     style: {
       color: `hsl(${rand(200, 300)}, 80%, 70%)`,
       opacity: rand(0.4, 1.0),
@@ -60,8 +66,8 @@ world.createText({
 })
 
 world.createText({
-  attribute: { text: '2.5D Parallax Engine' },
-  style: { color: '#c77dff', opacity: 0.8, fontSize: 22, fontFamily: 'Segoe UI, sans-serif', textAlign: 'center' },
+  attribute: { text: '2.5D <style fontSize="30" borderWidth="2">Parallax</style> Engine' },
+  style: { color: '#c77dff', opacity: 0.8, fontSize: 22, fontFamily: 'Segoe UI, sans-serif', borderWidth: 1, borderColor: 'rgb(255, 255, 255)', textAlign: 'center' },
   transform: { position: { x: -100, y: 60, z: 200 } },
 })
 
