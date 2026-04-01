@@ -1044,6 +1044,7 @@ export class Renderer {
       borderColor: style.borderColor,
       borderWidth: style.borderWidth,
       letterSpacing: style.letterSpacing,
+      lineHeight: style.lineHeight,
     })
 
     // shadow 지원: Canvas 2D에서 그대로 구현
@@ -1096,7 +1097,8 @@ export class Renderer {
         const fw = token.span.style.fontWeight ?? baseFontWeight
         const fi = token.span.style.fontStyle ?? baseFontStyle
         const ls = (token.span.style.letterSpacing ?? style.letterSpacing ?? 0) * TEXT_RENDER_SCALE
-        curH = Math.max(curH, fs * lineHeightMul)
+        const lh = token.span.style.lineHeight ?? lineHeightMul
+        curH = Math.max(curH, fs * lh)
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
         ctx.letterSpacing = `${ls}px`
 

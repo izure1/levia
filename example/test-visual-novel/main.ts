@@ -45,8 +45,8 @@ const talkBox = world.createRectangle({
     zIndex: 10
   },
   transform: {
-    pivot: { y: 1 },
-    position: { y: talkBoxPos.y }
+    pivot: { x: 0, y: 1 },
+    position: { x: -talkBoxW / 2, y: talkBoxPos.y }
   }
 })
 
@@ -57,9 +57,10 @@ const padding = 20
 const textWidth = talkBoxW - (padding * 2)
 const textHeight = talkBoxH - padding
 
+const dialogText = `<style color="#ffb570ff" borderWidth="1" borderColor="#ffffffff" fontSize="24" fontWeight="600">주인공</style>\n\n<style color="#dddddd" fontSize="16" lineHeight="1.5">이곳은 대사창입니다.\ncalcDepthRatio를 사용해 캔버스를 꽉 채우고,\ngradient를 주어 비주얼 노벨 느낌을 구현했습니다.</style>`
 const dialogue = world.createText({
   attribute: {
-    text: '<style color="#ffffff" fontSize="32" fontWeight="bold">주인공</style>\n\n<style color="#dddddd" fontSize="24">이곳은 대사창입니다.\ncalcDepthRatio를 사용해 캔버스를 꽉 채우고,\ngradient를 주어 비주얼 노벨 느낌을 구현했습니다.</style>'
+    text: dialogText
   },
   style: {
     width: textWidth,
@@ -67,9 +68,8 @@ const dialogue = world.createText({
     zIndex: 20
   },
   transform: {
-    // 텍스트 위치: 살짝 위로 띄워서 배치
     pivot: { x: 0, y: 1 },
-    position: { x: 0, y: 0 }
+    position: { x: 20, y: 0 }
   }
 })
 
@@ -92,6 +92,11 @@ window.addEventListener('resize', () => {
   dialogue.style.width = newW - (p * 2)
   dialogue.style.height = newBoxH - p
   dialogue.transform.position.y = -(newH / 2) + (newBoxH / 2) - (p / 4)
+})
+
+world.on('click', () => {
+  console.log(dialogue.transition(dialogText, 35))
+
 })
 
 world.start()
