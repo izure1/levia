@@ -16,11 +16,20 @@ export class LveVideo extends LveObject {
   /** 현재 재생할 에셋 키 (Renderer에서 직접 참조) */
   _src: string | null = null
 
+  /** Renderer에서 활성화된 실제 VideoElement 인스턴스 참조 */
+  _videoElement: HTMLVideoElement | null = null
+
   /** 재생 중 여부 */
   _playing: boolean = false
 
   /** 일시정지 여부 */
   _paused: boolean = false
+
+  /** 재생 시작 시 시작 위치로 이동해야하는지 여부 (Renderer에서 참조 및 리셋) */
+  _needsSeekToStart: boolean = false
+
+  /** currentTime setter에서 _videoElement가 null일 때 대기 중인 seek 값 (Renderer에서 적용 후 null로 리셋) */
+  _pendingSeek: number | null = null
 
   constructor(options?: LveObjectOptions) {
     super('video', options)
@@ -53,6 +62,7 @@ export class LveVideo extends LveObject {
     this._src = clip.src
     this._playing = true
     this._paused = false
+    this._needsSeekToStart = true
     this.emit('play')
     return this
   }
@@ -97,5 +107,44 @@ export class LveVideo extends LveObject {
   _onEnded() {
     this._playing = false
     this.emit('ended')
+  }
+
+  // ==== 재생 속성 ====
+
+  /** 비디오 스크롤 위치 (초) */
+  get currentTime(): number {
+    return this._videoElement ? this._videoElement.currentTime : 0
+  }
+
+  set currentTime(value: number) {
+    // 사용자 명시적 seek는 clip.start보다 항상 우선
+    this._needsSeekToStart = false
+    if (this._videoElement) {
+      this._videoElement.currentTime = value
+    } else {
+      this._pendingSeek = value
+    }
+  }
+
+  /** 재생 속도 배속 */
+  get playbackRate(): number {
+    return this._videoElement ? this._videoElement.playbackRate : 1.0
+  }
+
+  set playbackRate(value: number) {
+    if (this._videoElement) {
+      this._videoElement.playbackRate = value
+    }
+  }
+
+  /** 볼륨 크기 (0.0 ~ 1.0) */
+  get volume(): number {
+    return this._videoElement ? this._videoElement.volume : 1.0
+  }
+
+  set volume(value: number) {
+    if (this._videoElement) {
+      this._videoElement.volume = Math.max(0, Math.min(1, value))
+    }
   }
 }

@@ -60,18 +60,31 @@ export class Loader {
       const isVideo = ['mp4', 'webm', 'ogg'].includes(ext)
 
       if (isVideo) {
-        const video = document.createElement('video')
-        video.src = src
-        video.onloadeddata = () => {
-          this.assets[key] = video
-          this.emit('loaded', { key, asset: video })
-          resolve()
-        }
-        video.onerror = () => {
-          const error = new Error(`Failed to load video: ${src}`)
-          this.emit('error', { key, src, error })
-          resolve()
-        }
+        // fetch로 전체 다운로드 후 Blob URL을 사용하여
+        // HTTP Range 미지원 서버에서도 seek가 동작하도록 함
+        fetch(src)
+          .then(res => res.blob())
+          .then(blob => {
+            const video = document.createElement('video')
+            video.src = URL.createObjectURL(blob)
+            video.preload = 'auto'
+            video.playsInline = true
+            video.onloadeddata = () => {
+              this.assets[key] = video
+              this.emit('loaded', { key, asset: video })
+              resolve()
+            }
+            video.onerror = () => {
+              const error = new Error(`Failed to load video: ${src}`)
+              this.emit('error', { key, src, error })
+              resolve()
+            }
+          })
+          .catch(() => {
+            const error = new Error(`Failed to fetch video: ${src}`)
+            this.emit('error', { key, src, error })
+            resolve()
+          })
       } else {
         const image = new Image()
         image.src = src

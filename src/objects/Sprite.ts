@@ -12,6 +12,9 @@ export class Sprite extends LveObject {
   /** 현재 클립 정보 (Renderer에서 직접 참조) */
   _clip: SpriteClip | null = null
 
+  /** 커스텀 재생 속도 (fps). undefined면 clip의 frameRate 사용 */
+  private _playbackRate?: number
+
   /** 현재 프레임 인덱스 (clip.start 기준 절대 인덱스) */
   _currentFrame: number = 0
 
@@ -91,7 +94,8 @@ export class Sprite extends LveObject {
     if (!this._playing || this._paused || !this._clip) return
 
     const { frameRate, start, end, loop } = this._clip
-    const interval = 1000 / frameRate
+    const targetFps = this._playbackRate !== undefined ? this._playbackRate : frameRate
+    const interval = 1000 / targetFps
 
     if (this._lastFrameTime === 0) {
       this._lastFrameTime = timestamp
@@ -113,5 +117,42 @@ export class Sprite extends LveObject {
         }
       }
     }
+  }
+
+  // ==== 재생 속성 ====
+
+  /** 프레임 현재 위치 (0부터 시작) */
+  get currentTime(): number {
+    return this._clip ? Math.max(0, this._currentFrame - this._clip.start) : 0
+  }
+
+  set currentTime(value: number) {
+    if (this._clip) {
+      this._currentFrame = this._clip.start + Math.floor(value)
+      if (this._currentFrame >= this._clip.end) {
+        this._currentFrame = this._clip.end - 1
+      }
+      if (this._currentFrame < this._clip.start) {
+        this._currentFrame = this._clip.start
+      }
+    }
+  }
+
+  /** 초당 재생 속도 (fps) */
+  get playbackRate(): number {
+    return this._playbackRate ?? (this._clip ? this._clip.frameRate : 0)
+  }
+
+  set playbackRate(value: number) {
+    this._playbackRate = value
+  }
+
+  /** 볼륨 (스프라이트에서는 무시됨) */
+  get volume(): number {
+    return 0
+  }
+
+  set volume(_value: number) {
+    // 무시됨
   }
 }

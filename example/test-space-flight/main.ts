@@ -28,13 +28,13 @@ for (let i = 0; i < 15000; i++) {
 
 world.on('mouseover', (obj, e) => {
   if (obj?.attribute.type === 'image') {
-    obj.animate({ transform: { scale: { x: 1.5, y: 1.5, z: 1.5 } } }, 1000, 'easeInOut')
+    obj.animate({ transform: { scale: { x: 3, y: 3 } } }, 1000, 'easeInOut')
   }
 })
 
 world.on('mouseout', (obj, e) => {
   if (obj?.attribute.type === 'image') {
-    obj.animate({ transform: { scale: { x: 1, y: 1, z: 1 } } }, 1000, 'easeInOut')
+    obj.animate({ transform: { scale: { x: 1, y: 1 } } }, 1000, 'easeInOut')
   }
 })
 

@@ -1296,16 +1296,28 @@ export class Renderer {
       return
     }
 
+    // 객체에서 속성(currentTime 등)을 조작하기 위해 엘리먼트 참조 주입
+    obj._videoElement = asset
+
     const clip = obj._clip
 
     if (obj._playing) {
       if (clip) {
         asset.loop = clip.loop
-        if (asset.paused && clip.start != null) asset.currentTime = clip.start / 1000
+        if (obj._needsSeekToStart && clip.start != null) {
+          asset.currentTime = clip.start / 1000
+          obj._needsSeekToStart = false
+        }
       }
       if (asset.paused) asset.play().catch(() => { })
     } else {
       if (!asset.paused) asset.pause()
+    }
+
+    // 사용자 명시적 seek — clip.start보다 뒤에 적용하여 항상 우선
+    if (obj._pendingSeek !== null) {
+      asset.currentTime = obj._pendingSeek
+      obj._pendingSeek = null
     }
 
     if (clip?.end != null && asset.currentTime >= clip.end / 1000) {

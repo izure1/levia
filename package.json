@@ -17,11 +17,15 @@
   "scripts": {
     "build": "node ./build/build.mjs",
     "dev": "node ./build/build.mjs --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/matter-js": "^0.20.2",
     "esbuild": "^0.25.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.0.0"
   },
   "dependencies": {
