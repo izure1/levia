@@ -96,7 +96,6 @@ window.addEventListener('resize', () => {
 
 world.on('click', () => {
   console.log(dialogue.transition(dialogText, 35))
-
 })
 
 world.start()

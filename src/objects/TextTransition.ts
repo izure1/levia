@@ -7,7 +7,7 @@ export class TextTransition extends BaseTransition<Text> {
   start(newText: string, charDurationMs: number): this {
     if (this._anim) this._anim.stop()
 
-    if (charDurationMs <= 0 || this.target.attribute.text === newText) {
+    if (charDurationMs <= 0) {
       this.target.attribute.text = newText
       this.target._transitionProgress = 1
       this.target._dirtyTexture = true
