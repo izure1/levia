@@ -573,6 +573,7 @@ export class World extends EventEmitter<WorldEvents> {
   removeObject(obj: LveObject) {
     this.physics.removeBody(obj)
     this.objects.delete(obj)
+    this.renderer.removeTextEntry(obj.attribute.id)
     this.renderer.markSortDirty()
   }
 

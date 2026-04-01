@@ -172,6 +172,27 @@ export class Renderer {
   // 카메라 미지정 시 렌더링할 텍스트 오브젝트 모의 객체
   private _noCameraText: any
 
+  public removeTextEntry(id: string) {
+    const entry = this.textCache.get(id)
+    if (!entry) return
+
+    const contentKey = (entry as any)._contentKey as string | undefined
+    if (contentKey) {
+      const count = this.textContentRefCount.get(contentKey) || 0
+      if (count <= 1) {
+        this.textContentRefCount.delete(contentKey)
+        this.textContentCache.delete(contentKey)
+        // OGL Texture 및 WebGL 리소스 정리
+        if (entry.texture && (entry.texture as any).delete) {
+          ; (entry.texture as any).delete()
+        }
+      } else {
+        this.textContentRefCount.set(contentKey, count - 1)
+      }
+    }
+    this.textCache.delete(id)
+  }
+
   // 에셋 텍스처 캐시 (src → Texture)
   private assetTextureCache = new Map<string, Texture>()
 
@@ -179,7 +200,7 @@ export class Renderer {
   private videoTextureCache = new Map<string, Texture>()
 
   // --- Auto-Batching State ---
-  private readonly _batchMaxSize = 30000
+  private readonly _batchMaxSize = 1000
   private _batchMat0!: Float32Array
   private _batchMat1!: Float32Array
   private _batchMat2!: Float32Array
@@ -709,7 +730,7 @@ export class Renderer {
     const geo = this._instancedGeo;
     geo.instancedCount = this._batchCount;
 
-    // OGL의 needsUpdate는 attr.data 전체(최대 30000개분)를 bufferSubData로 업로드합니다.
+    // OGL의 needsUpdate는 attr.data 전체(최대 1000개분)를 bufferSubData로 업로드합니다.
     // bufferSubData의 srcOffset, length 인자로 실제 batchCount 범위만 GPU에 전송합니다.
     const n = this._batchCount
     const uploadSubData = (attr: any, data: Float32Array, stride: number) => {
@@ -885,6 +906,8 @@ export class Renderer {
       if (shared) {
         entry = shared
         this.textCache.set(id, entry)
+        const refCount = this.textContentRefCount.get(contentKey) || 0
+        this.textContentRefCount.set(contentKey, refCount + 1)
         obj._dirtyTexture = false
         obj._textureIdleCount = 0
         obj._textureThrottleCount = 0
@@ -895,8 +918,10 @@ export class Renderer {
         const texture = new Texture(this.gl, { image: canvas, generateMipmaps: false })
         const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program: this.textureProgram })
         entry = { texture, canvas, ctx, lastText: '', mesh }
+          ; (entry as any)._contentKey = contentKey
         this.textCache.set(id, entry)
         this.textContentCache.set(contentKey, entry)
+        this.textContentRefCount.set(contentKey, 1)
       }
     }
 
@@ -904,7 +929,19 @@ export class Renderer {
       // 스타일이 변경된 경우 기존 contentKey로의 공유를 무효화하고 새 entry 생성
       const prevContentKey = (entry as any)._contentKey as string | undefined
       if (prevContentKey && prevContentKey !== contentKey) {
-        // 이 entry를 다른 객체도 공유 중일 수 있으므로 새 entry를 만들어 교체
+        // 이전 캐시 참조 해제
+        const prevCount = this.textContentRefCount.get(prevContentKey) || 0
+        if (prevCount <= 1) {
+          this.textContentRefCount.delete(prevContentKey)
+          this.textContentCache.delete(prevContentKey)
+          if (entry.texture && (entry.texture as any).delete) {
+            ; (entry.texture as any).delete()
+          }
+        } else {
+          this.textContentRefCount.set(prevContentKey, prevCount - 1)
+        }
+
+        // 이 entry를 다른 객체도 공유 중일 수 있으므로(ref count > 1) 항상 새 entry를 만들어 교체
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')!
         const texture = new Texture(this.gl, { image: canvas, generateMipmaps: false })
@@ -912,10 +949,17 @@ export class Renderer {
         entry = { texture, canvas, ctx, lastText: '', mesh }
         this.textCache.set(id, entry)
       }
+
       ; (entry as any)._contentKey = contentKey
       this._renderTextToCanvas(entry, rawText, style, baseFontSize, maxW, maxH, (obj as any)._transitionProgress ?? 1)
-      // content 캐시도 최신화
+
+      // content 캐시 신규 등록 또는 업데이트
       this.textContentCache.set(contentKey, entry)
+      if (prevContentKey !== contentKey) {
+        // 새로 생성되었거나 키가 바뀐 경우 ref count 증가
+        const refCount = this.textContentRefCount.get(contentKey) || 0
+        this.textContentRefCount.set(contentKey, refCount + 1)
+      }
       obj._dirtyTexture = false
       obj._textureIdleCount = 0
       obj._textureThrottleCount = 0  // 렌더 후 양쪽 리셋

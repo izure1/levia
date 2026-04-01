@@ -23,6 +23,13 @@ import type {
   Vec3,
 } from './types.js'
 
+// updateMatrixWorld에서 매 프레임 발생하는 OglVec3 생성 방지용 전역 상수 및 임시 변수
+const VEC3_X = new OglVec3(1, 0, 0)
+const VEC3_Y = new OglVec3(0, 1, 0)
+const VEC3_Z = new OglVec3(0, 0, 1)
+const _tmpVec3 = new OglVec3(0, 0, 0)
+
+
 function makeVec3(partial?: Partial<Vec3>): Vec3 {
   return {
     x: partial?.x ?? 0,
@@ -323,11 +330,13 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
     // 1. 자신의 로컬 매트릭스 갱신 (Z -> Y -> X 순서로 회전)
     this._localMatrix.identity()
     // Lve4의 관행(+Z가 앞)을 OpenGL 호환(-Z가 앞)으로 동기화하기 위해 -pos.z 적용
-    this._localMatrix.translate(new OglVec3(pos.x, pos.y, -pos.z))
-    if (rot.z) this._localMatrix.rotate(rot.z * Math.PI / 180, new OglVec3(0, 0, 1))
-    if (rot.y) this._localMatrix.rotate(rot.y * Math.PI / 180, new OglVec3(0, 1, 0))
-    if (rot.x) this._localMatrix.rotate(rot.x * Math.PI / 180, new OglVec3(1, 0, 0))
-    this._localMatrix.scale(new OglVec3(scale.x, scale.y, scale.z))
+    _tmpVec3.set(pos.x, pos.y, -pos.z)
+    this._localMatrix.translate(_tmpVec3)
+    if (rot.z) this._localMatrix.rotate(rot.z * Math.PI / 180, VEC3_Z)
+    if (rot.y) this._localMatrix.rotate(rot.y * Math.PI / 180, VEC3_Y)
+    if (rot.x) this._localMatrix.rotate(rot.x * Math.PI / 180, VEC3_X)
+    _tmpVec3.set(scale.x, scale.y, scale.z)
+    this._localMatrix.scale(_tmpVec3)
 
     // 2. 부모가 존재할 경우 월드 매트릭스 상속 계산 (world = parent.world * local)
     if (this.parent) {
