@@ -77,11 +77,26 @@ function makeTrackedProxy<T extends object>(
   target: T,
   emitter: EventEmitter,
   eventName: string,
+  delegatedKeys?: string[],
 ): T {
   return new Proxy(target, {
+    get(obj, prop) {
+      // 위임 키이면 오버라이드된 위임 메서드에서 값을 읽습니다.
+      if (typeof prop === 'string' && delegatedKeys?.includes(prop)) {
+        return (emitter as any)._getDelegatedAttribute(prop)
+      }
+      return (obj as any)[prop]
+    },
     set(obj, prop, value) {
-      const prev = (obj as any)[prop]
-        ; (obj as any)[prop] = value
+      let prev
+      if (typeof prop === 'string' && delegatedKeys?.includes(prop)) {
+        // 위임 키이면 오버라이드된 위임 메서드에 처리를 맡깁니다.
+        prev = (emitter as any)._getDelegatedAttribute(prop)
+          ; (emitter as any)._setDelegatedAttribute(prop, value)
+      } else {
+        prev = (obj as any)[prop]
+          ; (obj as any)[prop] = value
+      }
       if (prev !== value) {
         emitter.emit(eventName, String(prop), value, prev)
       }
@@ -110,14 +125,27 @@ function makeVec3Proxy(
   })
 }
 
-export abstract class LveObject extends EventEmitter<LveObjectEvents> {
-  readonly attribute: Attribute
+export abstract class LveObject<T extends Record<string, any> = Record<string, any>> extends EventEmitter<LveObjectEvents> {
+  readonly attribute: Attribute & T
   readonly dataset: Dataset
   readonly style: Style
   readonly transform: Transform
 
   /** matter-js 바디 참조 (PhysicsEngine에서 설정) */
   _body: Matter.Body | null = null
+
+  /**
+   * attribute Proxy의 위임 키에 대한 값을 가져옵니다. (하위 클래스에서 재정의)
+   */
+  protected _getDelegatedAttribute(key: string): any {
+    return undefined
+  }
+
+  /**
+   * attribute Proxy의 위임 키에 대한 값을 설정합니다. (하위 클래스에서 재정의)
+   */
+  protected _setDelegatedAttribute(key: string, value: any): void {
+  }
 
   /**
    * Renderer가 매 프레임 기록하는 실제 렌더 크기 (월드 좌표 기준, scale 포함, perspectiveScale 제외)
@@ -170,15 +198,14 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
   /** 부모의 반영이 끝난 최종 월드 매트릭스 */
   _worldMatrix: Mat4 = new Mat4()
 
-  constructor(type: string, options?: LveObjectOptions) {
+  constructor(type: string, options?: LveObjectOptions<T>, delegatedKeys?: string[]) {
     super()
 
-    const rawAttribute: Attribute = {
+    const rawAttribute = {
       type,
       id: uuidv4(),
       name: options?.attribute?.name ?? '',
       className: options?.attribute?.className ?? '',
-      text: options?.attribute?.text,
       physics: options?.attribute?.physics ?? null,
       density: options?.attribute?.density,
       friction: options?.attribute?.friction,
@@ -188,7 +215,8 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
       collisionGroup: options?.attribute?.collisionGroup,
       collisionMask: options?.attribute?.collisionMask,
       collisionCategory: options?.attribute?.collisionCategory,
-    }
+      ...(options?.attribute as any),
+    } as Attribute & T
 
     const rawDataset = Object.assign({}, options?.dataset)
     const rawStyle = makeStyle(options?.style)
@@ -205,7 +233,7 @@ export abstract class LveObject extends EventEmitter<LveObjectEvents> {
     }
 
     // Proxy로 감싸서 변경 감지
-    this.attribute = makeTrackedProxy(rawAttribute, this, 'attrmodified')
+    this.attribute = makeTrackedProxy(rawAttribute, this, 'attrmodified', delegatedKeys)
     this.dataset = makeTrackedProxy(rawDataset, this, 'datamodified')
     this.style = makeTrackedProxy(rawStyle, this, 'cssmodified')
     this.transform = {

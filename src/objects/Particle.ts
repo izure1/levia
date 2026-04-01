@@ -4,7 +4,11 @@ import type { ParticleClip, ParticleManager } from '../ParticleManager.js'
 import type { PhysicsEngine } from '../PhysicsEngine.js'
 import Matter from 'matter-js'
 
-export interface ParticleOptions extends LveObjectOptions {
+export interface ParticleAttribute {
+  src?: string
+}
+
+export interface ParticleOptions extends LveObjectOptions<ParticleAttribute> {
   /**
    * true이면 matter-js 기반 물리를 각 파티클 인스턴스에 적용합니다.
    * false(기본)이면 내부 velocity 시뮬레이션을 사용합니다.
@@ -45,7 +49,7 @@ export interface ParticleInstance {
 
 const GRAVITY = 0.00015 // px/ms² (내부 시뮬레이션용 중력 가속도)
 
-export class Particle extends LveObject {
+export class Particle extends LveObject<ParticleAttribute> {
   /** strict 모드 여부 */
   readonly strict: boolean
 

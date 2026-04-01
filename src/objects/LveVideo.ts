@@ -3,7 +3,37 @@ import type { LveObjectOptions } from '../types.js'
 import type { VideoManager } from '../VideoManager.js'
 import type { VideoClip } from '../VideoManager.js'
 
-export class LveVideo extends LveObject {
+export interface VideoAttribute {
+  currentTime?: number
+  playbackRate?: number
+  volume?: number
+  src?: string
+}
+
+const DELEGATED_GETTERS: Record<string, (self: LveVideo) => any> = {
+  currentTime: (self) => self._videoElement?.currentTime ?? 0,
+  playbackRate: (self) => self._videoElement?.playbackRate ?? 1.0,
+  volume: (self) => self._videoElement?.volume ?? 1.0,
+}
+
+const DELEGATED_SETTERS: Record<string, (self: LveVideo, value: any) => void> = {
+  currentTime: (self, value: number) => {
+    self._needsSeekToStart = false
+    if (self._videoElement) {
+      self._videoElement.currentTime = value
+    } else {
+      self._pendingSeek = value
+    }
+  },
+  playbackRate: (self, value: number) => {
+    if (self._videoElement) self._videoElement.playbackRate = value
+  },
+  volume: (self, value: number) => {
+    if (self._videoElement) self._videoElement.volume = Math.max(0, Math.min(1, value))
+  },
+}
+
+export class LveVideo extends LveObject<VideoAttribute> {
   /** 연결된 VideoManager */
   private _manager: VideoManager | null = null
 
@@ -31,8 +61,8 @@ export class LveVideo extends LveObject {
   /** currentTime setter에서 _videoElement가 null일 때 대기 중인 seek 값 (Renderer에서 적용 후 null로 리셋) */
   _pendingSeek: number | null = null
 
-  constructor(options?: LveObjectOptions) {
-    super('video', options)
+  constructor(options?: LveObjectOptions<VideoAttribute>) {
+    super('video', options, Object.keys(DELEGATED_GETTERS))
   }
 
   /**
@@ -109,42 +139,18 @@ export class LveVideo extends LveObject {
     this.emit('ended')
   }
 
-  // ==== 재생 속성 ====
-
-  /** 비디오 스크롤 위치 (초) */
-  get currentTime(): number {
-    return this._videoElement ? this._videoElement.currentTime : 0
+  protected _getDelegatedAttribute(key: string): any {
+    const handler = DELEGATED_GETTERS[key]
+    if (handler) return handler(this)
+    return super._getDelegatedAttribute(key)
   }
 
-  set currentTime(value: number) {
-    // 사용자 명시적 seek는 clip.start보다 항상 우선
-    this._needsSeekToStart = false
-    if (this._videoElement) {
-      this._videoElement.currentTime = value
+  protected _setDelegatedAttribute(key: string, value: any): void {
+    const handler = DELEGATED_SETTERS[key]
+    if (handler) {
+      handler(this, value)
     } else {
-      this._pendingSeek = value
-    }
-  }
-
-  /** 재생 속도 배속 */
-  get playbackRate(): number {
-    return this._videoElement ? this._videoElement.playbackRate : 1.0
-  }
-
-  set playbackRate(value: number) {
-    if (this._videoElement) {
-      this._videoElement.playbackRate = value
-    }
-  }
-
-  /** 볼륨 크기 (0.0 ~ 1.0) */
-  get volume(): number {
-    return this._videoElement ? this._videoElement.volume : 1.0
-  }
-
-  set volume(value: number) {
-    if (this._videoElement) {
-      this._videoElement.volume = Math.max(0, Math.min(1, value))
+      super._setDelegatedAttribute(key, value)
     }
   }
 }

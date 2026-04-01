@@ -2,7 +2,30 @@ import { LveObject } from '../LveObject.js'
 import type { LveObjectOptions } from '../types.js'
 import type { SpriteClip, SpriteManager } from '../SpriteManager.js'
 
-export class Sprite extends LveObject {
+export interface SpriteAttribute {
+  currentTime?: number
+  playbackRate?: number
+  src?: string
+}
+
+const DELEGATED_GETTERS: Record<string, (self: Sprite) => any> = {
+  currentTime: (self) => self._clip ? Math.max(0, self._currentFrame - self._clip.start) : 0,
+  playbackRate: (self) => self._playbackRate ?? (self._clip ? self._clip.frameRate : 0),
+}
+
+const DELEGATED_SETTERS: Record<string, (self: Sprite, value: any) => void> = {
+  currentTime: (self, value: number) => {
+    if (!self._clip) return
+    self._currentFrame = self._clip.start + Math.floor(value)
+    if (self._currentFrame >= self._clip.end) self._currentFrame = self._clip.end - 1
+    if (self._currentFrame < self._clip.start) self._currentFrame = self._clip.start
+  },
+  playbackRate: (self, value: number) => {
+    self._playbackRate = value
+  },
+}
+
+export class Sprite extends LveObject<SpriteAttribute> {
   /** 연결된 SpriteManager */
   private _manager: SpriteManager | null = null
 
@@ -13,7 +36,7 @@ export class Sprite extends LveObject {
   _clip: SpriteClip | null = null
 
   /** 커스텀 재생 속도 (fps). undefined면 clip의 frameRate 사용 */
-  private _playbackRate?: number
+  _playbackRate?: number
 
   /** 현재 프레임 인덱스 (clip.start 기준 절대 인덱스) */
   _currentFrame: number = 0
@@ -27,8 +50,8 @@ export class Sprite extends LveObject {
   /** 일시정지 여부 */
   _paused: boolean = false
 
-  constructor(options?: LveObjectOptions) {
-    super('sprite', options)
+  constructor(options?: LveObjectOptions<SpriteAttribute>) {
+    super('sprite', options, Object.keys(DELEGATED_GETTERS))
   }
 
   /**
@@ -119,40 +142,18 @@ export class Sprite extends LveObject {
     }
   }
 
-  // ==== 재생 속성 ====
-
-  /** 프레임 현재 위치 (0부터 시작) */
-  get currentTime(): number {
-    return this._clip ? Math.max(0, this._currentFrame - this._clip.start) : 0
+  protected _getDelegatedAttribute(key: string): any {
+    const handler = DELEGATED_GETTERS[key]
+    if (handler) return handler(this)
+    return super._getDelegatedAttribute(key)
   }
 
-  set currentTime(value: number) {
-    if (this._clip) {
-      this._currentFrame = this._clip.start + Math.floor(value)
-      if (this._currentFrame >= this._clip.end) {
-        this._currentFrame = this._clip.end - 1
-      }
-      if (this._currentFrame < this._clip.start) {
-        this._currentFrame = this._clip.start
-      }
+  protected _setDelegatedAttribute(key: string, value: any): void {
+    const handler = DELEGATED_SETTERS[key]
+    if (handler) {
+      handler(this, value)
+    } else {
+      super._setDelegatedAttribute(key, value)
     }
-  }
-
-  /** 초당 재생 속도 (fps) */
-  get playbackRate(): number {
-    return this._playbackRate ?? (this._clip ? this._clip.frameRate : 0)
-  }
-
-  set playbackRate(value: number) {
-    this._playbackRate = value
-  }
-
-  /** 볼륨 (스프라이트에서는 무시됨) */
-  get volume(): number {
-    return 0
-  }
-
-  set volume(_value: number) {
-    // 무시됨
   }
 }

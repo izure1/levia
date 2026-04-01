@@ -8,7 +8,6 @@ export interface Attribute {
   id: string
   name: string
   className: string
-  text?: string
   physics?: 'dynamic' | 'static' | null
   density?: number
   friction?: number
@@ -85,8 +84,8 @@ export interface Transform {
 // Object Init Options
 // ============================================================
 
-export interface LveObjectOptions {
-  attribute?: Partial<Omit<Attribute, 'type' | 'id'>>
+export interface LveObjectOptions<T extends Record<string, any> = Record<string, any>> {
+  attribute?: Partial<Omit<Attribute, 'type' | 'id'> & T>
   dataset?: Dataset
   style?: Partial<Style>
   transform?: {

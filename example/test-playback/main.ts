@@ -58,7 +58,7 @@ const sprRate = document.getElementById('spr-rate') as HTMLInputElement
 const sprRateVal = document.getElementById('spr-rate-val')!
 sprRate?.addEventListener('input', () => {
   const rate = parseFloat(sprRate.value)
-  spr.playbackRate = rate
+  spr.attribute.playbackRate = rate
   sprRateVal.textContent = String(rate)
 })
 
@@ -66,7 +66,7 @@ const vidRate = document.getElementById('vid-rate') as HTMLInputElement
 const vidRateVal = document.getElementById('vid-rate-val')!
 vidRate?.addEventListener('input', () => {
   const rate = parseFloat(vidRate.value)
-  vid.playbackRate = rate
+  vid.attribute.playbackRate = rate
   vidRateVal.textContent = rate.toFixed(1)
 })
 
@@ -74,16 +74,16 @@ const vidVol = document.getElementById('vid-vol') as HTMLInputElement
 const vidVolVal = document.getElementById('vid-vol-val')!
 vidVol?.addEventListener('input', () => {
   const vol = parseFloat(vidVol.value)
-  vid.volume = vol
+  vid.attribute.volume = vol
   vidVolVal.textContent = vol.toFixed(1)
 })
 
 document.getElementById('btn-spr-seek')?.addEventListener('click', () => {
-  spr.currentTime = 0
+  spr.attribute.currentTime = 0
 })
 
 document.getElementById('btn-vid-seek')?.addEventListener('click', () => {
-  vid.currentTime = 5
+  vid.attribute.currentTime = 5
 })
 
 world.start()
