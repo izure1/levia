@@ -4,6 +4,11 @@ const canvas = document.getElementById('canvas') as HTMLCanvasElement
 const world = new World(canvas)
 const camera = world.createCamera()
 
+await world.loader.load({
+  'img': '../asset/image/background.jpg',
+  'vid': '../asset/video/sample.mp4',
+})
+
 world.camera = camera
 
 // 1. 단일 픽셀 반경 측정
@@ -41,6 +46,7 @@ world.createRectangle({
     color: '#4d4dff',
     borderRadius: '50% 10',
     boxShadowColor: '#4d4dff',
+    boxShadowSpread: 20,
     boxShadowBlur: 20
   },
   transform: { position: { x: 200, y: 150, z: 0 } }
@@ -63,5 +69,44 @@ world.createRectangle({
   },
   transform: { position: { x: 0, y: -100, z: 0 } }
 })
+
+// 5. 이미지 텍스처 곡률 검증
+const testImg = world.createImage({
+  style: {
+    width: 150,
+    height: 150,
+    borderRadius: '20 50%',
+    boxShadowColor: 'rgba(255, 104, 104, 0.8)',
+    boxShadowSpread: 10,
+    boxShadowBlur: 10,
+    borderWidth: 2,
+    borderColor: '#00ffff',
+  },
+  transform: { position: { x: -200, y: -250, z: 0 } }
+})
+testImg.play('img')
+
+// 6. 비디오 텍스처 곡률 검증
+world.videoManager.create({
+  name: 'sample_vid',
+  src: 'vid',
+  loop: true,
+  start: 0,
+})
+
+const testVid = world.createVideo({
+  style: {
+    width: 150,
+    height: 150,
+    borderRadius: '25%',
+    boxShadowColor: 'rgba(255, 104, 104, 0.8)',
+    boxShadowSpread: 10,
+    boxShadowBlur: 10,
+    borderWidth: 2,
+    borderColor: '#00ffff',
+  },
+  transform: { position: { x: 0, y: -250, z: 0 } }
+})
+testVid.play('sample_vid')
 
 world.start()

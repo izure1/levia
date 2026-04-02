@@ -243,6 +243,7 @@ export class Renderer {
   private _currentBlendMode: string = ''
   private _instancedGeo!: Geometry
   private _instancedMesh!: Mesh
+  private _batchBorderRadius!: Float32Array
 
   // --- Z-Sort Cache (Dirty-Flag) ---
   /** 정렬 순서가 캐시된 객체 배열 (카메라 거리 기준 내림차순) */
@@ -269,6 +270,7 @@ export class Renderer {
     this._batchMat3 = new Float32Array(N * 4)
     this._batchOpacityFlip = new Float32Array(N * 2)
     this._batchUVParams = new Float32Array(N * 4)
+    this._batchBorderRadius = new Float32Array(N * 4)
 
     this.ogl = new OGLRenderer({
       canvas,
@@ -398,6 +400,7 @@ export class Renderer {
       instanceMat3: { instanced: 1, size: 4, data: this._batchMat3 },
       instanceOpacityFlip: { instanced: 1, size: 2, data: this._batchOpacityFlip },
       instanceUVParams: { instanced: 1, size: 4, data: this._batchUVParams },
+      instanceBorderRadius: { instanced: 1, size: 4, data: this._batchBorderRadius },
     });
     this._instancedMesh = new Mesh(gl, { geometry: this._instancedGeo, program: this.instancedProgram });
 
@@ -802,6 +805,7 @@ export class Renderer {
     uploadSubData(geo.attributes.instanceMat3, this._batchMat3, 4)
     uploadSubData(geo.attributes.instanceOpacityFlip, this._batchOpacityFlip, 2)
     uploadSubData(geo.attributes.instanceUVParams, this._batchUVParams, 4)
+    uploadSubData(geo.attributes.instanceBorderRadius, this._batchBorderRadius, 4)
 
     this._instancedMesh.draw({ camera: this.camera });
 
@@ -838,7 +842,8 @@ export class Renderer {
     flipY = false,
     uvOffset: [number, number] = [0, 0],
     uvScale: [number, number] = [1, 1],
-    zOffset: number = 0
+    zOffset: number = 0,
+    borderRadius: [number, number, number, number] | null = null
   ) {
     const blendMode = this._activeObj?.style?.blendMode ?? 'source-over';
 
@@ -866,6 +871,18 @@ export class Renderer {
     this._batchUVParams[idx4 + 1] = uvOffset[1];
     this._batchUVParams[idx4 + 2] = uvScale[0];
     this._batchUVParams[idx4 + 3] = uvScale[1];
+
+    if (borderRadius) {
+      this._batchBorderRadius[idx4] = borderRadius[1];     // TR
+      this._batchBorderRadius[idx4 + 1] = borderRadius[2]; // BR
+      this._batchBorderRadius[idx4 + 2] = borderRadius[0]; // TL
+      this._batchBorderRadius[idx4 + 3] = borderRadius[3]; // BL
+    } else {
+      this._batchBorderRadius[idx4] = 0;
+      this._batchBorderRadius[idx4 + 1] = 0;
+      this._batchBorderRadius[idx4 + 2] = 0;
+      this._batchBorderRadius[idx4 + 3] = 0;
+    }
 
     this._batchCount++;
   }
@@ -914,17 +931,8 @@ export class Renderer {
     this.shadowMesh.draw({ camera: this.camera })
   }
 
-  // ─── Rectangle ──────────────────────────────────────────────────────────
-
-  private _drawRectangle(obj: LveObject, x: number, y: number, w: number, h: number) {
+  private _drawRectBorders(obj: LveObject, x: number, y: number, w: number, h: number, targetOpacity: number) {
     const { style } = obj
-    if (!style.color && !style.gradient && !style.borderColor && !style.outlineColor) return
-
-    const targetOpacity = style.opacity * obj._fadeOpacity
-    const baseRadius = parseBorderRadius(style.borderRadius, w, h, 0)
-
-    this._drawShadow(obj, x, y, w, h, undefined, undefined, false, baseRadius)
-
     // outline 먼저 (border 바깥)
     if (style.outlineColor && (style.outlineWidth ?? 0) > 0) {
       const bw = (style.borderWidth ?? 0)
@@ -939,6 +947,20 @@ export class Renderer {
       const rBorder = parseBorderRadius(style.borderRadius, w, h, bw)
       this._drawColorMesh(this.colorProgram, x, y, w + bw * 2, h + bw * 2, style.borderColor, targetOpacity, w, h, rBorder)
     }
+  }
+
+  // ─── Rectangle ──────────────────────────────────────────────────────────
+
+  private _drawRectangle(obj: LveObject, x: number, y: number, w: number, h: number) {
+    const { style } = obj
+    if (!style.color && !style.gradient && !style.borderColor && !style.outlineColor) return
+
+    const targetOpacity = style.opacity * obj._fadeOpacity
+    const baseRadius = parseBorderRadius(style.borderRadius, w, h, 0)
+
+    this._drawShadow(obj, x, y, w, h, undefined, undefined, false, baseRadius)
+
+    this._drawRectBorders(obj, x, y, w, h, targetOpacity)
 
     // 본체 color
     if (style.color) {
@@ -1378,10 +1400,12 @@ export class Renderer {
         h: drawH / perspectiveScale,
       }
 
-      this._drawShadow(obj, x, y, drawW, drawH)
+      const baseRadius = parseBorderRadius(obj.style.borderRadius, drawW, drawH, 0)
+      this._drawShadow(obj, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
+      this._drawRectBorders(obj, x, y, drawW, drawH, obj.style.opacity * obj._fadeOpacity)
 
       const texture = this._getOrCreateAssetTexture(assetSrc, asset)
-      this._drawTextureMesh(texture, x, y, drawW, drawH, drawOpacity, false)
+      this._drawTextureMesh(texture, x, y, drawW, drawH, drawOpacity, false, [0, 0], [1, 1], 0, baseRadius)
     }
 
     // 트랜지션 중이면 이전 이미지와 새 이미지를 모두 그린다
@@ -1460,7 +1484,9 @@ export class Renderer {
       h: drawH / perspectiveScale,
     }
 
-    this._drawShadow(obj, x, y, drawW, drawH)
+    const baseRadius = parseBorderRadius(obj.style.borderRadius, drawW, drawH, 0)
+    this._drawShadow(obj, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
+    this._drawRectBorders(obj, x, y, drawW, drawH, obj.style.opacity * obj._fadeOpacity)
 
     // 비디오 텍스처는 매 프레임 업데이트
     let tex = this.videoTextureCache.get(src!)
@@ -1471,7 +1497,7 @@ export class Renderer {
     tex.image = asset
     tex.needsUpdate = true
 
-    this._drawTextureMesh(tex, x, y, drawW, drawH, obj.style.opacity * obj._fadeOpacity)
+    this._drawTextureMesh(tex, x, y, drawW, drawH, obj.style.opacity * obj._fadeOpacity, false, [0, 0], [1, 1], 0, baseRadius)
   }
 
   // ─── Sprite ─────────────────────────────────────────────────────────────

@@ -17,12 +17,18 @@ export const instancedVertex = /* glsl */ `
   
   // x: uvOffsetX, y: uvOffsetY, z: uvScaleX, w: uvScaleY
   attribute vec4 instanceUVParams;
+  
+  // x: TR, y: BR, z: TL, w: BL
+  attribute vec4 instanceBorderRadius;
 
   uniform mat4 uViewMatrix;
   uniform mat4 uProjectionMatrix;
 
   varying vec2 vUV;
   varying float vOpacity;
+  varying vec2 vSize;
+  varying vec4 vBorderRadius;
+  varying vec2 vLocalUV;
 
   void main() {
     float flipY = instanceOpacityFlip.y;
@@ -33,7 +39,13 @@ export const instancedVertex = /* glsl */ `
     
     // UV Offset & Scale
     vUV = finalUV * instanceUVParams.zw + instanceUVParams.xy;
+    vLocalUV = uv;
     vOpacity = instanceOpacityFlip.x;
+    vBorderRadius = instanceBorderRadius;
+    
+    float w = length(instanceMat0.xyz);
+    float h = length(instanceMat1.xyz);
+    vSize = vec2(w, h);
     
     mat4 modelMat = mat4(
       instanceMat0,
@@ -52,8 +64,25 @@ export const instancedFragment = /* glsl */ `
   uniform sampler2D uTexture;
   varying vec2 vUV;
   varying float vOpacity;
+  varying vec2 vSize;
+  varying vec4 vBorderRadius;
+  varying vec2 vLocalUV;
+
+  float sdRoundedBox(vec2 p, vec2 b, vec4 r) {
+    r.xy = (p.x > 0.0) ? r.xy : r.zw;
+    r.x  = (p.y > 0.0) ? r.x  : r.y;
+    vec2 q = abs(p) - b + r.x;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
+  }
 
   void main() {
+    float maxRad = max(max(vBorderRadius.x, vBorderRadius.y), max(vBorderRadius.z, vBorderRadius.w));
+    if (maxRad > 0.0) {
+      vec2 p = (vLocalUV - 0.5) * vSize;
+      float d = sdRoundedBox(p, vSize * 0.5, vBorderRadius);
+      if (d > 0.0) discard;
+    }
+
     vec4 color = texture2D(uTexture, vUV);
     gl_FragColor = vec4(color.rgb, color.a * vOpacity);
   }
