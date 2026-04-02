@@ -79,6 +79,16 @@ export class PhysicsEngine {
     const { x, y } = obj.transform.position
     const attr = obj.attribute
 
+    // style.margin을 파싱하여 물리 바디 크기에 반영
+    const m = parseMargin(obj.style.margin)
+    const bw = (obj.style.borderWidth ?? 0) * 2
+    
+    // w, h는 이미 scale이 적용된 렌더링 크기 또는 style 크기가 들어옵니다.
+    const baseW = w || 32
+    const baseH = h || 32
+    const physW = baseW + m.left + m.right + bw
+    const physH = baseH + m.top + m.bottom + bw
+
     const options: Matter.IBodyDefinition = {
       isStatic: attr.physics === 'static',
       density: attr.density ?? 0.001,
@@ -90,21 +100,36 @@ export class PhysicsEngine {
         mask: attr.collisionMask ?? 0xFFFFFFFF,
         category: attr.collisionCategory ?? 0x0001,
       },
+      angle: (obj.transform.rotation.z || 0) * Math.PI / 180,
     }
 
-    // style.margin을 파싱하여 물리 바디 크기에 반영
-    const m = parseMargin(obj.style.margin)
-    const bw = (obj.style.borderWidth ?? 0) * 2
-    const physW = (w || 32) + m.left + m.right + bw
-    const physH = (h || 32) + m.top + m.bottom + bw
+    // pivot 오프셋 계산 (Renderer.ts와 동일한 맵핑: pivot (0,0) = top-left -> center moves right and down)
+    const pivotOffsetX = (0.5 - obj.transform.pivot.x) * baseW
+    const pivotOffsetY = -(0.5 - obj.transform.pivot.y) * baseH
+
+    // margin 비대칭 교정 (예: left 20이면 바디 박스가 왼쪽으로 확장되어 중심이 왼쪽으로 이동)
+    // Y축은 Renderer 기준 위쪽이 +Y이므로 top margin이 늘어나면 중심이 위로 이동
+    const marginOffsetX = (m.right - m.left) / 2
+    const marginOffsetY = (m.top - m.bottom) / 2
+
+    const localCenterX = pivotOffsetX + marginOffsetX
+    const localCenterY = pivotOffsetY + marginOffsetY
+
+    // 회전을 적용하여 월드 위치 기준 바디 중심점 계산
+    const angle = options.angle as number
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    
+    const worldCenterX = x + localCenterX * cos - localCenterY * sin
+    const worldCenterY = y + localCenterX * sin + localCenterY * cos
 
     // 박스 또는 원으로 바디 생성 (type 기반)
     let body: Matter.Body
     if (obj.attribute.type === 'ellipse') {
       const r = Math.min(physW, physH) / 2
-      body = Matter.Bodies.circle(x, y, r, options as any)
+      body = Matter.Bodies.circle(worldCenterX, worldCenterY, r, options as any)
     } else {
-      body = Matter.Bodies.rectangle(x, y, physW, physH, options as any)
+      body = Matter.Bodies.rectangle(worldCenterX, worldCenterY, physW, physH, options as any)
     }
 
     // IBodyDefinition에 없는 필드는 직접 할당
@@ -285,8 +310,44 @@ export class PhysicsEngine {
     for (const [id, body] of this.bodyMap) {
       const obj = this.objMap.get(id)
       if (!obj) continue
-      obj.transform.position.x = body.position.x
-      obj.transform.position.y = body.position.y
+
+      // 크기와 마진 구하기
+      // PhysicsEngine에서 캐싱된 _renderedSize 또는 style 속성 활용
+      const lastSize = this.lastSizeMap.get(id)
+      // syncObjectSizes가 호출되기 전이면 _renderedSize의 값을 근사치로 가져옵니다.
+      let baseW = lastSize?.w ?? obj._renderedSize?.w ?? obj.style.width
+      let baseH = lastSize?.h ?? obj._renderedSize?.h ?? obj.style.height
+      // sizeMap에 캐시된 값이 없으면 (생성 직후 등) scale을 곱해야 할 수도 있으나,
+      // lastSizeMap은 syncObjectSizes에서 세팅되며 사실상 w, h입니다.
+      if (!lastSize) {
+        baseW = (baseW ?? 32) * obj.transform.scale.x
+        baseH = (baseH ?? 32) * obj.transform.scale.y
+      } else {
+        baseW = baseW ?? 32
+        baseH = baseH ?? 32
+      }
+
+      const m = parseMargin(obj.style.margin)
+
+      // 로컬 오프셋 재계산
+      const pivotOffsetX = (0.5 - obj.transform.pivot.x) * baseW
+      const pivotOffsetY = -(0.5 - obj.transform.pivot.y) * baseH
+      const marginOffsetX = (m.right - m.left) / 2
+      const marginOffsetY = (m.top - m.bottom) / 2
+      
+      const localCenterX = pivotOffsetX + marginOffsetX
+      const localCenterY = pivotOffsetY + marginOffsetY
+
+      // 현재 바디의 각도를 기반으로 오프셋 회전
+      const cos = Math.cos(body.angle)
+      const sin = Math.sin(body.angle)
+      
+      const rotatedOffsetX = localCenterX * cos - localCenterY * sin
+      const rotatedOffsetY = localCenterX * sin + localCenterY * cos
+
+      // pivot (pos) = 바디 중심 - 회전된 오프셋
+      obj.transform.position.x = body.position.x - rotatedOffsetX
+      obj.transform.position.y = body.position.y - rotatedOffsetY
       obj.transform.rotation.z = (body.angle * 180) / Math.PI
     }
   }
