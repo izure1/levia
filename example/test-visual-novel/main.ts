@@ -98,9 +98,9 @@ const dialogue = world.createText({
 world.particleManager.create({
   name: 'mouse-particle',
   src: 'star',
-  impulse: 0.15,
+  impulse: 0.1,
   rate: 1,
-  lifespan: 1000,
+  lifespan: 600,
   interval: 50,
   loop: true,
 })
