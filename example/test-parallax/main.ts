@@ -61,13 +61,13 @@ for (let i = 0; i < 25; i++) {
 
 world.createText({
   attribute: { text: 'Lve4' },
-  style: { color: '#ffffff', opacity: 0.95, fontSize: 72, fontFamily: 'Segoe UI, sans-serif', fontWeight: 'bold', textAlign: 'center' },
+  style: { color: '#ffffff', opacity: 0.95, fontSize: 72, fontFamily: 'sans-serif, Segoe UI, sans-serif', fontWeight: 'bold', textAlign: 'center' },
   transform: { position: { x: -100, y: -30, z: 200 } },
 })
 
 world.createText({
   attribute: { text: '2.5D <style fontSize="30" borderWidth="2">Parallax</style> Engine' },
-  style: { color: '#c77dff', opacity: 0.8, fontSize: 22, fontFamily: 'Segoe UI, sans-serif', borderWidth: 1, borderColor: 'rgb(255, 255, 255)', textAlign: 'center' },
+  style: { color: '#c77dff', opacity: 0.8, fontSize: 22, fontFamily: 'sans-seif, Segoe UI, sans-serif', borderWidth: 1, borderColor: 'rgb(255, 255, 255)', textAlign: 'center' },
   transform: { position: { x: -100, y: 60, z: 200 } },
 })
 

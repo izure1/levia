@@ -5,7 +5,7 @@ const world = new World({ canvas })
 const camera = world.createCamera({
   transform: {
     position: {
-      y: 300
+      y: 200
     }
   }
 })
@@ -17,7 +17,8 @@ world.setGravity({ x: 0, y: -1 })
 await world.loader.load({
   'bg': '../asset/image/background.jpg',
   'star': '../asset/image/star.png',
-  'girl_before': '../asset/image/transition_before.png'
+  'girl_before': '../asset/image/transition_before.png',
+  'coin': '../asset/image/sprite.png'
 })
 
 // 패닝(Parallax) 시 배경 가장자리의 빈 공간이 드러나지 않도록 원래 캔버스 크기보다 20% 더 크게 그립니다.
@@ -71,8 +72,6 @@ const talkBox = world.createRectangle({
   }
 })
 
-console.log(talkBox)
-
 // 3. 텍스트 추가
 const padding = 20
 const textWidth = talkBoxW - (padding * 2)
@@ -88,12 +87,54 @@ const dialogue = world.createText({
     width: textWidth,
     height: textHeight,
     zIndex: 2,
+    textShadowColor: '#000',
+    textShadowBlur: 1,
+    textShadowOffsetX: 1,
+    textShadowOffsetY: 1,
   },
   transform: {
     pivot: { x: 0, y: 1 },
     position: { x: 20, y: 0 }
   }
 })
+
+// 4. 코인 추가
+world.spriteManager.create({
+  name: 'coin',
+  src: 'coin',
+  frameWidth: 44,
+  frameHeight: 40,
+  frameRate: 10,
+  loop: true,
+  start: 0,
+  end: 10,
+})
+
+const coin = world.createSprite({
+  style: {
+    width: 32,
+  },
+  transform: {
+    position: { z: 100 }
+  }
+}).play('coin')
+
+Object.assign(coin.transform.position, camera.canvasToLocal(canvas.width - 100, 30))
+
+const coinText = world.createText({
+  attribute: { text: 'x <style fontSize="24">100</style>' },
+  style: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: 2,
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  transform: {
+    position: { z: 100 }
+  }
+}).follow(coin, { x: 55 })
 
 world.particleManager.create({
   name: 'mouse-particle',
@@ -166,26 +207,9 @@ world.createParticle({
 
 camera.addChild(talkBox)
 camera.addChild(mouseParticle)
+camera.addChild(coin)
+camera.addChild(coinText)
 talkBox.addChild(dialogue)
-
-// 창 크기가 변경될 때 비율 다시 맞추기 (선택)
-window.addEventListener('resize', () => {
-  const newW = camera.calcDepthRatio(1000, canvas.width * 1.2)
-  const newH = camera.calcDepthRatio(1000, canvas.height * 1.2)
-  const newBoxH = camera.calcDepthRatio(0, canvas.height * 0.3)
-
-  bgImage.style.width = newW
-  bgImage.style.height = newH
-
-  talkBox.style.width = newW
-  talkBox.style.height = newBoxH
-  talkBox.transform.position.y = -(newH / 2) + (newBoxH / 2)
-
-  const p = camera.calcDepthRatio(0, 40)
-  dialogue.style.width = newW - (p * 2)
-  dialogue.style.height = newBoxH - p
-  dialogue.transform.position.y = -(newH / 2) + (newBoxH / 2) - (p / 4)
-})
 
 world.on('click', () => {
   console.log(dialogue.transition(dialogText, 35))
@@ -204,7 +228,7 @@ world.on('mousemove', (obj, e) => {
   const normY = (e.offsetY / canvas.height) * 2 - 1
 
   targetCamX = normX * 100
-  targetCamY = -normY * 100
+  targetCamY = (-normY * 100) + 200
 })
 
 world.on('update', () => {

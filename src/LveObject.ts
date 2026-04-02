@@ -331,13 +331,18 @@ export abstract class LveObject<T extends Record<string, any> = Record<string, a
   }
 
   /**
-   * 객체를 월드에서 제거합니다. 물리 효과 관리와 자식 객체 제거가 함께 수행됩니다.
-   * 자신을 쫓아오던(follower) 객체들은 제거되지 않고 추적만 해제됩니다.
+   * 객체를 월드에서 제거합니다.
+   * @param options 제거 옵션. child: true이면 자식 객체도 함께 삭제, follower: true이면 자신을 따라다니는 객체도 함께 삭제 (기본값: 모두 false)
    */
-  remove(): this {
-    const childrenToDrop = Array.from(this.children)
-    for (const child of childrenToDrop) {
-      child.remove()
+  remove(options?: { follower?: boolean; child?: boolean }): this {
+    const removeChild = options?.child ?? false
+    const removeFollower = options?.follower ?? false
+
+    if (removeChild) {
+      const childrenToDrop = Array.from(this.children)
+      for (const child of childrenToDrop) {
+        child.remove(options)
+      }
     }
 
     this.removeFromParent()
@@ -345,6 +350,9 @@ export abstract class LveObject<T extends Record<string, any> = Record<string, a
     const followersToKick = Array.from(this._followers)
     for (const follower of followersToKick) {
       this.kick(follower)
+      if (removeFollower) {
+        follower.remove(options)
+      }
     }
 
     // 월드/물리엔진이 이 이벤트를 수신하여 제거 처리를 할 수 있도록 이벤트를 방출합니다.

@@ -40,7 +40,7 @@ world.on('click', (obj, e: MouseEvent) => {
     eBox.stopImmediatePropagation()
 
     // LveObject에서 완전히 삭제 (물리 엔진 바디 동시 제거)
-    box.remove()
+    box.remove({ child: true })
     console.log('Object removed')
   })
 })
