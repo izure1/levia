@@ -1530,7 +1530,14 @@ export class Renderer {
         drawW = w || asset.naturalWidth * perspectiveScale;
         drawH = h || asset.naturalHeight * perspectiveScale;
       }
-      this._drawTextureMesh(texture, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity)
+      sprite._renderedSize = {
+        w: drawW / perspectiveScale,
+        h: drawH / perspectiveScale,
+      }
+      const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0)
+      this._drawShadow(sprite, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
+      this._drawRectBorders(sprite, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity)
+      this._drawTextureMesh(texture, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity, false, [0, 0], [1, 1], 0, baseRadius)
       return
     }
 
@@ -1557,6 +1564,14 @@ export class Renderer {
       drawH = h || frameHeight * perspectiveScale;
     }
 
+    sprite._renderedSize = {
+      w: drawW / perspectiveScale,
+      h: drawH / perspectiveScale,
+    }
+    const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0)
+    this._drawShadow(sprite, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
+    this._drawRectBorders(sprite, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity)
+
     this._drawTextureMesh(
       texture,
       x, y, drawW, drawH,
@@ -1564,6 +1579,8 @@ export class Renderer {
       false,
       [uvOffsetX, uvOffsetY],
       [uvScaleX, uvScaleY],
+      0,
+      baseRadius
     )
   }
 

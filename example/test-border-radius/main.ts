@@ -7,6 +7,7 @@ const camera = world.createCamera()
 await world.loader.load({
   'img': '../asset/image/background.jpg',
   'vid': '../asset/video/sample.mp4',
+  'sprite': '../asset/image/sprite.png',
 })
 
 world.camera = camera
@@ -108,5 +109,32 @@ const testVid = world.createVideo({
   transform: { position: { x: 0, y: -250, z: 0 } }
 })
 testVid.play('sample_vid')
+
+// 7. 스프라이트 텍스처 곡률 검증
+world.spriteManager.create({
+  name: 'play',
+  src: 'sprite',
+  frameWidth: 44,
+  frameHeight: 40,
+  frameRate: 10,
+  loop: true,
+  start: 0,
+  end: 10,
+})
+
+const testSprite = world.createSprite({
+  style: {
+    width: 150,
+    height: 150,
+    borderRadius: '30 30 10 10',
+    boxShadowColor: 'rgba(255, 104, 104, 0.8)',
+    boxShadowSpread: 10,
+    boxShadowBlur: 10,
+    borderWidth: 2,
+    borderColor: '#00ffff',
+  },
+  transform: { position: { x: 200, y: -250, z: 0 } }
+})
+testSprite.play('play')
 
 world.start()
