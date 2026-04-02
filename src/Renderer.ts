@@ -255,11 +255,11 @@ export class Renderer {
   /** 마지막 정렬 시 객체 수 */
   private _lastObjCount = -1
 
-  /** 원근 투영 초점 거리. 카메라 기본 Z는 -focalLength 로 설정됩니다. */
-  readonly focalLength: number
+  private _width: number = 0;
+  private _height: number = 0;
+  private _lastFocalLength: number = -1;
 
-  constructor(canvas: HTMLCanvasElement, focalLength: number = 100) {
-    this.focalLength = focalLength
+  constructor(canvas: HTMLCanvasElement) {
 
     const N = this._batchMaxSize
     this._batchMat0 = new Float32Array(N * 4)
@@ -279,11 +279,12 @@ export class Renderer {
     })
     this.gl = this.ogl.gl
 
-    // 원근 투영 카메라: focalLength → FOV 변환
-    // fov = 2 * atan(h/2 / focalLength)
-    const fov = 2 * Math.atan(canvas.height / 2 / focalLength)
+    this._width = canvas.width;
+    this._height = canvas.height;
+
+    // 초기 카메라 투영 (render에서 갱신됨)
     this.camera = new Camera(this.gl, {
-      fov: fov * 180 / Math.PI,
+      fov: 90,
       aspect: canvas.width / canvas.height,
       near: 0.1,
       far: 100000,
@@ -312,14 +313,9 @@ export class Renderer {
 
   setSize(w: number, h: number) {
     this.ogl.setSize(w, h)
-    // 원근 카메라 aspect 재설정
-    const fov = 2 * Math.atan(h / 2 / this.focalLength)
-    this.camera.perspective({
-      fov: fov * 180 / Math.PI,
-      aspect: w / h,
-      near: 0.1,
-      far: 100000,
-    })
+    this._width = w
+    this._height = h
+    this._lastFocalLength = -1 // 다음 렌더링 시 투영 행렬 재계산 예약
   }
 
   // ─── 프로그램 초기화 ─────────────────────────────────────────────────────
@@ -478,6 +474,18 @@ export class Renderer {
       }
       this._drawText(this._noCameraText as LveObject, 0, 0, 1, timestamp)
       return
+    }
+
+    const focalLength = (activeCamera.attribute as any).focalLength ?? 100;
+    if (this._lastFocalLength !== focalLength) {
+      const fov = 2 * Math.atan(this._height / 2 / focalLength)
+      this.camera.perspective({
+        fov: fov * 180 / Math.PI,
+        aspect: this._width / this._height,
+        near: 0.1,
+        far: 100000,
+      })
+      this._lastFocalLength = focalLength
     }
 
     const camRotX = activeCamera.transform.rotation.x || 0

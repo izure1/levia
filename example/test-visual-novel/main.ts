@@ -17,12 +17,12 @@ await world.loader.load({
 const camZ = camera.transform.position.z
 
 // 배경을 Z: 0에 배치한다고 가정하고 필요한 캔버스 비율(꽉 찬 크기) 계산
-const vw = world.calcDepthRatio(camZ, 0, canvas.width)
-const vh = world.calcDepthRatio(camZ, 0, canvas.height)
+const vw = camera.calcDepthRatio(0, canvas.width)
+const vh = camera.calcDepthRatio(0, canvas.height)
 
 // 마우스를 움직이면 좌우로 5%씩 움직일 수 있도록 하기 위해 10% 만큼 더 넓게 설정
-const bgWidth = world.calcDepthRatio(camZ, 10, canvas.width)
-const bgHeight = world.calcDepthRatio(camZ, 10, canvas.height)
+const bgWidth = camera.calcDepthRatio(10, canvas.width)
+const bgHeight = camera.calcDepthRatio(10, canvas.height)
 
 // 1. 꽉 찬 이미지 배경
 const bgImage = world.createImage({
@@ -36,7 +36,7 @@ bgImage.play('bg')
 // 대사창 좌표
 const talkBoxW = 800
 const talkBoxH = 150
-const talkBoxPos = world.canvasToWorld(0, canvas.height)
+const talkBoxPos = camera.canvasToWorld(0, canvas.height)
 
 // 2. 그라디언트 대사창 Rectangle 생성
 const talkBox = world.createRectangle({
@@ -153,9 +153,9 @@ talkBox.addChild(dialogue)
 
 // 창 크기가 변경될 때 비율 다시 맞추기 (선택)
 window.addEventListener('resize', () => {
-  const newW = world.calcDepthRatio(camZ, 0, canvas.width)
-  const newH = world.calcDepthRatio(camZ, 0, canvas.height)
-  const newBoxH = world.calcDepthRatio(camZ, 0, canvas.height * 0.3)
+  const newW = camera.calcDepthRatio(0, canvas.width)
+  const newH = camera.calcDepthRatio(0, canvas.height)
+  const newBoxH = camera.calcDepthRatio(0, canvas.height * 0.3)
 
   bgImage.style.width = newW
   bgImage.style.height = newH
@@ -164,7 +164,7 @@ window.addEventListener('resize', () => {
   talkBox.style.height = newBoxH
   talkBox.transform.position.y = -(newH / 2) + (newBoxH / 2)
 
-  const p = world.calcDepthRatio(camZ, 0, 40)
+  const p = camera.calcDepthRatio(0, 40)
   dialogue.style.width = newW - (p * 2)
   dialogue.style.height = newBoxH - p
   dialogue.transform.position.y = -(newH / 2) + (newBoxH / 2) - (p / 4)
@@ -175,7 +175,7 @@ world.on('click', () => {
 })
 
 world.on('mousemove', (obj, e) => {
-  const pos = world.canvasToWorld(e.offsetX, e.offsetY)
+  const pos = camera.canvasToWorld(e.offsetX, e.offsetY)
   mouseParticle.transform.position.x = pos.x
   mouseParticle.transform.position.y = pos.y
 })

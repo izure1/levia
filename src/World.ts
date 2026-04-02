@@ -1,5 +1,5 @@
 import { Loader } from './Loader.js'
-import { Camera } from './objects/Camera.js'
+import { Camera, CameraAttribute } from './objects/Camera.js'
 import { Rectangle } from './objects/Rectangle.js'
 import { Ellipse } from './objects/Ellipse.js'
 import { Text } from './objects/Text.js'
@@ -26,13 +26,7 @@ const AXIS_Z = new OglVec3(0, 0, 1)
 export interface WorldOptions {
   /** 캔버스 엘리먼트. 지정하지 않으면 자동으로 생성합니다. */
   canvas?: HTMLCanvasElement
-  /**
-   * 원근 투영 초점 거리.
-   * 카메라 기본 Z는 `-focalLength` 로 설정됩니다.
-   * 카메라와 오브젝트 사이의 transform.position.z의 차이가 focalLength일때 1:1 스케일로 렌더링됩니다.
-   * @default 100
-   */
-  focalLength?: number
+
   /**
    * 브라우저 기본 우클릭 메뉴를 막을지 여부.
    * true로 설정해도 LveObject의 'contextmenu' 이벤트는 정상적으로 수신됩니다.
@@ -66,8 +60,7 @@ export class World extends EventEmitter<WorldEvents> {
   private _activeCamera: LveObject | null = null
   /** mouseover 상태 추적 (객체 id → boolean) */
   private _mouseOver: Set<string> = new Set()
-  /** 원근 투영 초점 거리 */
-  readonly focalLength: number
+
   /** 브라우저 기본 컨텍스트 메뉴 비활성화 여부 */
   public disableContextMenu: boolean
 
@@ -95,10 +88,9 @@ export class World extends EventEmitter<WorldEvents> {
       canvasEl = options.canvas ?? this.createCanvas()
     }
 
-    this.focalLength = options.focalLength ?? 100
     this.disableContextMenu = options.disableContextMenu ?? true
     this._canvas = canvasEl
-    this.renderer = new Renderer(canvasEl, this.focalLength)
+    this.renderer = new Renderer(canvasEl)
     this.loader = new Loader()
     this.loader.on('complete', ({ assets }) => {
       Object.assign(this._assets, assets)
@@ -220,7 +212,7 @@ export class World extends EventEmitter<WorldEvents> {
     const radY = -camRotY * Math.PI / 180
     const radZ = -camRotZ * Math.PI / 180
 
-    const focalLength = this.focalLength
+    const focalLength = activeCam ? (activeCam as Camera).attribute.focalLength ?? 100 : 100
     const result: LveObject[] = []
     const modelMat = new Mat4()
 
@@ -404,87 +396,7 @@ export class World extends EventEmitter<WorldEvents> {
     return this.loader
   }
 
-  /**
-   * 캔버스의 x, y 좌표(0 ~ width, 0 ~ height)를 현재 카메라 기준의 월드 좌표로 변환합니다.
-   * @param x 캔버스 좌측 상단을 0으로 하는 x 좌표
-   * @param y 캔버스 좌측 상단을 0으로 하는 y 좌표
-   * @param targetZ (선택) 투영하고자 하는 월드 공간의 Z 좌표. 기본값은 0 입니다.
-   */
-  canvasToWorld(x: number, y: number, targetZ: number = 0): { x: number; y: number; z: number } {
-    const canvas = this._canvas
-    if (!canvas) return { x: 0, y: 0, z: 0 }
 
-    const screenX = x - canvas.width / 2
-    const screenY = -(y - canvas.height / 2)
-
-    let camX = 0, camY = 0, camZ = 0
-    let rotX = 0, rotY = 0, rotZ = 0
-    const activeCam = this.camera
-
-    if (activeCam) {
-      camX = activeCam.transform.position.x
-      camY = activeCam.transform.position.y
-      camZ = activeCam.transform.position.z
-
-      rotX = activeCam.transform.rotation.x || 0
-      rotY = activeCam.transform.rotation.y || 0
-      rotZ = activeCam.transform.rotation.z || 0
-    }
-
-    const targetDepth = targetZ - camZ
-    const scale = targetDepth / this.focalLength
-    let dx = screenX * scale
-    let dy = screenY * scale
-    let dz = targetDepth
-
-    if (activeCam) {
-      const radZ = rotZ * Math.PI / 180
-      const radX = rotX * Math.PI / 180
-      const radY = rotY * Math.PI / 180
-
-      if (radZ !== 0) {
-        const c = Math.cos(radZ), s = Math.sin(radZ)
-        const nx = dx * c - dy * s
-        const ny = dx * s + dy * c
-        dx = nx; dy = ny
-      }
-      if (radX !== 0) {
-        const c = Math.cos(radX), s = Math.sin(radX)
-        const ny = dy * c - dz * s
-        const nz = dy * s + dz * c
-        dy = ny; dz = nz
-      }
-      if (radY !== 0) {
-        const c = Math.cos(radY), s = Math.sin(radY)
-        const nx = dx * c + dz * s
-        const nz = -dx * s + dz * c
-        dx = nx; dz = nz
-      }
-    }
-
-    return {
-      x: camX + dx,
-      y: camY + dy,
-      z: camZ + dz
-    }
-  }
-
-  /**
-   * currentZ를 현재 카메라의 Z 좌표라고 가정할 때,
-   * targetZ 깊이에 있는 대상이 화면에서 value 크기만큼 보이려면
-   * 실제 값이 얼마가 되어야 하는지 원근 비율을 수학적으로 계산해 반환합니다.
-   * @param currentZ 카메라의 Z 좌표
-   * @param targetZ 목표 Z 좌표
-   * @param value 기준 크기 (화면에 보여질 목표 크기)
-   */
-  calcDepthRatio(currentZ: number, targetZ: number, value: number): number {
-    const depth = targetZ - currentZ
-    const scale = depth === 0 ? 1 : this.focalLength / depth
-
-    if (scale === 0) return value
-
-    return value / scale
-  }
 
   // ─── Object 등록 ─────────────────────────────────────────
 
@@ -497,10 +409,11 @@ export class World extends EventEmitter<WorldEvents> {
 
   // ─── Object 생성 ─────────────────────────────────────────
 
-  createCamera(options?: LveObjectOptions): Camera {
+  createCamera(options?: LveObjectOptions<CameraAttribute>): Camera {
     const cam = new Camera(options)
+    cam._world = this
     if (options?.transform?.position?.z === undefined) {
-      cam.transform.position.z = -this.focalLength
+      cam.transform.position.z = -(cam.attribute.focalLength ?? 100)
     }
     this._registerObject(cam)
     this._tryAddPhysics(cam)

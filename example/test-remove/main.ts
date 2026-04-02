@@ -20,7 +20,7 @@ world.on('click', (obj, e: MouseEvent) => {
 
   // 클릭한 화면 좌표를 월드 좌표로 변환
   const targetDepth = 0
-  const pos = world.canvasToWorld(e.clientX, e.clientY, targetDepth)
+  const pos = camera.canvasToWorld(e.clientX, e.clientY, targetDepth)
 
   // 동적 객체 생성
   const box = world.createRectangle({
@@ -28,10 +28,6 @@ world.on('click', (obj, e: MouseEvent) => {
     style: { width: 50, height: 50, color: `hsl(${Math.random() * 360}, 80%, 60%)`, borderWidth: 2, borderColor: '#fff' },
     transform: { position: { x: pos.x, y: pos.y, z: targetDepth }, rotation: { z: Math.random() * 360 } }
   })
-    // .addChild(world.createEllipse({
-    //   style: { width: 30, height: 30, color: `hsl(${Math.random() * 360}, 80%, 60%)`, borderWidth: 2, borderColor: '#fff' },
-    //   transform: { position: { x: 0, y: 0, z: 0 } }
-    // }))
     .addChild(world.createText({
       attribute: { text: 'Delete to\nRight Click' },
       style: { color: '#fff', fontSize: 11, fontFamily: 'sans-serif, monospace', textAlign: 'center', borderWidth: 1, borderColor: '#000' },

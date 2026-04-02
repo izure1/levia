@@ -33,7 +33,7 @@ world.videoManager.create({
 const getPos = (rx: number, ry: number) => {
   const cw = window.innerWidth
   const ch = window.innerHeight
-  return world.canvasToWorld(cw * rx, ch * ry)
+  return camera.canvasToWorld(cw * rx, ch * ry)
 }
 
 // 타이틀 텍스트
