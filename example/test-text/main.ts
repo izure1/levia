@@ -35,9 +35,9 @@ world.createText({
 label('③ 중첩 마크업 (부모 상속)', -550, 30, 0)
 world.createText({
   attribute: {
-    text: '<style color="#e76f51" fontSize="22">Outer <style fontSize="14" fontWeight="300" fontStyle="italic">inner-lighter</style> back-to-outer</style>',
+    text: '<style color="#e76f51" fontSize="22">Outer <style fontSize="14" fontWeight="300" fontStyle="italic" color="#00ff00ff" textShadowColor="#00ff00ff" textShadowBlur="3" textShadowOffsetX="5" textShadowOffsetY="5">inner-lighter</style> back-to-outer</style>',
   },
-  style: { color: '#ffffff', fontSize: 18, fontFamily: 'sans-serif' },
+  style: { color: '#ffffff', fontSize: 18, fontFamily: 'sans-serif', textShadowBlur: 5, textShadowColor: '#e76f51', textShadowOffsetX: 10, textShadowOffsetY: 10 },
   transform: { position: { x: -550, y: 60, z: 0 } },
 })
 

@@ -14,6 +14,10 @@ export interface TextSpanStyle {
   borderWidth?: number
   letterSpacing?: number
   lineHeight?: number
+  textShadowColor?: string
+  textShadowBlur?: number
+  textShadowOffsetX?: number
+  textShadowOffsetY?: number
 }
 
 export interface TextSpan {
@@ -38,6 +42,10 @@ function parseAttrs(attrStr: string): TextSpanStyle {
       case 'borderWidth': style.borderWidth = parseFloat(val); break
       case 'letterSpacing': style.letterSpacing = parseFloat(val); break
       case 'lineHeight': style.lineHeight = parseFloat(val); break
+      case 'textShadowColor': style.textShadowColor = val; break
+      case 'textShadowBlur': style.textShadowBlur = parseFloat(val); break
+      case 'textShadowOffsetX': style.textShadowOffsetX = parseFloat(val); break
+      case 'textShadowOffsetY': style.textShadowOffsetY = parseFloat(val); break
     }
   }
   return style

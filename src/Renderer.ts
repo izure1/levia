@@ -1087,6 +1087,7 @@ export class Renderer {
 
     // canvas는 TEXT_RENDER_SCALE 기준, 표시는 perspectiveScale 기준으로 보정
     const displayScale = perspectiveScale / TEXT_RENDER_SCALE
+    this._drawShadow(obj, x, y, cw * displayScale, ch * displayScale)
     this._drawTextureMesh(entry.texture, x, y, cw * displayScale, ch * displayScale, style.opacity * obj._fadeOpacity, false)
   }
 
@@ -1116,9 +1117,13 @@ export class Renderer {
       borderWidth: style.borderWidth,
       letterSpacing: style.letterSpacing,
       lineHeight: style.lineHeight,
+      textShadowColor: style.textShadowColor,
+      textShadowBlur: style.textShadowBlur,
+      textShadowOffsetX: style.textShadowOffsetX,
+      textShadowOffsetY: style.textShadowOffsetY,
     })
 
-    // shadow 지원: Canvas 2D에서 그대로 구현
+    // shadow 기본 설정
     const shadowColor = style.textShadowColor
     const shadowBlur = (style.textShadowBlur ?? 0) * TEXT_RENDER_SCALE
     const shadowOffsetX = (style.textShadowOffsetX ?? 0) * TEXT_RENDER_SCALE
@@ -1206,28 +1211,30 @@ export class Renderer {
     const totalH = renderLines.reduce((s, r) => s + r.lineH, 0)
 
     let maxBorderWidth = 0
+    let maxShadowBlur = shadowBlur
+    let maxShadowOffsetX = Math.abs(shadowOffsetX)
+    let maxShadowOffsetY = Math.abs(shadowOffsetY)
+
     for (const span of spans) {
       if (span.style.borderColor) {
         maxBorderWidth = Math.max(maxBorderWidth, (span.style.borderWidth ?? 1) * TEXT_RENDER_SCALE)
       }
+      if (span.style.textShadowColor) {
+        maxShadowBlur = Math.max(maxShadowBlur, (span.style.textShadowBlur ?? style.textShadowBlur ?? 0) * TEXT_RENDER_SCALE)
+        maxShadowOffsetX = Math.max(maxShadowOffsetX, Math.abs((span.style.textShadowOffsetX ?? style.textShadowOffsetX ?? 0) * TEXT_RENDER_SCALE))
+        maxShadowOffsetY = Math.max(maxShadowOffsetY, Math.abs((span.style.textShadowOffsetY ?? style.textShadowOffsetY ?? 0) * TEXT_RENDER_SCALE))
+      }
     }
 
-    const canvasW = Math.ceil(maxW ?? containerW) + shadowBlur * 2 + Math.abs(shadowOffsetX) + maxBorderWidth * 2
-    const canvasH = Math.ceil(maxH ?? totalH) + shadowBlur * 2 + Math.abs(shadowOffsetY) + maxBorderWidth * 2
+    const canvasW = Math.ceil(maxW ?? containerW) + maxShadowBlur * 2 + maxShadowOffsetX + maxBorderWidth * 2
+    const canvasH = Math.ceil(maxH ?? totalH) + maxShadowBlur * 2 + maxShadowOffsetY + maxBorderWidth * 2
 
     canvas.width = canvasW
     canvas.height = canvasH
     ctx.clearRect(0, 0, canvasW, canvasH)
 
-    if (shadowColor) {
-      ctx.shadowColor = shadowColor
-      ctx.shadowBlur = shadowBlur
-      ctx.shadowOffsetX = shadowOffsetX
-      ctx.shadowOffsetY = shadowOffsetY
-    }
-
-    const originX = shadowBlur + Math.max(0, shadowOffsetX) / 2 + maxBorderWidth
-    const originY = shadowBlur + Math.max(0, shadowOffsetY) / 2 + maxBorderWidth
+    const originX = maxShadowBlur + Math.max(0, style.textShadowOffsetX ? maxShadowOffsetX / 2 : 0) + maxBorderWidth
+    const originY = maxShadowBlur + Math.max(0, style.textShadowOffsetY ? maxShadowOffsetY / 2 : 0) + maxBorderWidth
 
     let curY = originY
     for (let li = 0; li < renderLines.length; li++) {
@@ -1249,9 +1256,23 @@ export class Renderer {
         const bc = tok.span.style.borderColor
         const bw = (tok.span.style.borderWidth ?? 1) * TEXT_RENDER_SCALE
         const ls = (tok.span.style.letterSpacing ?? style.letterSpacing ?? 0) * TEXT_RENDER_SCALE
+        
+        const tsc = tok.span.style.textShadowColor ?? shadowColor
+        const tsb = (tok.span.style.textShadowBlur ?? style.textShadowBlur ?? 0) * TEXT_RENDER_SCALE
+        const tsx = (tok.span.style.textShadowOffsetX ?? style.textShadowOffsetX ?? 0) * TEXT_RENDER_SCALE
+        const tsy = (tok.span.style.textShadowOffsetY ?? style.textShadowOffsetY ?? 0) * TEXT_RENDER_SCALE
 
         ctx.font = `${fi} ${fw} ${fs}px ${fontFamily}`
         ctx.letterSpacing = `${ls}px`
+        
+        if (tsc) {
+          ctx.shadowColor = tsc
+          ctx.shadowBlur = tsb
+          ctx.shadowOffsetX = tsx
+          ctx.shadowOffsetY = tsy
+        } else {
+          ctx.shadowColor = 'transparent'
+        }
 
         if (bc) {
           ctx.lineJoin = 'round'
