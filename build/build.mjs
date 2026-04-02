@@ -20,6 +20,7 @@ async function getExampleOptions() {
   for await (const file of glob('example/*/main.ts')) {
     entries.push(file.replace(/\\/g, '/'))
   }
+  entries.push('example/bg.ts')
   return {
     entryPoints: entries,
     bundle: true,

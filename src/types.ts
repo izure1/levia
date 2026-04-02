@@ -98,10 +98,10 @@ export interface Vec3 {
 }
 
 export interface Transform {
-  position: Vec3
-  rotation: Vec3
-  scale: Vec3
-  pivot: { x: number, y: number }
+  readonly position: Vec3
+  readonly rotation: Vec3
+  readonly scale: Vec3
+  readonly pivot: { x: number, y: number }
 }
 
 // ============================================================

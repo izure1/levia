@@ -12,6 +12,16 @@
       box-sizing: border-box;
     }
 
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      pointer-events: auto;
+    }
+
     body {
       background: #0a0a14;
       color: #e0e0e0;
@@ -45,7 +55,7 @@
 
     a.card {
       display: block;
-      background: #13132a;
+      background: #13132a00;
       border: 1px solid #2a2a50;
       border-radius: 12px;
       padding: 28px 24px;
@@ -142,6 +152,9 @@
       <p>calcDepthRatio를 사용한 꽉 찬 배경과 그래디언트 대사창</p>
     </a>
   </div>
+
+  <canvas id="bg-canvas"></canvas>
+  <script type="module" src="./bg.js"></script>
 </body>
 
 </html>
