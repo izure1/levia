@@ -1625,31 +1625,36 @@ export class Renderer {
       ctx.clip()
     }
 
-    let grad: CanvasGradient
     if (type === 'circular') {
+      ctx.save()
       const cx = pw / 2
       const cy = ph / 2
-      const r = Math.max(pw, ph) / 2
-      grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+      ctx.translate(cx, cy)
+      ctx.scale(pw / 2, ph / 2)
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
+      for (const stop of stops) {
+        grad.addColorStop(stop.offset, stop.color)
+      }
+      ctx.fillStyle = grad
+      ctx.fillRect(-1, -1, 2, 2)
+      ctx.restore()
     } else {
       // linear: direction(deg) 기준 시작→끝 좌표 계산
       const rad = (direction - 90) * Math.PI / 180
       const cx = pw / 2
       const cy = ph / 2
-      const halfLen = Math.sqrt(pw * pw + ph * ph) / 2
+      const halfLen = (Math.abs(pw * Math.cos(rad)) + Math.abs(ph * Math.sin(rad))) / 2
       const x0 = cx - Math.cos(rad) * halfLen
       const y0 = cy - Math.sin(rad) * halfLen
       const x1 = cx + Math.cos(rad) * halfLen
       const y1 = cy + Math.sin(rad) * halfLen
-      grad = ctx.createLinearGradient(x0, y0, x1, y1)
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1)
+      for (const stop of stops) {
+        grad.addColorStop(stop.offset, stop.color)
+      }
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, pw, ph)
     }
-
-    for (const stop of stops) {
-      grad.addColorStop(stop.offset, stop.color)
-    }
-
-    ctx.fillStyle = grad
-    ctx.fillRect(0, 0, pw, ph)
 
     tex = new Texture(this.gl, { image: canvas, generateMipmaps: false })
     this._gradientTextureCache.set(cacheKey, tex)

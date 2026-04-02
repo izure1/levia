@@ -144,7 +144,7 @@ const mouseParticle = world.createParticle({
   }
 }).play('mouse-particle')
 
-const dustParticle = world.createParticle({
+world.createParticle({
   strict: true,
   attribute: {
     physics: 'dynamic',
