@@ -10,12 +10,11 @@ export interface CameraAttribute {
    */
   focalLength?: number
 }
-
-export class Camera extends LveObject<CameraAttribute> {
+export class Camera<D extends Record<string, any> = Record<string, any>> extends LveObject<CameraAttribute, D> {
   /** @internal */
   _world?: World;
 
-  constructor(options?: LveObjectOptions<CameraAttribute>) {
+  constructor(options?: LveObjectOptions<CameraAttribute, D>) {
     super('camera', options)
     if (this.attribute.focalLength === undefined) {
       this.attribute.focalLength = 100

@@ -5,8 +5,7 @@ import { ImageTransition } from './ImageTransition.js'
 export interface ImageAttribute {
   src?: string
 }
-
-export class LveImage extends LveObject<ImageAttribute> {
+export class LveImage<D extends Record<string, any> = Record<string, any>> extends LveObject<ImageAttribute, D> {
   /** 현재 표시할 에셋 키 */
   _src: string | null = null
 
@@ -18,7 +17,7 @@ export class LveImage extends LveObject<ImageAttribute> {
   /** 전환 관리자 */
   private _transitioner?: ImageTransition
 
-  constructor(options?: LveObjectOptions<ImageAttribute>) {
+  constructor(options?: LveObjectOptions<ImageAttribute, D>) {
     super('image', options)
   }
 

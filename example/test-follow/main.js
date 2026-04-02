@@ -8729,6 +8729,7 @@ var LveObject = class extends EventEmitter {
     }
   }
   setDataset(key, value) {
+    ;
     this.dataset[key] = value;
     return this;
   }

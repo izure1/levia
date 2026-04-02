@@ -24,8 +24,7 @@ const DELEGATED_SETTERS: Record<string, (self: Sprite, value: any) => void> = {
     self._playbackRate = value
   },
 }
-
-export class Sprite extends LveObject<SpriteAttribute> {
+export class Sprite<D extends Record<string, any> = Record<string, any>> extends LveObject<SpriteAttribute, D> {
   /** 연결된 SpriteManager */
   private _manager: SpriteManager | null = null
 
@@ -50,7 +49,7 @@ export class Sprite extends LveObject<SpriteAttribute> {
   /** 일시정지 여부 */
   _paused: boolean = false
 
-  constructor(options?: LveObjectOptions<SpriteAttribute>) {
+  constructor(options?: LveObjectOptions<SpriteAttribute, D>) {
     super('sprite', options, Object.keys(DELEGATED_GETTERS))
   }
 

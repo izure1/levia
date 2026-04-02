@@ -5,15 +5,14 @@ import { TextTransition } from './TextTransition.js'
 export interface TextAttribute {
   text?: string
 }
-
-export class Text extends LveObject<TextAttribute> {
+export class Text<D extends Record<string, any> = Record<string, any>> extends LveObject<TextAttribute, D> {
   /** 트랜지션 진행도 (0 ~ 1, 1이면 완료 또는 미실행) */
   _transitionProgress: number = 1
 
   /** 전환 관리자 */
   private _transitioner?: TextTransition
 
-  constructor(options?: LveObjectOptions) {
+  constructor(options?: LveObjectOptions<TextAttribute, D>) {
     super('text', options)
   }
 

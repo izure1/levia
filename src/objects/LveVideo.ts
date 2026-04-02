@@ -32,8 +32,7 @@ const DELEGATED_SETTERS: Record<string, (self: LveVideo, value: any) => void> = 
     if (self._videoElement) self._videoElement.volume = Math.max(0, Math.min(1, value))
   },
 }
-
-export class LveVideo extends LveObject<VideoAttribute> {
+export class LveVideo<D extends Record<string, any> = Record<string, any>> extends LveObject<VideoAttribute, D> {
   /** 연결된 VideoManager */
   private _manager: VideoManager | null = null
 
@@ -61,7 +60,7 @@ export class LveVideo extends LveObject<VideoAttribute> {
   /** currentTime setter에서 _videoElement가 null일 때 대기 중인 seek 값 (Renderer에서 적용 후 null로 리셋) */
   _pendingSeek: number | null = null
 
-  constructor(options?: LveObjectOptions<VideoAttribute>) {
+  constructor(options?: LveObjectOptions<VideoAttribute, D>) {
     super('video', options, Object.keys(DELEGATED_GETTERS))
   }
 

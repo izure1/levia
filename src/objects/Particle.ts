@@ -7,8 +7,7 @@ import Matter from 'matter-js'
 export interface ParticleAttribute {
   src?: string
 }
-
-export interface ParticleOptions extends LveObjectOptions<ParticleAttribute> {
+export interface ParticleOptions<D extends Record<string, any> = Record<string, any>> extends LveObjectOptions<ParticleAttribute, D> {
   /**
    * true이면 matter-js 기반 물리를 각 파티클 인스턴스에 적용합니다.
    * false(기본)이면 내부 velocity 시뮬레이션을 사용합니다.
@@ -48,8 +47,7 @@ export interface ParticleInstance {
 }
 
 const GRAVITY = 0.00015 // px/ms² (내부 시뮬레이션용 중력 가속도)
-
-export class Particle extends LveObject<ParticleAttribute> {
+export class Particle<D extends Record<string, any> = Record<string, any>> extends LveObject<ParticleAttribute, D> {
   /** strict 모드 여부 */
   readonly strict: boolean
 
@@ -70,7 +68,7 @@ export class Particle extends LveObject<ParticleAttribute> {
   /** 일시정지 여부 */
   private _paused: boolean = false
 
-  constructor(options?: ParticleOptions) {
+  constructor(options?: ParticleOptions<D>) {
     super('particle', options)
     this.strict = options?.strict ?? false
   }

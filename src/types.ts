@@ -109,9 +109,12 @@ export interface Transform {
 // Object Init Options
 // ============================================================
 
-export interface LveObjectOptions<T extends Record<string, any> = Record<string, any>> {
+export interface LveObjectOptions<
+  T extends Record<string, any> = Record<string, any>,
+  D extends Record<string, any> = Record<string, any>
+> {
   attribute?: Partial<Omit<Attribute, 'type' | 'id'> & T>
-  dataset?: Dataset
+  dataset?: D
   style?: Partial<Style>
   transform?: {
     position?: Partial<Vec3>

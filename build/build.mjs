@@ -43,12 +43,12 @@ if (watch) {
     port: 3000,
   })
 
-  console.log(`[lve4] dev server: http://localhost:${port}`)
+  console.log(`[levia] dev server: http://localhost:${port}`)
 } else {
   const result = await esbuild.build(libOptions)
   if (result.errors.length > 0) {
-    console.error('[lve4] build failed')
+    console.error('[levia] build failed')
     process.exit(1)
   }
-  console.log('[lve4] build complete -> dist/index.js')
+  console.log('[levia] build complete -> dist/index.js')
 }

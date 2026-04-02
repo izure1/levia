@@ -409,8 +409,8 @@ export class World extends EventEmitter<WorldEvents> {
 
   // ─── Object 생성 ─────────────────────────────────────────
 
-  createCamera(options?: LveObjectOptions<CameraAttribute>): Camera {
-    const cam = new Camera(options)
+  createCamera<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<CameraAttribute, D>): Camera<D> {
+    const cam = new Camera<D>(options)
     cam._world = this
     if (options?.transform?.position?.z === undefined) {
       cam.transform.position.z = -(cam.attribute.focalLength ?? 100)
@@ -421,8 +421,8 @@ export class World extends EventEmitter<WorldEvents> {
     return cam
   }
 
-  createRectangle(options?: RectangleOptions): Rectangle {
-    const rect = new Rectangle(options)
+  createRectangle<D extends Record<string, any> = Record<string, any>>(options?: RectangleOptions<D>): Rectangle<D> {
+    const rect = new Rectangle<D>(options)
     this._registerObject(rect)
     this._tryAddPhysics(rect, options?.style?.width, options?.style?.height)
     this._trackSortDirty(rect)
@@ -430,8 +430,8 @@ export class World extends EventEmitter<WorldEvents> {
     return rect
   }
 
-  createEllipse(options?: LveObjectOptions): Ellipse {
-    const el = new Ellipse(options)
+  createEllipse<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<Record<string, never>, D>): Ellipse<D> {
+    const el = new Ellipse<D>(options)
     this._registerObject(el)
     this._tryAddPhysics(el, options?.style?.width, options?.style?.height)
     this._trackSortDirty(el)
@@ -439,24 +439,24 @@ export class World extends EventEmitter<WorldEvents> {
     return el
   }
 
-  createText(options?: LveObjectOptions): Text {
-    const text = new Text(options)
+  createText<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<Record<string, any>, D>): Text<D> {
+    const text = new Text<D>(options)
     this._registerObject(text)
     this._trackSortDirty(text)
     this.renderer.markSortDirty()
     return text
   }
 
-  createImage(options?: LveObjectOptions): LveImage {
-    const img = new LveImage(options)
+  createImage<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<Record<string, any>, D>): LveImage<D> {
+    const img = new LveImage<D>(options)
     this._registerObject(img)
     this._trackSortDirty(img)
     this.renderer.markSortDirty()
     return img
   }
 
-  createVideo(options?: LveObjectOptions): LveVideo {
-    const video = new LveVideo(options)
+  createVideo<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<Record<string, any>, D>): LveVideo<D> {
+    const video = new LveVideo<D>(options)
     video.__setManager(this.videoManager)
     this._registerObject(video)
     this._trackSortDirty(video)
@@ -464,8 +464,8 @@ export class World extends EventEmitter<WorldEvents> {
     return video
   }
 
-  createSprite(options?: LveObjectOptions): Sprite {
-    const sprite = new Sprite(options)
+  createSprite<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<Record<string, any>, D>): Sprite<D> {
+    const sprite = new Sprite<D>(options)
     sprite.__setManager(this.spriteManager)
     this._registerObject(sprite)
     this._trackSortDirty(sprite)
@@ -473,8 +473,8 @@ export class World extends EventEmitter<WorldEvents> {
     return sprite
   }
 
-  createParticle(options?: ParticleOptions): Particle {
-    const particle = new Particle(options)
+  createParticle<D extends Record<string, any> = Record<string, any>>(options?: ParticleOptions<D>): Particle<D> {
+    const particle = new Particle<D>(options)
     particle.__setPhysics(this.physics)
     particle.__setManager(this.particleManager)
     this._registerObject(particle)

@@ -131,9 +131,12 @@ function makeVec3Proxy(
   })
 }
 
-export abstract class LveObject<T extends Record<string, any> = Record<string, any>> extends EventEmitter<LveObjectEvents> {
+export abstract class LveObject<
+  T extends Record<string, any> = Record<string, any>,
+  D extends Record<string, any> = Record<string, any>
+> extends EventEmitter<LveObjectEvents> {
   readonly attribute: Attribute & T
-  readonly dataset: Dataset
+  readonly dataset: D
   readonly style: Style
   readonly transform: Transform
 
@@ -204,7 +207,7 @@ export abstract class LveObject<T extends Record<string, any> = Record<string, a
   /** 부모의 반영이 끝난 최종 월드 매트릭스 */
   _worldMatrix: Mat4 = new Mat4()
 
-  constructor(type: string, options?: LveObjectOptions<T>, delegatedKeys?: string[]) {
+  constructor(type: string, options?: LveObjectOptions<T, D>, delegatedKeys?: string[]) {
     super()
 
     const rawAttribute = {
@@ -224,7 +227,7 @@ export abstract class LveObject<T extends Record<string, any> = Record<string, a
       ...(options?.attribute as any),
     } as Attribute & T
 
-    const rawDataset = Object.assign({}, options?.dataset)
+    const rawDataset = Object.assign({}, options?.dataset) as D
     const rawStyle = makeStyle(options?.style)
     const rawPosition = makeVec3(options?.transform?.position)
     const rawRotation = makeVec3(options?.transform?.rotation)
@@ -240,7 +243,7 @@ export abstract class LveObject<T extends Record<string, any> = Record<string, a
 
     // Proxy로 감싸서 변경 감지
     this.attribute = makeTrackedProxy(rawAttribute, this, 'attrmodified', delegatedKeys)
-    this.dataset = makeTrackedProxy(rawDataset, this, 'datamodified')
+    this.dataset = makeTrackedProxy(rawDataset as object, this, 'datamodified') as D
     this.style = makeTrackedProxy(rawStyle, this, 'cssmodified')
     this.transform = {
       position: makeVec3Proxy(rawPosition, this, 'positionmodified'),
@@ -396,12 +399,12 @@ export abstract class LveObject<T extends Record<string, any> = Record<string, a
   }
 
   setDataset(key: string, value: DatasetValue): this {
-    this.dataset[key] = value
+    ;(this.dataset as any)[key] = value
     return this
   }
 
   getDataset(key: string): DatasetValue | undefined {
-    return this.dataset[key]
+    return (this.dataset as any)[key]
   }
 
   /**
