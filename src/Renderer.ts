@@ -581,9 +581,12 @@ export class Renderer {
    * 객체의 고유 TRS(Translation, Rotation, Scale, Pivot)만으로 Model Matrix를 생성합니다.
    * 카메라 정보는 View Matrix에서 처리됩니다.
    */
-  private _makeModelMatrix(x: number, y: number, w: number, h: number, zOffset: number = 0): Float32Array {
+  private _makeModelMatrix(x: number, y: number, w: number, h: number, zOffset: number = 0, baseW?: number, baseH?: number): Float32Array {
     const obj = this._activeObj
     const pivot = obj.transform.pivot
+
+    const pw = baseW ?? w
+    const ph = baseH ?? h
 
     // 1. 객체의 _worldMatrix를 기반으로 시작합니다. (계층 회전, 이동, 크기 완벽 포함)
     this._modelMat.copy(obj._worldMatrix)
@@ -595,8 +598,8 @@ export class Renderer {
     }
 
     // 3. 자식의 렌더 피벗 오프셋 처리. 모델 매트릭스에 이미 적용된 스케일보다 앞서서 로컬 좌표계 크기에 맞춘 위치 조작.
-    this._tmpVec[0] = (0.5 - pivot.x) * w
-    this._tmpVec[1] = -(0.5 - pivot.y) * h
+    this._tmpVec[0] = (0.5 - pivot.x) * pw
+    this._tmpVec[1] = -(0.5 - pivot.y) * ph
     this._tmpVec[2] = 0
     this._modelMat.translate(this._tmpVec)
 
@@ -784,13 +787,14 @@ export class Renderer {
     program: Program,
     x: number, y: number, w: number, h: number,
     color: string, opacity: number,
+    baseW?: number, baseH?: number
   ) {
     this._flushBatch();
     this._setBlendMode(this._activeObj?.style?.blendMode ?? 'source-over');
     const [r, g, b, a] = parseCSSColor(color)
     program.uniforms['uColor'].value = [r, g, b, a]
     program.uniforms['uOpacity'].value = opacity
-    program.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h)
+    program.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, w, h, 0, baseW, baseH)
     program.uniforms['uProjectionMatrix'].value = this._projMatrix()
 
     this.colorMesh.draw({ camera: this.camera })
@@ -847,18 +851,18 @@ export class Renderer {
     if (style.outlineColor && (style.outlineWidth ?? 0) > 0) {
       const bw = (style.borderWidth ?? 0)
       const ow = style.outlineWidth!
-      this._drawColorMesh(this.colorProgram, x, y, w + bw * 2 + ow * 2, h + bw * 2 + ow * 2, style.outlineColor, targetOpacity)
+      this._drawColorMesh(this.colorProgram, x, y, w + bw * 2 + ow * 2, h + bw * 2 + ow * 2, style.outlineColor, targetOpacity, w, h)
     }
 
     // 테두리 (border)
     if (style.borderColor && (style.borderWidth ?? 0) > 0) {
       const bw = style.borderWidth!
-      this._drawColorMesh(this.colorProgram, x, y, w + bw * 2, h + bw * 2, style.borderColor, targetOpacity)
+      this._drawColorMesh(this.colorProgram, x, y, w + bw * 2, h + bw * 2, style.borderColor, targetOpacity, w, h)
     }
 
     // 본체 color
     if (style.color) {
-      this._drawColorMesh(this.colorProgram, x, y, w, h, style.color, targetOpacity)
+      this._drawColorMesh(this.colorProgram, x, y, w, h, style.color, targetOpacity, w, h)
     }
 
     // 그라디언트 레이어 (color 위에 덮어씬움)
@@ -880,7 +884,7 @@ export class Renderer {
       const [r, g, b, a] = parseCSSColor(color)
       this.ellipseProgram.uniforms['uColor'].value = [r, g, b, a]
       this.ellipseProgram.uniforms['uOpacity'].value = style.opacity * obj._fadeOpacity
-      this.ellipseProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, ew, eh)
+      this.ellipseProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, ew, eh, 0, w, h)
       this.ellipseProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
       this.ellipseMesh.draw({ camera: this.camera })
     }
