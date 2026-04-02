@@ -2,7 +2,13 @@ import { World } from '../../src/index.js'
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
 const world = new World({ canvas })
-const camera = world.createCamera()
+const camera = world.createCamera({
+  transform: {
+    position: {
+      y: 300
+    }
+  }
+})
 world.camera = camera
 
 world.setGravity({ x: 0, y: -1 })
@@ -10,33 +16,45 @@ world.setGravity({ x: 0, y: -1 })
 // 더미 백그라운드 이미지 로드 (없다면 빈 화면이 나옴)
 await world.loader.load({
   'bg': '../asset/image/background.jpg',
-  'star': '../asset/image/star.png'
+  'star': '../asset/image/star.png',
+  'girl_before': '../asset/image/transition_before.png'
 })
 
-// 카메라 z 위치
-const camZ = camera.transform.position.z
-
-// 배경을 Z: 0에 배치한다고 가정하고 필요한 캔버스 비율(꽉 찬 크기) 계산
-const vw = camera.calcDepthRatio(0, canvas.width)
-const vh = camera.calcDepthRatio(0, canvas.height)
-
-// 마우스를 움직이면 좌우로 5%씩 움직일 수 있도록 하기 위해 10% 만큼 더 넓게 설정
-const bgWidth = camera.calcDepthRatio(10, canvas.width)
-const bgHeight = camera.calcDepthRatio(10, canvas.height)
+// 패닝(Parallax) 시 배경 가장자리의 빈 공간이 드러나지 않도록 원래 캔버스 크기보다 20% 더 크게 그립니다.
+const bgWidth = camera.calcDepthRatio(500, canvas.width * 1.2)
+const bgHeight = camera.calcDepthRatio(500, canvas.height * 1.2)
 
 // 1. 꽉 찬 이미지 배경
 const bgImage = world.createImage({
   style: {
     width: bgWidth,
-    height: bgHeight
+    height: bgHeight,
+  },
+  transform: {
+    position: {
+      z: 500
+    }
   }
 })
 bgImage.play('bg')
 
+// 캐릭터 이미지
+const girl = world.createImage({
+  style: {
+    width: 500,
+  },
+  transform: {
+    position: {
+      z: 0,
+    }
+  }
+})
+girl.play('girl_before')
+
 // 대사창 좌표
 const talkBoxW = 800
 const talkBoxH = 150
-const talkBoxPos = camera.canvasToWorld(0, canvas.height)
+const talkBoxPos = camera.canvasToLocal(0, canvas.height)
 
 // 2. 그라디언트 대사창 Rectangle 생성
 const talkBox = world.createRectangle({
@@ -90,8 +108,8 @@ world.particleManager.create({
 world.particleManager.create({
   name: 'dust-particle',
   src: 'star',
-  impulse: 0.15,
-  rate: 1,
+  impulse: 0.05,
+  rate: 5,
   lifespan: 10000,
   interval: 250,
   size: {
@@ -125,14 +143,14 @@ const mouseParticle = world.createParticle({
   transform: {
     position: { x: 0, y: 0, z: 100 }
   }
-}).play('mouse-particle')
+})//.play('mouse-particle')
 
 const dustParticle = world.createParticle({
   strict: true,
   attribute: {
     physics: 'dynamic',
-    density: 0.00001,
-    friction: 0.001,
+    density: 1,
+    friction: 0,
     gravityScale: 0,
   },
   style: {
@@ -142,19 +160,18 @@ const dustParticle = world.createParticle({
     blendMode: 'lighter',
   },
   transform: {
-    position: { x: 0, y: 0, z: 100 }
+    position: camera.canvasToWorld(canvas.width / 2, canvas.height / 2)
   }
 }).play('dust-particle')
 
 camera.addChild(talkBox)
 camera.addChild(mouseParticle)
-camera.addChild(dustParticle)
 talkBox.addChild(dialogue)
 
 // 창 크기가 변경될 때 비율 다시 맞추기 (선택)
 window.addEventListener('resize', () => {
-  const newW = camera.calcDepthRatio(0, canvas.width)
-  const newH = camera.calcDepthRatio(0, canvas.height)
+  const newW = camera.calcDepthRatio(1000, canvas.width * 1.2)
+  const newH = camera.calcDepthRatio(1000, canvas.height * 1.2)
   const newBoxH = camera.calcDepthRatio(0, canvas.height * 0.3)
 
   bgImage.style.width = newW
@@ -174,10 +191,25 @@ world.on('click', () => {
   console.log(dialogue.transition(dialogText, 35))
 })
 
+let targetCamX = 0
+let targetCamY = 0
+
 world.on('mousemove', (obj, e) => {
-  const pos = camera.canvasToWorld(e.offsetX, e.offsetY)
+  const pos = camera.canvasToLocal(e.offsetX, e.offsetY)
   mouseParticle.transform.position.x = pos.x
   mouseParticle.transform.position.y = pos.y
+
+  // 화면 크기 기준 정규화 좌표 (-1 ~ 1)
+  const normX = (e.offsetX / canvas.width) * 2 - 1
+  const normY = (e.offsetY / canvas.height) * 2 - 1
+
+  targetCamX = normX * 100
+  targetCamY = -normY * 100
+})
+
+world.on('update', () => {
+  camera.transform.position.x += (targetCamX - camera.transform.position.x) * 0.05
+  camera.transform.position.y += (targetCamY - camera.transform.position.y) * 0.05
 })
 
 world.start()

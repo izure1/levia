@@ -83,6 +83,37 @@ export class Camera extends LveObject<CameraAttribute> {
   }
 
   /**
+   * 캔버스의 x, y 좌표를 카메라 기준의 로컬 좌표계로 변환합니다.
+   * 결과값은 카메라 내부의 자식(child)으로 배치할 때의 좌표입니다.
+   * @param x 캔버스 좌측 상단을 0으로 하는 x 좌표
+   * @param y 캔버스 좌측 상단을 0으로 하는 y 좌표
+   * @param targetZ (선택) 투영하고자 하는 월드 공간의 Z 좌표
+   */
+  canvasToLocal(x: number, y: number, targetZ?: number): { x: number; y: number; z: number } {
+    const w = this._world?.['_canvas']?.width ?? window.innerWidth
+    const h = this._world?.['_canvas']?.height ?? window.innerHeight
+
+    const screenX = x - w / 2
+    const screenY = -(y - h / 2)
+
+    const camZ = this.transform.position.z
+
+    const focalLength = this.attribute.focalLength ?? 100
+    const tZ = targetZ ?? (camZ + focalLength)
+    const targetDepth = tZ - camZ
+
+    const scale = targetDepth / focalLength
+    let dx = screenX * scale
+    let dy = screenY * scale
+
+    return {
+      x: dx,
+      y: dy,
+      z: targetDepth
+    }
+  }
+
+  /**
    * targetZ 깊이에 있는 대상이 화면에서 value 크기만큼 보이려면
    * 실제 크기가 얼마가 되어야 하는지 원근 비율을 수학적으로 계산해 반환합니다.
    * @param targetZ 목표 Z 좌표
