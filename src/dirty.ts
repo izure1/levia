@@ -19,6 +19,10 @@ export const STYLE_DIRTY_MAP: Readonly<Record<string, DirtyKind[]>> = {
   textShadowBlur: ['texture'],
   textShadowOffsetX: ['texture'],
   textShadowOffsetY: ['texture'],
+  boxShadowColor: ['texture'],
+  boxShadowBlur: ['texture'],
+  boxShadowOffsetX: ['texture'],
+  boxShadowOffsetY: ['texture'],
   // 텍스처 + 물리 바디 재계산
   fontSize: ['texture', 'physics'],
   fontFamily: ['texture', 'physics'],

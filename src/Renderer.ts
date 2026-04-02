@@ -17,6 +17,7 @@ const AXIS_Z = new OglVec3(0, 0, 1)
 import { colorVertex, colorFragment, ellipseVertex, ellipseFragment } from './shaders/color.js'
 import { textureVertex, textureFragment } from './shaders/texture.js'
 import { instancedVertex, instancedFragment } from './shaders/instanced.js'
+import { shadowVertex, shadowFragment } from './shaders/shadow.js'
 import { parseTextMarkup } from './utils/textMarkup.js'
 import { TEXTURE_THROTTLE_FRAMES, TEXTURE_DEBOUNCE_FRAMES } from './dirty.js'
 
@@ -161,6 +162,7 @@ export class Renderer {
   private ellipseProgram!: Program
   private textureProgram!: Program
   private instancedProgram!: Program
+  private shadowProgram!: Program
 
   // Placeholder 색상 Program (에러 표시)
   private placeholderProgram!: Program
@@ -170,6 +172,7 @@ export class Renderer {
   private ellipseMesh!: Mesh
   private textureMesh!: Mesh
   private placeholderMesh!: Mesh
+  private shadowMesh!: Mesh
 
   // 상태 보존용 렌더 변수 (Model/View 매트릭스 계산용)
   private _modelMat = new Mat4()
@@ -418,11 +421,31 @@ export class Renderer {
       depthWrite: false,
     })
 
+    this.shadowProgram = new Program(gl, {
+      vertex: shadowVertex,
+      fragment: shadowFragment,
+      uniforms: {
+        uColor: { value: [0, 0, 0, 0.5] },
+        uOpacity: { value: 1 },
+        uSize: { value: [1, 1] },
+        uBoxSize: { value: [1, 1] },
+        uBlur: { value: 0 },
+        uIsEllipse: { value: 0 },
+        uModelMatrix: { value: new Float32Array(16) },
+        uViewMatrix: { value: new Float32Array(16) },
+        uProjectionMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
+
     // ─── 공유 메쉬 초기화 ──────────────────────────────────────────────
     this.colorMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.colorProgram })
     this.ellipseMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.ellipseProgram })
     this.textureMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.textureProgram })
     this.placeholderMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.placeholderProgram })
+    this.shadowMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.shadowProgram })
   }
 
   // ─── 공개 렌더 메서드 ────────────────────────────────────────────────────
@@ -641,6 +664,7 @@ export class Renderer {
     this.textureProgram.uniforms['uViewMatrix'].value = vm
     this.instancedProgram.uniforms['uViewMatrix'].value = vm
     this.placeholderProgram.uniforms['uViewMatrix'].value = vm
+    this.shadowProgram.uniforms['uViewMatrix'].value = vm
   }
 
   /** ogl 카메라의 projectionMatrix를 Float32Array로 반환 */
@@ -839,6 +863,42 @@ export class Renderer {
     this._batchCount++;
   }
 
+  // ─── Box Shadow ─────────────────────────────────────────────────────────
+
+  private _drawShadow(
+    obj: LveObject,
+    x: number, y: number, w: number, h: number,
+    baseW?: number, baseH?: number,
+    isEllipse: boolean = false
+  ) {
+    const { style } = obj
+    if (!style.boxShadowColor) return
+
+    const blur = style.boxShadowBlur ?? 0
+    const offsetX = style.boxShadowOffsetX ?? 0
+    const offsetY = style.boxShadowOffsetY ?? 0
+    
+    // Quad size should generously contain the blur and origin
+    const quadW = w + blur * 3 + Math.abs(offsetX)
+    const quadH = h + blur * 3 + Math.abs(offsetY)
+
+    this._flushBatch()
+    this._setBlendMode(this._activeObj?.style?.blendMode ?? 'source-over')
+    
+    const [r, g, b, a] = parseCSSColor(style.boxShadowColor)
+    this.shadowProgram.uniforms['uColor'].value = [r, g, b, a]
+    this.shadowProgram.uniforms['uOpacity'].value = style.opacity * obj._fadeOpacity
+    this.shadowProgram.uniforms['uSize'].value = [quadW, quadH]
+    this.shadowProgram.uniforms['uBoxSize'].value = [w, h]
+    this.shadowProgram.uniforms['uBlur'].value = blur
+    this.shadowProgram.uniforms['uIsEllipse'].value = isEllipse ? 1 : 0
+    
+    this.shadowProgram.uniforms['uModelMatrix'].value = this._makeModelMatrix(x + offsetX, y + offsetY, quadW, quadH, 0, baseW ?? w, baseH ?? h)
+    this.shadowProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
+
+    this.shadowMesh.draw({ camera: this.camera })
+  }
+
   // ─── Rectangle ──────────────────────────────────────────────────────────
 
   private _drawRectangle(obj: LveObject, x: number, y: number, w: number, h: number) {
@@ -846,6 +906,8 @@ export class Renderer {
     if (!style.color && !style.gradient && !style.borderColor && !style.outlineColor) return
 
     const targetOpacity = style.opacity * obj._fadeOpacity
+
+    this._drawShadow(obj, x, y, w, h)
 
     // outline 먼저 (border 바깥)
     if (style.outlineColor && (style.outlineWidth ?? 0) > 0) {
@@ -879,6 +941,8 @@ export class Renderer {
     this._setBlendMode(this._activeObj?.style?.blendMode ?? 'source-over');
     const { style } = obj
     if (!style.color && !style.gradient && !style.borderColor && !style.outlineColor) return
+    
+    this._drawShadow(obj, x, y, w, h, undefined, undefined, true)
 
     const drawEllipse = (ew: number, eh: number, color: string) => {
       const [r, g, b, a] = parseCSSColor(color)
@@ -1275,6 +1339,8 @@ export class Renderer {
         h: drawH / perspectiveScale,
       }
 
+      this._drawShadow(obj, x, y, drawW, drawH)
+
       const texture = this._getOrCreateAssetTexture(assetSrc, asset)
       this._drawTextureMesh(texture, x, y, drawW, drawH, drawOpacity, false)
     }
@@ -1354,6 +1420,8 @@ export class Renderer {
       w: drawW / perspectiveScale,
       h: drawH / perspectiveScale,
     }
+
+    this._drawShadow(obj, x, y, drawW, drawH)
 
     // 비디오 텍스처는 매 프레임 업데이트
     let tex = this.videoTextureCache.get(src!)

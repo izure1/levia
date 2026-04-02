@@ -56,6 +56,10 @@ export interface Style {
   textShadowBlur?: number
   textShadowOffsetX?: number
   textShadowOffsetY?: number
+  boxShadowColor?: string
+  boxShadowBlur?: number
+  boxShadowOffsetX?: number
+  boxShadowOffsetY?: number
   zIndex: number
   blendMode?: GlobalCompositeOperation
   letterSpacing?: number
