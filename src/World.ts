@@ -234,7 +234,7 @@ export class World extends EventEmitter<WorldEvents> {
       .filter(obj => obj.attribute.type !== 'camera' && obj.style.display !== 'none' && obj.style.pointerEvents)
       .map(obj => {
         const mat = obj._worldMatrix as unknown as Float32Array
-        // Lve4와 OpenGL 좌표계 연결 과정에서 역방향된 z를 본래 양수 스케일로 복원 (-1 곱함)
+        // Levia와 OpenGL 좌표계 연결 과정에서 역방향된 z를 본래 양수 스케일로 복원 (-1 곱함)
         const wx = mat[12], wy = mat[13], wz = -mat[14]
 
         let dx = wx - camX

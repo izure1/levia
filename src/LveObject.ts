@@ -376,7 +376,7 @@ export abstract class LveObject<
 
     // 1. 자신의 로컬 매트릭스 갱신 (Z -> Y -> X 순서로 회전)
     this._localMatrix.identity()
-    // Lve4의 관행(+Z가 앞)을 OpenGL 호환(-Z가 앞)으로 동기화하기 위해 -pos.z 적용
+    // Levia의 관행(+Z가 앞)을 OpenGL 호환(-Z가 앞)으로 동기화하기 위해 -pos.z 적용
     _tmpVec3.set(pos.x, pos.y, -pos.z)
     this._localMatrix.translate(_tmpVec3)
     if (rot.z) this._localMatrix.rotate(rot.z * Math.PI / 180, VEC3_Z)
@@ -399,7 +399,7 @@ export abstract class LveObject<
   }
 
   setDataset(key: string, value: DatasetValue): this {
-    ;(this.dataset as any)[key] = value
+    ; (this.dataset as any)[key] = value
     return this
   }
 
