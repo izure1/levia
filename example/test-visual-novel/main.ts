@@ -11,7 +11,7 @@ const camera = world.createCamera({
 })
 world.camera = camera
 
-world.setGravity({ x: 0, y: -1 })
+world.gravity = { x: 0, y: -1 }
 
 // 더미 백그라운드 이미지 로드 (없다면 빈 화면이 나옴)
 await world.loader.load({

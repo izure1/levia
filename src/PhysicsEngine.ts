@@ -62,13 +62,6 @@ export class PhysicsEngine {
     })
   }
 
-  /**
-   * 중력을 설정합니다.
-   */
-  setGravity(x: number, y: number) {
-    this.engine.gravity.x = x
-    this.engine.gravity.y = y
-  }
 
   /**
    * LveObject를 물리 바디로 등록합니다.

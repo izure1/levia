@@ -7,7 +7,7 @@ const camera = world.createCamera({
   }
 })
 world.camera = camera
-world.setGravity({ x: 0, y: 0 })
+world.gravity = { x: 0, y: 0 }
 
 await world.loader.load({
   'star': '../asset/image/star.png',

@@ -58,6 +58,8 @@ export class World extends EventEmitter<WorldEvents> {
   private _canvas: HTMLCanvasElement | null = null
   /** 현재 포커스 중인 카메라 (지정되지 않으면 객체 중 Camera를 찾습니다) */
   private _activeCamera: LveObject | null = null
+  /** 물리 엔진의 중력 프로퍼티 프록시 */
+  private _gravityProxy: { x: number; y: number }
   /** mouseover 상태 추적 (객체 id → boolean) */
   private _mouseOver: Set<string> = new Set()
 
@@ -96,6 +98,14 @@ export class World extends EventEmitter<WorldEvents> {
       Object.assign(this._assets, assets)
     })
     this._setupMouseEvents(canvasEl)
+
+    this._gravityProxy = new Proxy({ x: 0, y: 0 } as { x: number; y: number }, {
+      get: (_, prop: 'x' | 'y') => this.physics.engine.gravity[prop],
+      set: (_, prop: 'x' | 'y', value: number) => {
+        this.physics.engine.gravity[prop] = value
+        return true
+      }
+    })
   }
 
   private createCanvas(): HTMLCanvasElement {
@@ -341,10 +351,15 @@ export class World extends EventEmitter<WorldEvents> {
   }
 
   /**
-   * 월드의 중력을 설정합니다.
+   * 월드의 중력 x, y 값. 직접 수정하거나 새 객체를 할당할 수 있습니다.
    */
-  setGravity(g: { x: number; y: number }) {
-    this.physics.setGravity(g.x, g.y)
+  get gravity(): { x: number; y: number } {
+    return this._gravityProxy
+  }
+
+  set gravity(g: { x: number; y: number }) {
+    this.physics.engine.gravity.x = g.x
+    this.physics.engine.gravity.y = g.y
   }
 
   /**

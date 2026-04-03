@@ -17,7 +17,7 @@ const camera = world.createCamera({
   transform: { position: { x: 0, y: 0, z: 0 } }
 })
 world.camera = camera
-world.setGravity({ x: 0, y: 0 })
+world.gravity = { x: 0, y: 0 }
 
 // Neon color palette for a Sci-Fi Cyberpunk/Synthwave vibe
 const colors = ['#ff0055', '#00eeff', '#aa00ff', '#ffdd00', '#ffffff']

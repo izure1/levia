@@ -72,7 +72,7 @@ world.createParticle({
 // ② strict 모드 — 오른쪽 절반, matter-js 물리 기반
 // ────────────────────────────────────────────────────────
 
-world.setGravity({ x: 0, y: -1 })
+world.gravity = { x: 0, y: -1 }
 
 world.particleManager.create({
   name: 'star-strict',

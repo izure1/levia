@@ -16,7 +16,7 @@ await world.loader.load({
   'star': '../asset/image/star.png',
 })
 
-world.setGravity({ x: 0, y: 1 })
+world.gravity = { x: 0, y: 1 }
 
 const blendModes: BlendMode[] = [
   'source-over', 'source-in', 'source-out', 'source-atop',
