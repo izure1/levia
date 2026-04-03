@@ -24,7 +24,7 @@ const textObj = world.createText({
   transform: { position: { y: -250 } },
 })
 
-image.play('transition_before').addChild(textObj)
+image.attr({ src: 'transition_before' }).addChild(textObj)
 
 // 회전 및 스케일 애니메이션 추가 (반복)
 function startPulse() {

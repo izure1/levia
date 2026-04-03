@@ -8728,6 +8728,19 @@ var LveObject = class extends EventEmitter {
       child.__updateMatrixWorld(force);
     }
   }
+  /**
+   * 속성(attribute)을 일괄 변경하고 체이닝을 지원합니다.
+   */
+  attr(attributes) {
+    if (!attributes) return this;
+    for (const key in attributes) {
+      if (Object.prototype.hasOwnProperty.call(attributes, key)) {
+        ;
+        this.attribute[key] = attributes[key];
+      }
+    }
+    return this;
+  }
   setDataset(key, value) {
     ;
     this.dataset[key] = value;
@@ -9157,6 +9170,14 @@ var ImageTransition = class extends BaseTransition {
 };
 
 // src/objects/LveImage.ts
+var DELEGATED_GETTERS = {
+  src: (self) => self._src ?? void 0
+};
+var DELEGATED_SETTERS = {
+  src: (self, value) => {
+    self._src = value;
+  }
+};
 var LveImage = class extends LveObject {
   /** 현재 표시할 에셋 키 */
   _src = null;
@@ -9167,15 +9188,7 @@ var LveImage = class extends LveObject {
   /** 전환 관리자 */
   _transitioner;
   constructor(options) {
-    super("image", options);
-  }
-  /**
-   * 표시할 에셋 키를 지정합니다.
-   * @param src 에셋 맵 키
-   */
-  play(src) {
-    this._src = src;
-    return this;
+    super("image", options, Object.keys(DELEGATED_GETTERS));
   }
   /**
    * 새 이미지로 서서히 변경(크로스페이드)되는 애니메이션 효과를 줍니다.
@@ -9189,15 +9202,49 @@ var LveImage = class extends LveObject {
     this._transitioner.start(newSrc, durationMs);
     return this._transitioner;
   }
+  _getDelegatedAttribute(key) {
+    const handler = DELEGATED_GETTERS[key];
+    if (handler) return handler(this);
+    return super._getDelegatedAttribute(key);
+  }
+  _setDelegatedAttribute(key, value) {
+    const handler = DELEGATED_SETTERS[key];
+    if (handler) {
+      handler(this, value);
+    } else {
+      super._setDelegatedAttribute(key, value);
+    }
+  }
 };
 
 // src/objects/LveVideo.ts
-var DELEGATED_GETTERS = {
+var DELEGATED_GETTERS2 = {
+  src: (self) => self["_clipName"] ?? void 0,
   currentTime: (self) => self._videoElement?.currentTime ?? 0,
   playbackRate: (self) => self._videoElement?.playbackRate ?? 1,
   volume: (self) => self._videoElement?.volume ?? 1
 };
-var DELEGATED_SETTERS = {
+var DELEGATED_SETTERS2 = {
+  src: (self, value) => {
+    const anySelf = self;
+    if (!anySelf._manager) {
+      console.warn("[LveVideo] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
+      return;
+    }
+    const clip = anySelf._manager.get(value);
+    if (!clip) {
+      console.warn(`[LveVideo] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+      return;
+    }
+    anySelf._clipName = value;
+    self._clip = clip;
+    self._src = clip.src;
+    self._playing = false;
+    self._paused = false;
+    self._needsSeekToStart = true;
+    if (self._videoElement) self._videoElement.currentTime = 0;
+    else self._pendingSeek = 0;
+  },
   currentTime: (self, value) => {
     self._needsSeekToStart = false;
     if (self._videoElement) {
@@ -9233,7 +9280,7 @@ var LveVideo = class extends LveObject {
   /** currentTime setter에서 _videoElement가 null일 때 대기 중인 seek 값 (Renderer에서 적용 후 null로 리셋) */
   _pendingSeek = null;
   constructor(options) {
-    super("video", options, Object.keys(DELEGATED_GETTERS));
+    super("video", options, Object.keys(DELEGATED_GETTERS2));
   }
   /**
    * VideoManager를 연결합니다.
@@ -9243,24 +9290,15 @@ var LveVideo = class extends LveObject {
     return this;
   }
   /**
-   * 지정한 이름의 비디오 클립을 재생합니다.
+   * 저장된 비디오 클립을 재생합니다.
    */
-  play(name) {
-    if (!this._manager) {
-      console.warn("[LveVideo] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
+  play() {
+    if (!this._clip) {
+      console.warn("[LveVideo] src \uC18D\uC131\uC744 \uBA3C\uC800 \uC124\uC815\uD558\uC2ED\uC2DC\uC624.");
       return this;
     }
-    const clip = this._manager.get(name);
-    if (!clip) {
-      console.warn(`[LveVideo] \uD074\uB9BD '${name}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
-      return this;
-    }
-    this._clipName = name;
-    this._clip = clip;
-    this._src = clip.src;
     this._playing = true;
     this._paused = false;
-    this._needsSeekToStart = true;
     this.emit("play");
     return this;
   }
@@ -9302,12 +9340,12 @@ var LveVideo = class extends LveObject {
     this.emit("ended");
   }
   _getDelegatedAttribute(key) {
-    const handler = DELEGATED_GETTERS[key];
+    const handler = DELEGATED_GETTERS2[key];
     if (handler) return handler(this);
     return super._getDelegatedAttribute(key);
   }
   _setDelegatedAttribute(key, value) {
-    const handler = DELEGATED_SETTERS[key];
+    const handler = DELEGATED_SETTERS2[key];
     if (handler) {
       handler(this, value);
     } else {
@@ -9317,11 +9355,30 @@ var LveVideo = class extends LveObject {
 };
 
 // src/objects/Sprite.ts
-var DELEGATED_GETTERS2 = {
+var DELEGATED_GETTERS3 = {
+  src: (self) => self["_clipName"] ?? void 0,
   currentTime: (self) => self._clip ? Math.max(0, self._currentFrame - self._clip.start) : 0,
   playbackRate: (self) => self._playbackRate ?? (self._clip ? self._clip.frameRate : 0)
 };
-var DELEGATED_SETTERS2 = {
+var DELEGATED_SETTERS3 = {
+  src: (self, value) => {
+    const anySelf = self;
+    if (!anySelf._manager) {
+      console.warn("[Sprite] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
+      return;
+    }
+    const clip = anySelf._manager.get(value);
+    if (!clip) {
+      console.warn(`[Sprite] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+      return;
+    }
+    anySelf._clipName = value;
+    self._clip = clip;
+    self._currentFrame = clip.start;
+    self._lastFrameTime = 0;
+    self._playing = false;
+    self._paused = false;
+  },
   currentTime: (self, value) => {
     if (!self._clip) return;
     self._currentFrame = self._clip.start + Math.floor(value);
@@ -9350,7 +9407,7 @@ var Sprite = class extends LveObject {
   /** 일시정지 여부 */
   _paused = false;
   constructor(options) {
-    super("sprite", options, Object.keys(DELEGATED_GETTERS2));
+    super("sprite", options, Object.keys(DELEGATED_GETTERS3));
   }
   /**
    * SpriteManager를 연결합니다.
@@ -9360,25 +9417,17 @@ var Sprite = class extends LveObject {
     return this;
   }
   /**
-   * 지정한 이름의 애니메이션 클립을 재생합니다.
+   * 애니메이션 클립을 재생합니다.
    */
-  play(name) {
-    if (!this._manager) {
-      console.warn("[Sprite] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
+  play() {
+    if (!this._clip) {
+      console.warn("[Sprite] src \uC18D\uC131\uC744 \uBA3C\uC800 \uC124\uC815\uD558\uC2ED\uC2DC\uC624.");
       return this;
     }
-    const clip = this._manager.get(name);
-    if (!clip) {
-      console.warn(`[Sprite] \uD074\uB9BD '${name}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
-      return this;
-    }
-    if (this._clipName === name && this._playing && !this._paused) return this;
-    this._clipName = name;
-    this._clip = clip;
-    this._currentFrame = clip.start;
-    this._lastFrameTime = 0;
+    if (this._playing && !this._paused) return this;
     this._playing = true;
     this._paused = false;
+    this._lastFrameTime = 0;
     this.emit("play");
     return this;
   }
@@ -9387,13 +9436,6 @@ var Sprite = class extends LveObject {
     if (!this._playing || this._paused) return this;
     this._paused = true;
     this.emit("pause");
-    return this;
-  }
-  /** 일시정지를 재개합니다. */
-  resume() {
-    if (!this._paused) return this;
-    this._paused = false;
-    this.emit("play");
     return this;
   }
   /** 애니메이션을 정지합니다. */
@@ -9430,12 +9472,12 @@ var Sprite = class extends LveObject {
     }
   }
   _getDelegatedAttribute(key) {
-    const handler = DELEGATED_GETTERS2[key];
+    const handler = DELEGATED_GETTERS3[key];
     if (handler) return handler(this);
     return super._getDelegatedAttribute(key);
   }
   _setDelegatedAttribute(key, value) {
-    const handler = DELEGATED_SETTERS2[key];
+    const handler = DELEGATED_SETTERS3[key];
     if (handler) {
       handler(this, value);
     } else {
@@ -9711,6 +9753,7 @@ var PhysicsEngine = class {
   nextZGroup = 1;
   constructor() {
     this.engine = import_matter_js2.default.Engine.create();
+    this.engine.gravity.y = -1;
     import_matter_js2.default.Events.on(this.engine, "beforeUpdate", () => {
       const gravity = this.engine.gravity;
       for (const body of import_matter_js2.default.Composite.allBodies(this.engine.world)) {
@@ -9722,13 +9765,6 @@ var PhysicsEngine = class {
         }
       }
     });
-  }
-  /**
-   * 중력을 설정합니다.
-   */
-  setGravity(x, y) {
-    this.engine.gravity.x = x;
-    this.engine.gravity.y = y;
   }
   /**
    * LveObject를 물리 바디로 등록합니다.
@@ -11782,6 +11818,8 @@ var World = class extends EventEmitter {
   _canvas = null;
   /** 현재 포커스 중인 카메라 (지정되지 않으면 객체 중 Camera를 찾습니다) */
   _activeCamera = null;
+  /** 물리 엔진의 중력 프로퍼티 프록시 */
+  _gravityProxy;
   /** mouseover 상태 추적 (객체 id → boolean) */
   _mouseOver = /* @__PURE__ */ new Set();
   /** 브라우저 기본 컨텍스트 메뉴 비활성화 여부 */
@@ -11814,6 +11852,13 @@ var World = class extends EventEmitter {
       Object.assign(this._assets, assets);
     });
     this._setupMouseEvents(canvasEl);
+    this._gravityProxy = new Proxy({ x: 0, y: 0 }, {
+      get: (_, prop) => this.physics.engine.gravity[prop],
+      set: (_, prop, value) => {
+        this.physics.engine.gravity[prop] = value;
+        return true;
+      }
+    });
   }
   createCanvas() {
     const canvas2 = document.createElement("canvas");
@@ -12011,10 +12056,14 @@ var World = class extends EventEmitter {
     return result;
   }
   /**
-   * 월드의 중력을 설정합니다.
+   * 월드의 중력 x, y 값. 직접 수정하거나 새 객체를 할당할 수 있습니다.
    */
-  setGravity(g) {
-    this.physics.setGravity(g.x, g.y);
+  get gravity() {
+    return this._gravityProxy;
+  }
+  set gravity(g) {
+    this.physics.engine.gravity.x = g.x;
+    this.physics.engine.gravity.y = g.y;
   }
   /**
    * 월드의 활성 카메라 객체를 반환합니다. 
@@ -12241,7 +12290,7 @@ var camera = world.createCamera({
   transform: { position: { x: 0, y: 0, z: 0 } }
 });
 world.camera = camera;
-world.setGravity({ x: 0, y: 0 });
+world.gravity = { x: 0, y: 0 };
 var colors = ["#ff0055", "#00eeff", "#aa00ff", "#ffdd00", "#ffffff"];
 var particles = [];
 for (let i = 0; i < 1500; i++) {

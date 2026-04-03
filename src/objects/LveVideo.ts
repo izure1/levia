@@ -11,12 +11,33 @@ export interface VideoAttribute {
 }
 
 const DELEGATED_GETTERS: Record<string, (self: LveVideo) => any> = {
+  src: (self) => self['_clipName'] ?? undefined,
   currentTime: (self) => self._videoElement?.currentTime ?? 0,
   playbackRate: (self) => self._videoElement?.playbackRate ?? 1.0,
   volume: (self) => self._videoElement?.volume ?? 1.0,
 }
 
 const DELEGATED_SETTERS: Record<string, (self: LveVideo, value: any) => void> = {
+  src: (self, value: string) => {
+    const anySelf = self as any
+    if (!anySelf._manager) {
+      console.warn('[LveVideo] __setManager()를 먼저 호출하십시오.')
+      return
+    }
+    const clip = anySelf._manager.get(value)
+    if (!clip) {
+      console.warn(`[LveVideo] 클립 '${value}'을 찾을 수 없습니다.`)
+      return
+    }
+    anySelf._clipName = value
+    self._clip = clip
+    self._src = clip.src
+    self._playing = false
+    self._paused = false
+    self._needsSeekToStart = true
+    if (self._videoElement) self._videoElement.currentTime = 0
+    else self._pendingSeek = 0
+  },
   currentTime: (self, value: number) => {
     self._needsSeekToStart = false
     if (self._videoElement) {
@@ -76,25 +97,16 @@ export class LveVideo<
   }
 
   /**
-   * 지정한 이름의 비디오 클립을 재생합니다.
+   * 저장된 비디오 클립을 재생합니다.
    */
-  play(name: string): this {
-    if (!this._manager) {
-      console.warn('[LveVideo] __setManager()를 먼저 호출하십시오.')
-      return this
-    }
-    const clip = this._manager.get(name)
-    if (!clip) {
-      console.warn(`[LveVideo] 클립 '${name}'을 찾을 수 없습니다.`)
+  play(): this {
+    if (!this._clip) {
+      console.warn('[LveVideo] src 속성을 먼저 설정하십시오.')
       return this
     }
 
-    this._clipName = name
-    this._clip = clip
-    this._src = clip.src
     this._playing = true
     this._paused = false
-    this._needsSeekToStart = true
     this.emit('play')
     return this
   }

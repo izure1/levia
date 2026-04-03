@@ -44,7 +44,7 @@ label('① LveImage — logo.png (auto size)', -500, -250, 0)
 const img1 = world.createImage({
   transform: { position: { x: -380, y: -160, z: 0 } },
 })
-img1.play('logo')
+img1.attr({ src: 'logo' })
 
 // ② LveImage — logo.png (지정 크기 200×auto)
 label('② LveImage — logo.png (200×auto)', -500, 20, 0)
@@ -52,7 +52,7 @@ const img2 = world.createImage({
   style: { width: 200 },
   transform: { position: { x: -400, y: 120, z: 0 } },
 })
-img2.play('logo')
+img2.attr({ src: 'logo' })
 
 // ③ Placeholder (src 없음)
 label('③ Placeholder (no src)', -500, 250, 0)
@@ -67,7 +67,7 @@ const spr = world.createSprite({
   style: { width: 132 },
   transform: { position: { x: 180, y: -160, z: 0 } },
 })
-spr.play('play')
+spr.attr({ src: 'play' }).play()
 
 // ⑤ Sprite — 원경 (z=300, perspective 축소)
 label('⑤ Sprite 원경 (z300)', 80, 60, 0)
@@ -75,7 +75,7 @@ const sprFar = world.createSprite({
   style: { width: 132, height: 120 },
   transform: { position: { x: 180, y: 160, z: 300 } },
 })
-sprFar.play('play')
+sprFar.attr({ src: 'play' }).play()
 
 // ⑥ LveVideo — sample.mp4
 label('⑥ LveVideo — sample.mp4 (200×auto)', -200, -250, 0)
@@ -83,7 +83,7 @@ const vid = world.createVideo({
   style: { width: 200 },
   transform: { position: { x: -120, y: -160, z: 0 } },
 })
-vid.play('sample')
+vid.attr({ src: 'sample' }).play()
 
 // ⑦ Particle — 파티클 에미터 (일반 모드)
 world.particleManager.create({

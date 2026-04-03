@@ -9,11 +9,30 @@ export interface SpriteAttribute {
 }
 
 const DELEGATED_GETTERS: Record<string, (self: Sprite) => any> = {
+  src: (self) => self['_clipName'] ?? undefined,
   currentTime: (self) => self._clip ? Math.max(0, self._currentFrame - self._clip.start) : 0,
   playbackRate: (self) => self._playbackRate ?? (self._clip ? self._clip.frameRate : 0),
 }
 
 const DELEGATED_SETTERS: Record<string, (self: Sprite, value: any) => void> = {
+  src: (self, value: string) => {
+    const anySelf = self as any
+    if (!anySelf._manager) {
+      console.warn('[Sprite] __setManager()를 먼저 호출하십시오.')
+      return
+    }
+    const clip = anySelf._manager.get(value)
+    if (!clip) {
+      console.warn(`[Sprite] 클립 '${value}'을 찾을 수 없습니다.`)
+      return
+    }
+    anySelf._clipName = value
+    self._clip = clip
+    self._currentFrame = clip.start
+    self._lastFrameTime = 0
+    self._playing = false
+    self._paused = false
+  },
   currentTime: (self, value: number) => {
     if (!self._clip) return
     self._currentFrame = self._clip.start + Math.floor(value)
@@ -65,26 +84,18 @@ export class Sprite<
   }
 
   /**
-   * 지정한 이름의 애니메이션 클립을 재생합니다.
+   * 애니메이션 클립을 재생합니다.
    */
-  play(name: string): this {
-    if (!this._manager) {
-      console.warn('[Sprite] __setManager()를 먼저 호출하십시오.')
+  play(): this {
+    if (!this._clip) {
+      console.warn('[Sprite] src 속성을 먼저 설정하십시오.')
       return this
     }
-    const clip = this._manager.get(name)
-    if (!clip) {
-      console.warn(`[Sprite] 클립 '${name}'을 찾을 수 없습니다.`)
-      return this
-    }
-    if (this._clipName === name && this._playing && !this._paused) return this
+    if (this._playing && !this._paused) return this
 
-    this._clipName = name
-    this._clip = clip
-    this._currentFrame = clip.start
-    this._lastFrameTime = 0
     this._playing = true
     this._paused = false
+    this._lastFrameTime = 0
     this.emit('play')
     return this
   }
@@ -97,13 +108,7 @@ export class Sprite<
     return this
   }
 
-  /** 일시정지를 재개합니다. */
-  resume(): this {
-    if (!this._paused) return this
-    this._paused = false
-    this.emit('play')
-    return this
-  }
+
 
   /** 애니메이션을 정지합니다. */
   stop(): this {

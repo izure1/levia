@@ -47,7 +47,7 @@ world.createText({
 const img1 = world.createImage({
   transform: { position: getPos(0.2, 0.35), pivot: { x: 0.5, y: 0.5 } }
 })
-img1.play('logo')
+img1.attr({ src: 'logo' })
 
 world.createText({
   attribute: { text: 'Click to Flip X\n(Vertical)' },
@@ -59,7 +59,7 @@ world.createText({
 const img2 = world.createImage({
   transform: { position: getPos(0.5, 0.35), pivot: { x: 0.5, y: 0.5 } }
 })
-img2.play('logo')
+img2.attr({ src: 'logo' })
 
 world.createText({
   attribute: { text: 'Click to Flip Y\n(Horizontal)' },
@@ -71,7 +71,7 @@ world.createText({
 const vid = world.createVideo({
   transform: { position: getPos(0.8, 0.35), pivot: { x: 0.5, y: 0.5 }, scale: { x: 0.4, y: 0.4 } }
 })
-vid.play('sample')
+vid.attr({ src: 'sample' }).play()
 
 world.createText({
   attribute: { text: 'Video (Flip X+Y)' },
@@ -84,7 +84,7 @@ const spr = world.createSprite({
   style: { width: 132, height: 120 },
   transform: { position: getPos(0.2, 0.7), pivot: { x: 0.5, y: 0.5 } }
 })
-spr.play('mummy')
+spr.attr({ src: 'mummy' }).play()
 
 world.createText({
   attribute: { text: 'Sprite (Flip X)' },

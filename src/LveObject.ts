@@ -398,6 +398,19 @@ export abstract class LveObject<
     }
   }
 
+  /**
+   * 속성(attribute)을 일괄 변경하고 체이닝을 지원합니다.
+   */
+  attr(attributes: Partial<Attribute & T>): this {
+    if (!attributes) return this
+    for (const key in attributes) {
+      if (Object.prototype.hasOwnProperty.call(attributes, key)) {
+        ;(this.attribute as any)[key] = (attributes as any)[key]
+      }
+    }
+    return this
+  }
+
   setDataset(key: string, value: DatasetValue): this {
     ; (this.dataset as any)[key] = value
     return this

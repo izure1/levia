@@ -23,7 +23,7 @@ for (let i = 0; i < 15000; i++) {
   world.createImage({
     style: { width: size, height: size, blendMode: 'lighter' },
     transform: { position: { x, y, z } }
-  }).play('star')
+  }).attr({ src: 'star' })
 }
 
 world.on('mouseover', (obj, e) => {
