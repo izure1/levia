@@ -80,7 +80,7 @@ world.camera = camera
 
 const box = world.createRectangle({
   attribute: {
-    id: 'main_box',
+    name: 'main_box',
     physics: 'dynamic',
     friction: 0.1
   },
@@ -96,7 +96,7 @@ const box = world.createRectangle({
 })
 
 // 특정 객체를 선택해 멋진 회전 애니메이션을 적용해 보세요!
-const selected = world.select('#main_box')[0]
+const selected = world.select('[attr-name="main_box"]')[0]
 selected.animate({
   style: { opacity: 0.5 },
   transform: { rotation: { z: '+=360' } }
