@@ -5,7 +5,10 @@ import { ImageTransition } from './ImageTransition.js'
 export interface ImageAttribute {
   src?: string
 }
-export class LveImage<D extends Record<string, any> = Record<string, any>> extends LveObject<ImageAttribute, D> {
+
+export class LveImage<
+  D extends Record<string, any> = Record<string, any>
+> extends LveObject<ImageAttribute, D> {
   /** 현재 표시할 에셋 키 */
   _src: string | null = null
 

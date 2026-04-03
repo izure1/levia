@@ -466,19 +466,39 @@ export class Renderer {
       // 경고 텍스트 렌더링
       if (!this._noCameraText) {
         this._noCameraText = {
-          attribute: { id: '__no_camera_warning__', type: 'text', text: 'No Camera' },
-          style: { color: '#ff5555', fontSize: 24, textAlign: 'center', opacity: 1 },
+          attribute: { id: '__no_camera_warning__', type: 'text', text: '<style fontSize="36" fontWeight="900">No Camera</style>\nAdd Camera and set to world camera' },
+          style: { color: '#ff5555', fontSize: 24, textAlign: 'center', lineHeight: 1.5, opacity: 1 },
           transform: {
             position: { x: 0, y: 0, z: 0 },
             scale: { x: 1, y: 1 },
-            rotation: { z: 0 }
+            rotation: { x: 0, y: 0, z: 0 },
+            pivot: { x: 0.5, y: 0.5 }
           },
+          _worldMatrix: new Mat4().translate(new OglVec3(0, 0, -100)),
+          _fadeOpacity: 1,
           _dirtyTexture: true,
           _textureThrottleCount: 0,
           _textureIdleCount: 0
         }
       }
+      this._activeObj = this._noCameraText as LveObject
+      this._activeRenderW = 200
+      this._activeRenderH = 50
+
+      const dummyCam = {
+        transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }
+      } as any
+      this._buildViewMatrix(dummyCam)
+
+      const fov = 2 * Math.atan(this._height / 2 / 100)
+      this.camera.perspective({
+        fov: fov * 180 / Math.PI,
+        aspect: this._width / this._height,
+        near: 0.1,
+        far: 100000,
+      })
       this._drawText(this._noCameraText as LveObject, 0, 0, 1, timestamp)
+      this._flushBatch()
       return
     }
 
@@ -1594,7 +1614,7 @@ export class Renderer {
     assets: LoadedAssets,
     timestamp: number,
   ) {
-    obj.tick(timestamp)
+    obj.__tick(timestamp)
 
     const clip = obj._clip
     if (!clip) return

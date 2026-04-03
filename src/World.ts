@@ -371,21 +371,65 @@ export class World extends EventEmitter<WorldEvents> {
    */
   select(query: string): LveObject[] {
     const all = Array.from(this.objects)
-    if (query.startsWith('.')) {
-      const cls = query.slice(1)
-      return all.filter(o => o.attribute.className.split(' ').includes(cls))
+
+    const classMatches = query.match(/\.([a-zA-Z0-9_-]+)/g)
+    const classes = classMatches ? classMatches.map(c => c.slice(1)) : []
+
+    const attrRegex = /\[([a-zA-Z0-9_-]+)=([^\]]+)\]/g
+    const attrConditions: { key: string, parsedValue: any, rawValue: string }[] = []
+
+    let match
+    while ((match = attrRegex.exec(query)) !== null) {
+      const key = match[1].trim()
+      const rawValue = match[2].trim()
+      let parsedValue: any = rawValue
+
+      if (
+        (rawValue.startsWith('"') && rawValue.endsWith('"')) ||
+        (rawValue.startsWith("'") && rawValue.endsWith("'"))
+      ) {
+        parsedValue = rawValue.slice(1, -1)
+      } else if (rawValue === 'true') {
+        parsedValue = true
+      } else if (rawValue === 'false') {
+        parsedValue = false
+      } else if (rawValue === 'null') {
+        parsedValue = null
+      } else if (!Number.isNaN(Number(rawValue)) && rawValue !== '') {
+        parsedValue = Number(rawValue)
+      }
+
+      attrConditions.push({ key, parsedValue, rawValue })
     }
-    if (query.startsWith('#')) {
-      const id = query.slice(1)
-      return all.filter(o => o.attribute.id === id)
+
+    if (classes.length === 0 && attrConditions.length === 0) {
+      return []
     }
-    const attrMatch = query.match(/^\[(.+)=(.+)\]$/)
-    if (attrMatch) {
-      const key = attrMatch[1]
-      const value = attrMatch[2]
-      return all.filter(o => o.attribute[key as keyof Attribute] === value)
-    }
-    return []
+
+    return all.filter(o => {
+      if (classes.length > 0) {
+        const objClasses = (o.attribute.className || '').split(/\s+/).filter(Boolean)
+        const hasAllClasses = classes.every(c => objClasses.includes(c))
+        if (!hasAllClasses) return false
+      }
+
+      for (const cond of attrConditions) {
+        const { key, parsedValue, rawValue } = cond
+
+        if (key.startsWith('data-')) {
+          const dataKey = key.slice(5)
+          if ((o.dataset as any)[dataKey] !== parsedValue) return false
+        } else if (key.startsWith('attr-')) {
+          const attrKey = key.slice(5)
+          const objVal = (o.attribute as any)[attrKey]
+          if (objVal !== parsedValue && String(objVal) !== rawValue) return false
+        } else {
+          return false
+        }
+      }
+
+      return true
+    })
   }
 
   /**
@@ -430,7 +474,7 @@ export class World extends EventEmitter<WorldEvents> {
     return rect
   }
 
-  createEllipse<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<Record<string, never>, D>): Ellipse<D> {
+  createEllipse<D extends Record<string, any> = Record<string, any>>(options?: LveObjectOptions<Record<string, any>, D>): Ellipse<D> {
     const el = new Ellipse<D>(options)
     this._registerObject(el)
     this._tryAddPhysics(el, options?.style?.width, options?.style?.height)

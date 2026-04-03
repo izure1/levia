@@ -3788,16 +3788,16 @@ var require_matter = __commonJS({
                 _cancelAnimationFrame(render.frameRequestId);
               };
               Render.setPixelRatio = function(render, pixelRatio) {
-                var options = render.options, canvas = render.canvas;
+                var options = render.options, canvas2 = render.canvas;
                 if (pixelRatio === "auto") {
-                  pixelRatio = _getPixelRatio(canvas);
+                  pixelRatio = _getPixelRatio(canvas2);
                 }
                 options.pixelRatio = pixelRatio;
-                canvas.setAttribute("data-pixel-ratio", pixelRatio);
-                canvas.width = options.width * pixelRatio;
-                canvas.height = options.height * pixelRatio;
-                canvas.style.width = options.width + "px";
-                canvas.style.height = options.height + "px";
+                canvas2.setAttribute("data-pixel-ratio", pixelRatio);
+                canvas2.width = options.width * pixelRatio;
+                canvas2.height = options.height * pixelRatio;
+                canvas2.style.width = options.width + "px";
+                canvas2.style.height = options.height + "px";
               };
               Render.setSize = function(render, width, height) {
                 render.options.width = width;
@@ -3880,7 +3880,7 @@ var require_matter = __commonJS({
                 render.context.setTransform(render.options.pixelRatio, 0, 0, render.options.pixelRatio, 0, 0);
               };
               Render.world = function(render, time) {
-                var startTime = Common.now(), engine = render.engine, world2 = engine.world, canvas = render.canvas, context = render.context, options = render.options, timing = render.timing;
+                var startTime = Common.now(), engine = render.engine, world2 = engine.world, canvas2 = render.canvas, context = render.context, options = render.options, timing = render.timing;
                 var allBodies = Composite.allBodies(world2), allConstraints = Composite.allConstraints(world2), background = options.wireframes ? options.wireframeBackground : options.background, bodies = [], constraints = [], i;
                 var event = {
                   timestamp: engine.timing.timestamp
@@ -3890,7 +3890,7 @@ var require_matter = __commonJS({
                   _applyBackground(render, background);
                 context.globalCompositeOperation = "source-in";
                 context.fillStyle = "transparent";
-                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.fillRect(0, 0, canvas2.width, canvas2.height);
                 context.globalCompositeOperation = "source-over";
                 if (options.hasBounds) {
                   for (i = 0; i < allBodies.length; i++) {
@@ -4545,28 +4545,28 @@ var require_matter = __commonJS({
                 return result / values.length || 0;
               };
               var _createCanvas = function(width, height) {
-                var canvas = document.createElement("canvas");
-                canvas.width = width;
-                canvas.height = height;
-                canvas.oncontextmenu = function() {
+                var canvas2 = document.createElement("canvas");
+                canvas2.width = width;
+                canvas2.height = height;
+                canvas2.oncontextmenu = function() {
                   return false;
                 };
-                canvas.onselectstart = function() {
+                canvas2.onselectstart = function() {
                   return false;
                 };
-                return canvas;
+                return canvas2;
               };
-              var _getPixelRatio = function(canvas) {
-                var context = canvas.getContext("2d"), devicePixelRatio = window.devicePixelRatio || 1, backingStorePixelRatio = context.webkitBackingStorePixelRatio || context.mozBackingStorePixelRatio || context.msBackingStorePixelRatio || context.oBackingStorePixelRatio || context.backingStorePixelRatio || 1;
+              var _getPixelRatio = function(canvas2) {
+                var context = canvas2.getContext("2d"), devicePixelRatio = window.devicePixelRatio || 1, backingStorePixelRatio = context.webkitBackingStorePixelRatio || context.mozBackingStorePixelRatio || context.msBackingStorePixelRatio || context.oBackingStorePixelRatio || context.backingStorePixelRatio || 1;
                 return devicePixelRatio / backingStorePixelRatio;
               };
               var _getTexture = function(render, imagePath) {
-                var image2 = render.textures[imagePath];
-                if (image2)
-                  return image2;
-                image2 = render.textures[imagePath] = new Image();
-                image2.src = imagePath;
-                return image2;
+                var image = render.textures[imagePath];
+                if (image)
+                  return image;
+                image = render.textures[imagePath] = new Image();
+                image.src = imagePath;
+                return image;
               };
               var _applyBackground = function(render, background) {
                 var cssBackground = background;
@@ -4962,14 +4962,14 @@ var Loader = class {
           resolve();
         });
       } else {
-        const image2 = new Image();
-        image2.src = src;
-        image2.onload = () => {
-          this.assets[key] = image2;
-          this.emit("loaded", { key, asset: image2 });
+        const image = new Image();
+        image.src = src;
+        image.onload = () => {
+          this.assets[key] = image;
+          this.emit("loaded", { key, asset: image });
           resolve();
         };
-        image2.onerror = () => {
+        image.onerror = () => {
           const error = new Error(`Failed to load image: ${src}`);
           this.emit("error", { key, src, error });
           resolve();
@@ -5820,7 +5820,7 @@ var tempVec32 = /* @__PURE__ */ new Vec3();
 var ID3 = 1;
 var Renderer = class {
   constructor({
-    canvas = document.createElement("canvas"),
+    canvas: canvas2 = document.createElement("canvas"),
     width = 300,
     height = 150,
     dpr = 1,
@@ -5843,9 +5843,9 @@ var Renderer = class {
     this.premultipliedAlpha = premultipliedAlpha;
     this.autoClear = autoClear;
     this.id = ID3++;
-    if (webgl === 2) this.gl = canvas.getContext("webgl2", attributes);
+    if (webgl === 2) this.gl = canvas2.getContext("webgl2", attributes);
     this.isWebgl2 = !!this.gl;
-    if (!this.gl) this.gl = canvas.getContext("webgl", attributes);
+    if (!this.gl) this.gl = canvas2.getContext("webgl", attributes);
     if (!this.gl) console.error("unable to create webgl context");
     this.gl.renderer = this;
     this.setSize(width, height);
@@ -6036,14 +6036,14 @@ var Renderer = class {
       return b.id - a.id;
     }
   }
-  getRenderList({ scene, camera: camera2, frustumCull, sort }) {
+  getRenderList({ scene, camera, frustumCull, sort }) {
     let renderList = [];
-    if (camera2 && frustumCull) camera2.updateFrustum();
+    if (camera && frustumCull) camera.updateFrustum();
     scene.traverse((node) => {
       if (!node.visible) return true;
       if (!node.draw) return;
-      if (frustumCull && node.frustumCulled && camera2) {
-        if (!camera2.frustumIntersectsMesh(node)) return;
+      if (frustumCull && node.frustumCulled && camera) {
+        if (!camera.frustumIntersectsMesh(node)) return;
       }
       renderList.push(node);
     });
@@ -6060,9 +6060,9 @@ var Renderer = class {
           ui.push(node);
         }
         node.zDepth = 0;
-        if (node.renderOrder !== 0 || !node.program.depthTest || !camera2) return;
+        if (node.renderOrder !== 0 || !node.program.depthTest || !camera) return;
         node.worldMatrix.getTranslation(tempVec32);
-        tempVec32.applyMatrix4(camera2.projectionViewMatrix);
+        tempVec32.applyMatrix4(camera.projectionViewMatrix);
         node.zDepth = tempVec32.z;
       });
       opaque.sort(this.sortOpaque);
@@ -6072,7 +6072,7 @@ var Renderer = class {
     }
     return renderList;
   }
-  render({ scene, camera: camera2, target = null, update = true, sort = true, frustumCull = true, clear }) {
+  render({ scene, camera, target = null, update = true, sort = true, frustumCull = true, clear }) {
     if (target === null) {
       this.bindFramebuffer();
       this.setViewport(this.width * this.dpr, this.height * this.dpr);
@@ -6094,10 +6094,10 @@ var Renderer = class {
       );
     }
     if (update) scene.updateMatrixWorld();
-    if (camera2) camera2.updateMatrixWorld();
-    const renderList = this.getRenderList({ scene, camera: camera2, frustumCull, sort });
+    if (camera) camera.updateMatrixWorld();
+    const renderList = this.getRenderList({ scene, camera, frustumCull, sort });
     renderList.forEach((node) => {
-      node.draw({ camera: camera2 });
+      node.draw({ camera });
     });
   }
 };
@@ -7797,8 +7797,8 @@ var Mesh = class extends Transform {
     this.afterRenderCallbacks.push(f);
     return this;
   }
-  draw({ camera: camera2 } = {}) {
-    if (camera2) {
+  draw({ camera } = {}) {
+    if (camera) {
       if (!this.program.uniforms.modelMatrix) {
         Object.assign(this.program.uniforms, {
           modelMatrix: { value: null },
@@ -7809,20 +7809,20 @@ var Mesh = class extends Transform {
           cameraPosition: { value: null }
         });
       }
-      this.program.uniforms.projectionMatrix.value = camera2.projectionMatrix;
-      this.program.uniforms.cameraPosition.value = camera2.worldPosition;
-      this.program.uniforms.viewMatrix.value = camera2.viewMatrix;
-      this.modelViewMatrix.multiply(camera2.viewMatrix, this.worldMatrix);
+      this.program.uniforms.projectionMatrix.value = camera.projectionMatrix;
+      this.program.uniforms.cameraPosition.value = camera.worldPosition;
+      this.program.uniforms.viewMatrix.value = camera.viewMatrix;
+      this.modelViewMatrix.multiply(camera.viewMatrix, this.worldMatrix);
       this.normalMatrix.getNormalMatrix(this.modelViewMatrix);
       this.program.uniforms.modelMatrix.value = this.worldMatrix;
       this.program.uniforms.modelViewMatrix.value = this.modelViewMatrix;
       this.program.uniforms.normalMatrix.value = this.normalMatrix;
     }
-    this.beforeRenderCallbacks.forEach((f) => f && f({ mesh: this, camera: camera2 }));
+    this.beforeRenderCallbacks.forEach((f) => f && f({ mesh: this, camera }));
     let flipFaces = this.program.cullFace && this.worldMatrix.determinant() < 0;
     this.program.use({ flipFaces });
     this.geometry.draw({ mode: this.mode, program: this.program });
-    this.afterRenderCallbacks.forEach((f) => f && f({ mesh: this, camera: camera2 }));
+    this.afterRenderCallbacks.forEach((f) => f && f({ mesh: this, camera }));
   }
 };
 
@@ -7834,7 +7834,7 @@ function isPowerOf2(value) {
 var ID5 = 1;
 var Texture = class {
   constructor(gl, {
-    image: image2,
+    image,
     target = gl.TEXTURE_2D,
     type = gl.UNSIGNED_BYTE,
     format = gl.RGBA,
@@ -7857,7 +7857,7 @@ var Texture = class {
   } = {}) {
     this.gl = gl;
     this.id = ID5++;
-    this.image = image2;
+    this.image = image;
     this.target = target;
     this.type = type;
     this.format = format;
@@ -10520,7 +10520,7 @@ var Renderer2 = class {
   _width = 0;
   _height = 0;
   _lastFocalLength = -1;
-  constructor(canvas) {
+  constructor(canvas2) {
     const N = this._batchMaxSize;
     this._batchMat0 = new Float32Array(N * 4);
     this._batchMat1 = new Float32Array(N * 4);
@@ -10530,19 +10530,19 @@ var Renderer2 = class {
     this._batchUVParams = new Float32Array(N * 4);
     this._batchBorderRadius = new Float32Array(N * 4);
     this.ogl = new Renderer({
-      canvas,
-      width: canvas.width,
-      height: canvas.height,
+      canvas: canvas2,
+      width: canvas2.width,
+      height: canvas2.height,
       alpha: true,
       antialias: true,
       premultipliedAlpha: false
     });
     this.gl = this.ogl.gl;
-    this._width = canvas.width;
-    this._height = canvas.height;
+    this._width = canvas2.width;
+    this._height = canvas2.height;
     this.camera = new Camera(this.gl, {
       fov: 90,
-      aspect: canvas.width / canvas.height,
+      aspect: canvas2.width / canvas2.height,
       near: 0.1,
       far: 1e5
     });
@@ -11193,11 +11193,11 @@ var Renderer2 = class {
         obj._textureIdleCount = 0;
         obj._textureThrottleCount = 0;
       } else {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const texture = new Texture(this.gl, { image: canvas, generateMipmaps: false });
+        const canvas2 = document.createElement("canvas");
+        const ctx = canvas2.getContext("2d");
+        const texture = new Texture(this.gl, { image: canvas2, generateMipmaps: false });
         const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program: this.textureProgram });
-        entry = { texture, canvas, ctx, lastText: "", mesh };
+        entry = { texture, canvas: canvas2, ctx, lastText: "", mesh };
         entry._contentKey = contentKey;
         this.textCache.set(id, entry);
         this.textContentCache.set(contentKey, entry);
@@ -11218,11 +11218,11 @@ var Renderer2 = class {
         } else {
           this.textContentRefCount.set(prevContentKey, prevCount - 1);
         }
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const texture = new Texture(this.gl, { image: canvas, generateMipmaps: false });
+        const canvas2 = document.createElement("canvas");
+        const ctx = canvas2.getContext("2d");
+        const texture = new Texture(this.gl, { image: canvas2, generateMipmaps: false });
         const mesh = new Mesh(this.gl, { geometry: this.quadGeo, program: this.textureProgram });
-        entry = { texture, canvas, ctx, lastText: "", mesh };
+        entry = { texture, canvas: canvas2, ctx, lastText: "", mesh };
         this.textCache.set(id, entry);
       }
       ;
@@ -11249,7 +11249,7 @@ var Renderer2 = class {
     this._drawTextureMesh(entry.texture, x, y, cw * displayScale, ch * displayScale, style.opacity * obj._fadeOpacity, false);
   }
   _renderTextToCanvas(entry, rawText, style, baseFontSize, maxW, maxH, transitionProgress = 1) {
-    const { canvas, ctx } = entry;
+    const { canvas: canvas2, ctx } = entry;
     const fontFamily = style.fontFamily ?? "sans-serif";
     const baseFontWeight = style.fontWeight ?? "normal";
     const baseFontStyle = style.fontStyle ?? "normal";
@@ -11284,8 +11284,8 @@ var Renderer2 = class {
         if (p) logicalLines[logicalLines.length - 1].push({ text: p, span });
       });
     }
-    canvas.width = 2;
-    canvas.height = 2;
+    canvas2.width = 2;
+    canvas2.height = 2;
     for (const logLine of logicalLines) {
       let curLine = [];
       let curW = 0;
@@ -11356,8 +11356,8 @@ var Renderer2 = class {
     }
     const canvasW = Math.ceil(maxW ?? containerW) + maxShadowBlur * 2 + maxShadowOffsetX + maxBorderWidth * 2;
     const canvasH = Math.ceil(maxH ?? totalH) + maxShadowBlur * 2 + maxShadowOffsetY + maxBorderWidth * 2;
-    canvas.width = canvasW;
-    canvas.height = canvasH;
+    canvas2.width = canvasW;
+    canvas2.height = canvasH;
     ctx.clearRect(0, 0, canvasW, canvasH);
     const originX = maxShadowBlur + Math.max(0, style.textShadowOffsetX ? maxShadowOffsetX / 2 : 0) + maxBorderWidth;
     const originY = maxShadowBlur + Math.max(0, style.textShadowOffsetY ? maxShadowOffsetY / 2 : 0) + maxBorderWidth;
@@ -11430,7 +11430,7 @@ var Renderer2 = class {
       }
       ctx.globalCompositeOperation = "source-over";
     }
-    entry.texture.image = canvas;
+    entry.texture.image = canvas2;
     entry.texture.needsUpdate = true;
   }
   // ─── Image ──────────────────────────────────────────────────────────────
@@ -11680,10 +11680,10 @@ var Renderer2 = class {
     if (stops.length === 0) return null;
     const pw = Math.max(1, Math.round(w));
     const ph = Math.max(1, Math.round(h));
-    const canvas = document.createElement("canvas");
-    canvas.width = pw;
-    canvas.height = ph;
-    const ctx = canvas.getContext("2d");
+    const canvas2 = document.createElement("canvas");
+    canvas2.width = pw;
+    canvas2.height = ph;
+    const ctx = canvas2.getContext("2d");
     if (ellipseClip) {
       ctx.beginPath();
       ctx.ellipse(pw / 2, ph / 2, pw / 2, ph / 2, 0, 0, Math.PI * 2);
@@ -11736,7 +11736,7 @@ var Renderer2 = class {
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, pw, ph);
     }
-    tex = new Texture(this.gl, { image: canvas, generateMipmaps: false });
+    tex = new Texture(this.gl, { image: canvas2, generateMipmaps: false });
     this._gradientTextureCache.set(cacheKey, tex);
     return tex;
   }
@@ -11816,19 +11816,19 @@ var World = class extends EventEmitter {
     this._setupMouseEvents(canvasEl);
   }
   createCanvas() {
-    const canvas = document.createElement("canvas");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;";
-    document.body.appendChild(canvas);
+    const canvas2 = document.createElement("canvas");
+    canvas2.width = window.innerWidth;
+    canvas2.height = window.innerHeight;
+    canvas2.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;";
+    document.body.appendChild(canvas2);
     window.addEventListener("resize", () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas2.width = window.innerWidth;
+      canvas2.height = window.innerHeight;
     });
-    return canvas;
+    return canvas2;
   }
   // ─── 마우스 이벤트 ────────────────────────────────
-  _setupMouseEvents(canvas) {
+  _setupMouseEvents(canvas2) {
     const dispatch = (eventName, e) => {
       const wrapped = wrapMouseEvent(e);
       const hits = this._getHitObjects(wrapped);
@@ -11838,17 +11838,17 @@ var World = class extends EventEmitter {
       }
       this.emit(eventName, hits[0], wrapped);
     };
-    canvas.addEventListener("click", (e) => dispatch("click", e));
-    canvas.addEventListener("dblclick", (e) => dispatch("dblclick", e));
-    canvas.addEventListener("contextmenu", (e) => {
+    canvas2.addEventListener("click", (e) => dispatch("click", e));
+    canvas2.addEventListener("dblclick", (e) => dispatch("dblclick", e));
+    canvas2.addEventListener("contextmenu", (e) => {
       if (this.disableContextMenu) {
         e.preventDefault();
       }
       dispatch("contextmenu", e);
     });
-    canvas.addEventListener("mousedown", (e) => dispatch("mousedown", e));
-    canvas.addEventListener("mouseup", (e) => dispatch("mouseup", e));
-    canvas.addEventListener("mousemove", (e) => {
+    canvas2.addEventListener("mousedown", (e) => dispatch("mousedown", e));
+    canvas2.addEventListener("mouseup", (e) => dispatch("mouseup", e));
+    canvas2.addEventListener("mousemove", (e) => {
       const wrapped = wrapMouseEvent(e);
       const hits = this._getHitObjects(wrapped);
       const hitIds = new Set(hits.map((o) => o.attribute.id));
@@ -11872,7 +11872,7 @@ var World = class extends EventEmitter {
         }
       }
     });
-    canvas.addEventListener("mouseleave", (e) => {
+    canvas2.addEventListener("mouseleave", (e) => {
       const wrapped = wrapMouseEvent(e);
       for (const id of Array.from(this._mouseOver)) {
         const obj = Array.from(this.objects).find((o) => o.attribute.id === id);
@@ -11888,13 +11888,13 @@ var World = class extends EventEmitter {
    * 화면좌표 기준으로 마우스 위치에 겹쳐지는 객체를 반환합니다. (AABB hit-test)
    */
   _getHitObjects(e) {
-    const canvas = this._canvas;
-    if (!canvas) return [];
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const mouseX = (e.clientX - rect.left) * scaleX - canvas.width / 2;
-    const mouseY = -((e.clientY - rect.top) * scaleY - canvas.height / 2);
+    const canvas2 = this._canvas;
+    if (!canvas2) return [];
+    const rect = canvas2.getBoundingClientRect();
+    const scaleX = canvas2.width / rect.width;
+    const scaleY = canvas2.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX - canvas2.width / 2;
+    const mouseY = -((e.clientY - rect.top) * scaleY - canvas2.height / 2);
     let camX = 0, camY = 0, camZ = 0;
     let camRotX = 0, camRotY = 0, camRotZ = 0;
     const activeCam = this.camera;
@@ -12026,11 +12026,11 @@ var World = class extends EventEmitter {
    * 월드의 카메라를 특정 객체로 지정합니다. 카메라 객체만 지정할 수 있습니다.
    * `null`을 할당하면 기본 동작으로 돌아갑니다.
    */
-  set camera(camera2) {
-    if (camera2 != null && camera2.attribute.type !== "camera") {
+  set camera(camera) {
+    if (camera != null && camera.attribute.type !== "camera") {
       throw new Error("The assigned object must be of camera type.");
     }
-    this._activeCamera = camera2;
+    this._activeCamera = camera;
   }
   /**
    * CSS querySelector와 유사한 방식으로 오브젝트를 선택합니다.
@@ -12227,53 +12227,49 @@ var World = class extends EventEmitter {
   }
 };
 
-// example/test-transition/main.ts
-var world = new World();
-var camera = world.createCamera();
-world.camera = camera;
-await world.loader.load({
-  "transition_before": "../asset/image/transition_before.png",
-  "transition_after": "../asset/image/transition_after.png",
-  "mummy": "../asset/image/mummy.png"
-});
-var image = world.createImage({
-  transform: {
-    position: { x: 0, y: 0, z: 0 }
-  }
-});
-var textObj = world.createText({
-  attribute: { text: "\uC774\uBBF8\uC9C0 \uD074\uB9AD!" },
-  style: { color: "#ffffff", fontSize: 40, textAlign: "center", borderColor: "#ae00ffff", borderWidth: 5, lineHeight: 1.5 },
-  transform: { position: { y: -250 } }
-});
-image.play("transition_before").addChild(textObj);
-function startPulse() {
-  image.animate({
-    transform: { scale: { x: 1.2, y: 1.2 } }
-  }, 1e3, "easeInOutQuad").on("end", () => {
-    image.animate({
-      transform: { scale: { x: 1, y: 1 } }
-    }, 1e3, "easeInOutQuad").on("end", startPulse);
-  });
-}
-startPulse();
-world.on("update", () => {
-  image.transform.rotation.z += 1;
-});
-var isToggled = false;
-image.on("click", (e) => {
-  e.stopImmediatePropagation();
-  isToggled = !isToggled;
-  const nextSrc = isToggled ? "transition_after" : "transition_before";
-  const nextText = isToggled ? '\uC0C8\uB85C\uC6B4 \uD14D\uC2A4\uD2B8\uAC00 \uC5EC\uB7EC \uC904\uB85C\n\uC11C\uC11C\uD788 \uB4F1\uC7A5\uD574\uC57C \uD569\uB2C8\uB2E4.\n<style color="yellow" letterSpacing="10">\uC2A4\uD0C0\uC77C \uD0DC\uADF8</style>\uB3C4 \uAC00\uB2A5!' : "\uC774\uBBF8\uC9C0 \uD074\uB9AD!";
-  image.transition(nextSrc, 1e3).on("end", () => {
-    console.log("\uC774\uBBF8\uC9C0 \uC804\uD658 \uC644\uB8CC!");
-  });
-  textObj.transition(nextText, 50).on("end", () => {
-    console.log("\uD14D\uC2A4\uD2B8 \uC804\uD658 \uC644\uB8CC!");
-  });
-});
+// example/test-selector/main.ts
+var canvas = document.getElementById("canvas");
+var world = new World(canvas);
 world.start();
+world.camera = world.createCamera();
+world.createRectangle({
+  attribute: { className: "student" },
+  dataset: { name: "alice", hp: 50 },
+  transform: { position: { x: -200, y: 100 } },
+  style: { width: 100, height: 100, color: "#444" }
+});
+world.createRectangle({
+  attribute: { className: "student" },
+  dataset: { name: "girl", hp: 100 },
+  transform: { position: { x: 0, y: 100 } },
+  style: { width: 100, height: 100, color: "#444" }
+});
+var student = world.createRectangle({
+  attribute: { className: "student leader" },
+  dataset: { name: "girl", hp: 200 },
+  transform: { position: { x: 200, y: 100 } },
+  style: { width: 100, height: 100, color: "#444" }
+});
+world.createText({
+  attribute: { text: `1\uCD08 \uB4A4 \uC870\uAC74\uC5D0 \uB9DE\uB294 \uAC1D\uCCB4\uC758 \uC0C9\uC0C1\uC774 \uBC14\uB01D\uB2C8\uB2E4.
+.student (\uC804\uCCB4 \uD30C\uB780 \uD14C\uB450\uB9AC)
+.student[data-hp=100] (\uBE68\uAC04\uC0C9 \uBA74)
+.student.leader[attr-id='${student.attribute.id}'] (\uCD08\uB85D\uC0C9 \uBA74)` },
+  transform: { position: { x: 0, y: -200 } },
+  style: { fontSize: 16, color: "#fff", textAlign: "center", lineHeight: 1.5 }
+});
+setTimeout(() => {
+  world.select(".student").forEach((o) => {
+    o.style.borderWidth = 4;
+    o.style.borderColor = "#00aaff";
+  });
+  world.select(".student[data-hp=100]").forEach((o) => {
+    o.style.color = "#ff4444";
+  });
+  world.select(`.student.leader[attr-id="${student.attribute.id}"]`).forEach((o) => {
+    o.style.color = "#44ff44";
+  });
+}, 1e3);
 /*! Bundled license information:
 
 matter-js/build/matter.js:

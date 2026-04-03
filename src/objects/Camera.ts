@@ -10,7 +10,10 @@ export interface CameraAttribute {
    */
   focalLength?: number
 }
-export class Camera<D extends Record<string, any> = Record<string, any>> extends LveObject<CameraAttribute, D> {
+
+export class Camera<
+  D extends Record<string, any> = Record<string, any>
+> extends LveObject<CameraAttribute, D> {
   /** @internal */
   _world?: World;
 

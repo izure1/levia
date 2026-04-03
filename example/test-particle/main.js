@@ -9531,7 +9531,7 @@ var Particle = class extends LveObject {
    * Renderer에서 매 프레임 호출합니다.
    * 인스턴스 생성/업데이트/제거를 처리합니다.
    */
-  tick(timestamp) {
+  __tick(timestamp) {
     if (!this._clip) return;
     const clip = this._clip;
     if (this._lastSpawnTime === 0) {
@@ -10698,19 +10698,37 @@ var Renderer2 = class {
       this._setBlendMode("source-over");
       if (!this._noCameraText) {
         this._noCameraText = {
-          attribute: { id: "__no_camera_warning__", type: "text", text: "No Camera" },
-          style: { color: "#ff5555", fontSize: 24, textAlign: "center", opacity: 1 },
+          attribute: { id: "__no_camera_warning__", type: "text", text: '<style fontSize="36" fontWeight="900">No Camera</style>\nAdd Camera and set to world camera' },
+          style: { color: "#ff5555", fontSize: 24, textAlign: "center", lineHeight: 1.5, opacity: 1 },
           transform: {
             position: { x: 0, y: 0, z: 0 },
             scale: { x: 1, y: 1 },
-            rotation: { z: 0 }
+            rotation: { x: 0, y: 0, z: 0 },
+            pivot: { x: 0.5, y: 0.5 }
           },
+          _worldMatrix: new Mat4().translate(new Vec3(0, 0, -100)),
+          _fadeOpacity: 1,
           _dirtyTexture: true,
           _textureThrottleCount: 0,
           _textureIdleCount: 0
         };
       }
+      this._activeObj = this._noCameraText;
+      this._activeRenderW = 200;
+      this._activeRenderH = 50;
+      const dummyCam = {
+        transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }
+      };
+      this._buildViewMatrix(dummyCam);
+      const fov = 2 * Math.atan(this._height / 2 / 100);
+      this.camera.perspective({
+        fov: fov * 180 / Math.PI,
+        aspect: this._width / this._height,
+        near: 0.1,
+        far: 1e5
+      });
       this._drawText(this._noCameraText, 0, 0, 1, timestamp);
+      this._flushBatch();
       return;
     }
     const focalLength = activeCamera.attribute.focalLength ?? 100;
@@ -11600,7 +11618,7 @@ var Renderer2 = class {
   }
   // ─── Particle (Instanced) ────────────────────────────────────────────────
   _drawParticle(obj, emX, emY, w, h, perspectiveScale, assets, timestamp) {
-    obj.tick(timestamp);
+    obj.__tick(timestamp);
     const clip = obj._clip;
     if (!clip) return;
     const asset = assets[clip.src];
@@ -12020,21 +12038,52 @@ var World = class extends EventEmitter {
    */
   select(query) {
     const all = Array.from(this.objects);
-    if (query.startsWith(".")) {
-      const cls = query.slice(1);
-      return all.filter((o) => o.attribute.className.split(" ").includes(cls));
+    const classMatches = query.match(/\.([a-zA-Z0-9_-]+)/g);
+    const classes = classMatches ? classMatches.map((c) => c.slice(1)) : [];
+    const attrRegex = /\[([a-zA-Z0-9_-]+)=([^\]]+)\]/g;
+    const attrConditions = [];
+    let match;
+    while ((match = attrRegex.exec(query)) !== null) {
+      const key = match[1].trim();
+      const rawValue = match[2].trim();
+      let parsedValue = rawValue;
+      if (rawValue.startsWith('"') && rawValue.endsWith('"') || rawValue.startsWith("'") && rawValue.endsWith("'")) {
+        parsedValue = rawValue.slice(1, -1);
+      } else if (rawValue === "true") {
+        parsedValue = true;
+      } else if (rawValue === "false") {
+        parsedValue = false;
+      } else if (rawValue === "null") {
+        parsedValue = null;
+      } else if (!Number.isNaN(Number(rawValue)) && rawValue !== "") {
+        parsedValue = Number(rawValue);
+      }
+      attrConditions.push({ key, parsedValue, rawValue });
     }
-    if (query.startsWith("#")) {
-      const id = query.slice(1);
-      return all.filter((o) => o.attribute.id === id);
+    if (classes.length === 0 && attrConditions.length === 0) {
+      return [];
     }
-    const attrMatch = query.match(/^\[(.+)=(.+)\]$/);
-    if (attrMatch) {
-      const key = attrMatch[1];
-      const value = attrMatch[2];
-      return all.filter((o) => o.attribute[key] === value);
-    }
-    return [];
+    return all.filter((o) => {
+      if (classes.length > 0) {
+        const objClasses = (o.attribute.className || "").split(/\s+/).filter(Boolean);
+        const hasAllClasses = classes.every((c) => objClasses.includes(c));
+        if (!hasAllClasses) return false;
+      }
+      for (const cond of attrConditions) {
+        const { key, parsedValue, rawValue } = cond;
+        if (key.startsWith("data-")) {
+          const dataKey = key.slice(5);
+          if (o.dataset[dataKey] !== parsedValue) return false;
+        } else if (key.startsWith("attr-")) {
+          const attrKey = key.slice(5);
+          const objVal = o.attribute[attrKey];
+          if (objVal !== parsedValue && String(objVal) !== rawValue) return false;
+        } else {
+          return false;
+        }
+      }
+      return true;
+    });
   }
   /**
    * 에셋 로더를 생성합니다. 로드 완료 시 World 내부 에셋 맵에 자동으로 병합됩니다.

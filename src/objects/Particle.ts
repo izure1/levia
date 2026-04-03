@@ -7,7 +7,10 @@ import Matter from 'matter-js'
 export interface ParticleAttribute {
   src?: string
 }
-export interface ParticleOptions<D extends Record<string, any> = Record<string, any>> extends LveObjectOptions<ParticleAttribute, D> {
+
+export interface ParticleOptions<
+  D extends Record<string, any> = Record<string, any>
+> extends LveObjectOptions<ParticleAttribute, D> {
   /**
    * true이면 matter-js 기반 물리를 각 파티클 인스턴스에 적용합니다.
    * false(기본)이면 내부 velocity 시뮬레이션을 사용합니다.
@@ -47,7 +50,10 @@ export interface ParticleInstance {
 }
 
 const GRAVITY = 0.00015 // px/ms² (내부 시뮬레이션용 중력 가속도)
-export class Particle<D extends Record<string, any> = Record<string, any>> extends LveObject<ParticleAttribute, D> {
+
+export class Particle<
+  D extends Record<string, any> = Record<string, any>
+> extends LveObject<ParticleAttribute, D> {
   /** strict 모드 여부 */
   readonly strict: boolean
 
@@ -142,7 +148,7 @@ export class Particle<D extends Record<string, any> = Record<string, any>> exten
    * Renderer에서 매 프레임 호출합니다.
    * 인스턴스 생성/업데이트/제거를 처리합니다.
    */
-  tick(timestamp: number) {
+  __tick(timestamp: number) {
     if (!this._clip) return
 
     const clip = this._clip

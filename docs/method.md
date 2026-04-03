@@ -110,9 +110,10 @@
 -  **createImage / createVideo / createRectangle / createEllipse / createText / createSprite / createParticle / createCamera (options?): LveObject**
    새로운 타입의 객체를 생성하고 월드에 자동으로 등록합니다. 각 메서드는 생성된 구체적인 객체 인스턴스(예: `createImage`는 `LveImage`)를 반환합니다. 초기 속성을 담은 `options` 객체는 선택사항입니다.
 -  **select(selector: string): LveObject[]**
-   CSS 스타일 선택자를 사용해 월드 내의 객체들을 찾습니다.
-   - ID: `#myBox`
-   - Class: `.active`
-   - Attribute: `[name=hero]`
+   CSS 스타일 선택자를 사용해 월드 내의 객체들을 찾으며 속성과 클래스를 잇는 **복합 검색**을 지원합니다.
+   - Class 검색: `.className` (예: `.active`, 여러 개인 경우 `.student.leader` 로 점표기법 체이닝)
+   - Attribute 검색: `[attr-key=value]` (예: `[attr-id="hero"]`, `[attr-physics=true]`)
+   - Dataset 검색: `[data-key=value]` (예: `[data-hp=100]`, 값 입력시 따옴표 여부에 맞춰 부울/숫자로 자동 파싱됨)
+   - 복합 검색 예제: `world.select('.student.leader[data-hp=100][attr-id="asdf"]')`
 -  **start(): this** / **stop(): this**
    월드의 렌더링 루프와 물리 엔진 시뮬레이션을 시작하거나 멈춥니다.

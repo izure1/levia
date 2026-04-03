@@ -32,7 +32,10 @@ const DELEGATED_SETTERS: Record<string, (self: LveVideo, value: any) => void> = 
     if (self._videoElement) self._videoElement.volume = Math.max(0, Math.min(1, value))
   },
 }
-export class LveVideo<D extends Record<string, any> = Record<string, any>> extends LveObject<VideoAttribute, D> {
+
+export class LveVideo<
+  D extends Record<string, any> = Record<string, any>
+> extends LveObject<VideoAttribute, D> {
   /** 연결된 VideoManager */
   private _manager: VideoManager | null = null
 
