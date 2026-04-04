@@ -5,6 +5,7 @@ const canvas = document.getElementById('canvas') as HTMLCanvasElement
 const world = new World({ canvas })
 const camera = world.createCamera()
 world.camera = camera
+world.gravity.x = 0.2
 
 // 에셋 미리 로드
 await world.loader.load({
@@ -27,8 +28,8 @@ const vn = new Visualnovel(world, {
 
 // 씬 연출 시작
 vn.setBackground('bg', 'cover')
-  .setMood('none')
-  .addEffect('fog', 'heavy')
+  .setMood('sunset')
+  .addEffect('snow', 100)
   .addCharacter('girl_before', 'center')
   .addOverlay('테스트 씬이 시작되었습니다...', 'caption')
 

@@ -1,9 +1,6 @@
 import { AssetManager } from './AssetManager.js'
 
-export interface SizeRange {
-  min: number
-  max: number
-}
+export type ValueRange = [number, number]
 
 export interface ParticleClipOptions {
   /** 클립 이름 */
@@ -28,16 +25,10 @@ export interface ParticleClipOptions {
   impulse: number
   /** 파티클 생성 시 초기 각속도의 최대 강도 (rad/ms). 미지정 또는 0이면 회전 없음 */
   angularImpulse?: number
-  /** 파티클 크기 시작/종료 범위 지정 */
-  size?: {
-    start?: SizeRange
-    end?: SizeRange
-  }
-  /** 파티클 투명도 시작/종료 범위 지정 */
-  opacity?: {
-    start?: SizeRange
-    end?: SizeRange
-  }
+  /** 파티클 크기 변환 구간 배열: [[min, max], [min, max], ...] */
+  size?: ValueRange[]
+  /** 파티클 투명도 변환 구간 배열: [[min, max], [min, max], ...] */
+  opacity?: ValueRange[]
 }
 
 export interface ParticleClip extends ParticleClipOptions { }

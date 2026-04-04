@@ -20,7 +20,6 @@ export interface VisualnovelOption {
 // =============================================================
 
 export type EffectType = 'dust' | 'rain' | 'snow' | 'sakura' | 'sparkle' | 'fog' | 'leaves' | 'fireflies'
-export type Intensity = 'light' | 'normal' | 'heavy'
 export type MoodType = 'day' | 'sunset' | 'night' | 'sepia' | 'horror' | 'flashback' | 'dream' | 'danger' | 'none'
 export type ZoomPreset = 'close-up' | 'medium' | 'wide' | 'reset'
 export type PanPreset = 'left' | 'right' | 'up' | 'down' | 'center'
@@ -38,285 +37,122 @@ export type OverlayPreset = 'caption' | 'title' | 'whisper'
 // 프리셋 룩업 테이블
 // =============================================================
 
-const EFFECT_PRESETS: Record<EffectType, Record<Intensity, Partial<ParticleOptions>>> = {
+const EFFECT_PRESETS: Record<EffectType, Partial<ParticleOptions>> = {
   dust: {
-    light: { attribute: { src: 'dust', frictionAir: 0, gravityScale: 0, strictPhysics: true }, style: { width: 10, height: 10, blendMode: 'lighter' } },
-    normal: { attribute: { src: 'dust', frictionAir: 0, gravityScale: 0, strictPhysics: true }, style: { width: 10, height: 10, blendMode: 'lighter' } },
-    heavy: { attribute: { src: 'dust', frictionAir: 0, gravityScale: 0, strictPhysics: true }, style: { width: 10, height: 10, blendMode: 'lighter' } }
+    attribute: { src: 'dust', frictionAir: 0, gravityScale: 0.001 },
+    style: { width: 10, height: 10, blendMode: 'lighter' }
   },
   rain: {
-    light: { attribute: { src: 'rain', gravityScale: 1, density: 1, strictPhysics: true }, style: { width: 2, height: 20, opacity: 0.2, blendMode: 'screen' } },
-    normal: { attribute: { src: 'rain', gravityScale: 1, density: 1, strictPhysics: true }, style: { width: 2, height: 20, opacity: 0.2, blendMode: 'screen' } },
-    heavy: { attribute: { src: 'rain', gravityScale: 1, density: 1, strictPhysics: true }, style: { width: 2, height: 20, opacity: 0.2, blendMode: 'screen' } }
+    attribute: { src: 'rain', gravityScale: 1 },
+    style: { width: 3, height: 6, opacity: 0.3, blendMode: 'screen' }
   },
   snow: {
-    light: { attribute: { src: 'snow', gravityScale: 0.01, frictionAir: 0, strictPhysics: true }, style: { width: 15, height: 15 } },
-    normal: { attribute: { src: 'snow', gravityScale: 0.01, frictionAir: 0, strictPhysics: true }, style: { width: 15, height: 15 } },
-    heavy: { attribute: { src: 'snow', gravityScale: 0.01, frictionAir: 0, strictPhysics: true }, style: { width: 15, height: 15 } }
+    attribute: { src: 'snow', gravityScale: 0.01, frictionAir: 0 },
+    style: { width: 15, height: 15, blendMode: 'lighter' }
   },
   sakura: {
-    light: { attribute: { src: 'sakura', gravityScale: 0.02, frictionAir: 0, strictPhysics: true }, style: { width: 12, height: 15, opacity: 0.8 } },
-    normal: { attribute: { src: 'sakura', gravityScale: 0.02, frictionAir: 0, strictPhysics: true }, style: { width: 12, height: 15, opacity: 0.8 } },
-    heavy: { attribute: { src: 'sakura', gravityScale: 0.02, frictionAir: 0, strictPhysics: true }, style: { width: 12, height: 15, opacity: 0.8 } }
+    attribute: { src: 'sakura', gravityScale: 0.02, frictionAir: 0 },
+    style: { width: 12, height: 15, opacity: 0.8 }
   },
   sparkle: {
-    light: { attribute: { src: 'sparkle', gravityScale: 0.1 }, style: { width: 16, height: 16, opacity: 0.4 } },
-    normal: { attribute: { src: 'sparkle', gravityScale: 0.1 }, style: { width: 16, height: 16, opacity: 0.8 } },
-    heavy: { attribute: { src: 'sparkle', gravityScale: 0.1 }, style: { width: 16, height: 16, opacity: 1.0 } }
+    attribute: { src: 'sparkle', gravityScale: 0.1 },
+    style: { width: 16, height: 16, opacity: 0.8 }
   },
   fog: {
-    light: { attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.01 }, style: { width: 120, height: 120, opacity: 0.01, blendMode: 'screen' } },
-    normal: { attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.01 }, style: { width: 120, height: 120, opacity: 0.02, blendMode: 'screen' } },
-    heavy: { attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.01 }, style: { width: 120, height: 120, opacity: 0.04, blendMode: 'screen' } }
+    attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.003 },
+    style: { width: 120, height: 120, blendMode: 'screen' }
   },
   leaves: {
-    light: { attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true }, style: { width: 20, height: 20, opacity: 0.9 } },
-    normal: { attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true }, style: { width: 20, height: 20, opacity: 0.9 } },
-    heavy: { attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true }, style: { width: 20, height: 20, opacity: 0.9 } }
+    attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true },
+    style: { width: 20, height: 20, opacity: 0.9 }
   },
   fireflies: {
-    light: { attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true }, style: { width: 8, height: 8, opacity: 0.6, blendMode: 'lighter' } },
-    normal: { attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true }, style: { width: 8, height: 8, opacity: 0.8, blendMode: 'lighter' } },
-    heavy: { attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true }, style: { width: 8, height: 8, opacity: 1.0, blendMode: 'lighter' } }
+    attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true },
+    style: { width: 8, height: 8, opacity: 0.8, blendMode: 'lighter' }
   }
+}
+
+const DEFAULT_RATES: Record<EffectType, number> = {
+  dust: 5, rain: 200, snow: 8, sakura: 8, sparkle: 10, fog: 4, leaves: 5, fireflies: 5
 }
 
 // 파티클 클립 기본값 설정 (src 제외)
-const EFFECT_CLIP_PRESETS: Record<EffectType, Record<Intensity, Omit<ParticleClipOptions, 'name' | 'src' | 'spawnX' | 'spawnY' | 'spawnZ'>>> = {
+const EFFECT_CLIP_PRESETS: Record<EffectType, Omit<ParticleClipOptions, 'name' | 'src' | 'spawnX' | 'spawnY' | 'spawnZ' | 'rate'>> = {
   dust: {
-    light: {
-      impulse: 0.05,
-      rate: 2,
-      lifespan: 12000,
-      interval: 300,
-      size: { start: { min: 0.5, max: 1 }, end: { min: 0, max: 0.5 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0.05,
-      rate: 5,
-      lifespan: 10000,
-      interval: 250,
-      size: { start: { min: 0.5, max: 1 }, end: { min: 0, max: 0.5 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0.05,
-      rate: 10,
-      lifespan: 8000,
-      interval: 150,
-      size: { start: { min: 0.5, max: 1 }, end: { min: 0, max: 0.5 } },
-      loop: true
-    }
+    impulse: 0.05,
+    lifespan: 10000,
+    interval: 250,
+    size: [[0.5, 1], [0, 0.5]],
+    opacity: [[0, 0], [1, 1], [0, 0]],
+    loop: true
   },
   rain: {
-    light: {
-      impulse: 0,
-      rate: 5,
-      lifespan: 2500,
-      interval: 150,
-      size: { start: { min: 0.1, max: 0.3 }, end: { min: 0.1, max: 0.3 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0,
-      rate: 15,
-      lifespan: 2000,
-      interval: 100,
-      size: { start: { min: 0.1, max: 0.3 }, end: { min: 0.1, max: 0.3 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0,
-      rate: 30,
-      lifespan: 1500,
-      interval: 80,
-      size: { start: { min: 0.1, max: 0.3 }, end: { min: 0.1, max: 0.3 } },
-      loop: true
-    }
+    impulse: 0,
+    lifespan: 3000,
+    interval: 40,
+    size: [[0.1, 0.3], [0.1, 0.3]],
+    opacity: [[1, 1], [1, 1]],
+    loop: true
   },
   snow: {
-    light: {
-      impulse: 0.03,
-      angularImpulse: 0.001,
-      rate: 3,
-      lifespan: 12000,
-      interval: 150,
-      size: { start: { min: 0.3, max: 0.8 }, end: { min: 0.3, max: 0.8 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0.03,
-      angularImpulse: 0.001,
-      rate: 8,
-      lifespan: 10000,
-      interval: 100,
-      size: { start: { min: 0.3, max: 0.8 }, end: { min: 0.3, max: 0.8 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0.03,
-      angularImpulse: 0.001,
-      rate: 20,
-      lifespan: 8000,
-      interval: 75,
-      size: { start: { min: 0.3, max: 0.8 }, end: { min: 0.3, max: 0.8 } },
-      loop: true
-    }
+    impulse: 0.01,
+    angularImpulse: 0.001,
+    lifespan: 10000,
+    interval: 100,
+    size: [[0.3, 0.8], [0.0, 0.0]],
+    opacity: [[1, 1], [0, 0]],
+    loop: true
   },
   sakura: {
-    light: {
-      impulse: 0.02,
-      angularImpulse: 0.001,
-      rate: 4,
-      lifespan: 8000,
-      interval: 400,
-      size: { start: { min: 0.5, max: 0.8 }, end: { min: 0.3, max: 0.5 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0.02,
-      angularImpulse: 0.001,
-      rate: 8,
-      lifespan: 6000,
-      interval: 300,
-      size: { start: { min: 0.5, max: 0.8 }, end: { min: 0.3, max: 0.5 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0.02,
-      angularImpulse: 0.001,
-      rate: 12,
-      lifespan: 5000,
-      interval: 200,
-      size: { start: { min: 0.5, max: 0.8 }, end: { min: 0.3, max: 0.5 } },
-      loop: true
-    }
+    impulse: 0.02,
+    angularImpulse: 0.001,
+    lifespan: 6000,
+    interval: 300,
+    size: [[0.5, 0.8], [0.3, 0.5]],
+    loop: true
   },
   sparkle: {
-    light: {
-      impulse: 0.01,
-      rate: 3,
-      lifespan: 2000,
-      interval: 200,
-      size: { start: { min: 0.2, max: 0.5 }, end: { min: 0, max: 0.1 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0.02,
-      rate: 10,
-      lifespan: 1500,
-      interval: 150,
-      size: { start: { min: 0.5, max: 1 }, end: { min: 0, max: 0.1 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0.04,
-      rate: 25,
-      lifespan: 1000,
-      interval: 100,
-      size: { start: { min: 0.8, max: 1.5 }, end: { min: 0, max: 0.1 } },
-      loop: true
-    }
+    impulse: 0.02,
+    lifespan: 1500,
+    interval: 150,
+    size: [[0.5, 1], [0, 0.1]],
+    loop: true
   },
   fog: {
-    light: {
-      impulse: 0.01,
-      angularImpulse: 0.0005,
-      rate: 1,
-      lifespan: 15000,
-      interval: 800,
-      size: { start: { min: 0, max: 0 }, end: { min: 1.5, max: 3 } },
-      opacity: { start: { min: 0, max: 0 }, end: { min: 0.2, max: 0.3 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0.01,
-      angularImpulse: 0.0005,
-      rate: 2,
-      lifespan: 15000,
-      interval: 600,
-      size: { start: { min: 0, max: 0 }, end: { min: 1.5, max: 3 } },
-      opacity: { start: { min: 0, max: 0 }, end: { min: 0.3, max: 0.4 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0.02,
-      angularImpulse: 0.0005,
-      rate: 4,
-      lifespan: 20000,
-      interval: 400,
-      size: { start: { min: 0, max: 0 }, end: { min: 2, max: 4 } },
-      opacity: { start: { min: 0, max: 0 }, end: { min: 0.4, max: 0.5 } },
-      loop: true
-    }
+    impulse: 0.01,
+    angularImpulse: 0.0001,
+    lifespan: 15000,
+    interval: 800,
+    size: [[2, 2], [5, 10]],
+    opacity: [[0, 0], [0.1, 0.2], [0, 0]],
+    loop: true
   },
   leaves: {
-    light: {
-      impulse: 0.08,
-      angularImpulse: 0.05,
-      rate: 2,
-      lifespan: 8000,
-      interval: 500,
-      size: { start: { min: 0.8, max: 1.2 }, end: { min: 0.8, max: 1.2 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0.08,
-      angularImpulse: 0.05,
-      rate: 5,
-      lifespan: 7000,
-      interval: 350,
-      size: { start: { min: 0.8, max: 1.2 }, end: { min: 0.8, max: 1.2 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0.1,
-      angularImpulse: 0.08,
-      rate: 10,
-      lifespan: 6000,
-      interval: 200,
-      size: { start: { min: 0.8, max: 1.2 }, end: { min: 0.8, max: 1.2 } },
-      loop: true
-    }
+    impulse: 0.08,
+    angularImpulse: 0.05,
+    lifespan: 7000,
+    interval: 350,
+    size: [[0.8, 1.2], [0.8, 1.2]],
+    loop: true
   },
   fireflies: {
-    light: {
-      impulse: 0.02,
-      rate: 2,
-      lifespan: 6000,
-      interval: 400,
-      size: { start: { min: 0.5, max: 1 }, end: { min: 0, max: 0.5 } },
-      loop: true
-    },
-    normal: {
-      impulse: 0.03,
-      rate: 5,
-      lifespan: 5000,
-      interval: 300,
-      size: { start: { min: 0.5, max: 1.5 }, end: { min: 0, max: 0.5 } },
-      loop: true
-    },
-    heavy: {
-      impulse: 0.04,
-      rate: 12,
-      lifespan: 4000,
-      interval: 200,
-      size: { start: { min: 0.8, max: 2 }, end: { min: 0, max: 0.5 } },
-      loop: true
-    }
+    impulse: 0.03,
+    lifespan: 5000,
+    interval: 300,
+    size: [[0.5, 1.5], [0, 0.5]],
+    loop: true
   }
 }
 
-const MOOD_PRESETS: Record<MoodType, { color: string, vignette?: string }> = {
+const MOOD_PRESETS: Record<MoodType, { color: string, vignette?: string, blendMode?: string }> = {
   day: { color: 'rgba(255, 255, 255, 0)', vignette: 'transparent 30%, rgba(255, 255, 255, 0.4) 100%' },
-  sunset: { color: 'rgba(255, 100, 0, 0.2)', vignette: 'transparent 40%, rgba(255, 180, 50, 0.5) 100%' },
-  night: { color: 'rgba(0, 0, 50, 0.4)', vignette: 'transparent 40%, rgba(0, 0, 0, 0.8) 100%' },
-  sepia: { color: 'rgba(112, 66, 20, 0.3)', vignette: 'transparent 40%, rgba(50, 30, 10, 0.8) 100%' },
-  horror: { color: 'rgba(150, 0, 0, 0.3)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%' },
-  flashback: { color: 'rgba(200, 200, 200, 0.2)', vignette: 'transparent 40%, rgba(255, 255, 255, 0.8) 100%' },
-  dream: { color: 'rgba(180, 150, 255, 0.2)', vignette: 'transparent 40%, rgba(255, 200, 255, 0.6) 100%' },
-  danger: { color: 'rgba(255, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(200, 0, 0, 0.8) 100%' },
+  sunset: { color: 'rgba(255, 100, 0, 0.2)', vignette: 'transparent 40%, rgba(255, 180, 50, 0.5) 100%', blendMode: 'overlay' },
+  night: { color: 'rgba(0, 0, 50, 0.4)', vignette: 'transparent 40%, rgba(0, 0, 0, 0.8) 100%', blendMode: 'multiply' },
+  sepia: { color: 'rgba(112, 66, 20, 0.3)', vignette: 'transparent 40%, rgba(50, 30, 10, 0.8) 100%', blendMode: 'multiply' },
+  horror: { color: 'rgba(150, 0, 0, 0.3)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%', blendMode: 'multiply' },
+  flashback: { color: 'rgba(200, 200, 200, 0.2)', vignette: 'transparent 40%, rgba(255, 255, 255, 0.8) 100%', blendMode: 'screen' },
+  dream: { color: 'rgba(180, 150, 255, 0.2)', vignette: 'transparent 40%, rgba(255, 200, 255, 0.6) 100%', blendMode: 'screen' },
+  danger: { color: 'rgba(255, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(200, 0, 0, 0.8) 100%', blendMode: 'color-burn' },
   none: { color: 'transparent' }
 }
 
@@ -471,23 +307,25 @@ export class Visualnovel {
 
   /**
    * 프리셋 환경 효과(파티클)를 공간에 추가합니다.
-   * @param type 효과 종류 (dust, rain, snow, sakura, sparkle)
-   * @param intensity 강도 (light, normal, heavy)
+   * @param type 효과 종류 (dust, rain, snow, sakura, sparkle, fog, leaves, fireflies)
+   * @param rate 초당(혹은 인터벌 당) 생성되는 파티클 갯수
    * @param overrides 세부 옵션 오버라이드
    */
-  addEffect(type: EffectType = 'dust', intensity: Intensity = 'normal', overrides?: Partial<ParticleOptions>): this {
-    const preset = EFFECT_PRESETS[type]?.[intensity] || EFFECT_PRESETS.dust.normal
+  addEffect(type: EffectType = 'dust', rate?: number, overrides?: Partial<ParticleOptions>): this {
+    const preset = EFFECT_PRESETS[type] ?? EFFECT_PRESETS.dust
+    const finalRate = rate ?? DEFAULT_RATES[type] ?? 10
 
-    // 파티클 설정이 등록되어 있지 않은 경우, Visualnovel이 자동 등록 (src 속성만 외부 주입 가능)
-    const clipName = `${type}_${intensity}`
+    // 고유한 클립 이름을 위해 rate 값을 클립명에 명시합니다.
+    const clipName = `${type}_rate_${finalRate}`
     if (!this.world.particleManager.get(clipName)) {
-      const clipBase = EFFECT_CLIP_PRESETS[type]?.[intensity] || EFFECT_CLIP_PRESETS.dust.normal
+      const clipBase = EFFECT_CLIP_PRESETS[type] ?? EFFECT_CLIP_PRESETS.dust
       const customSrc = overrides?.attribute?.src ?? preset.attribute?.src ?? type
 
       this.world.particleManager.create({
         name: clipName,
         src: customSrc,
         ...clipBase,
+        rate: finalRate,
         spawnX: this.width * 2,
         spawnY: this.height * 2,
         spawnZ: this.depth
@@ -509,11 +347,6 @@ export class Visualnovel {
 
     particle.play()
     return this
-  }
-
-  /** addEffect('dust') 의 간편 래퍼 */
-  addDust(intensity: Intensity = 'normal', overrides?: Partial<ParticleOptions>): this {
-    return this.addEffect('dust', intensity, overrides)
   }
 
   // -----------------------------------------------------------
@@ -604,7 +437,7 @@ export class Visualnovel {
     }
     if (mood === 'none') return this
 
-    const { color, vignette } = MOOD_PRESETS[mood]
+    const { color, vignette, blendMode } = MOOD_PRESETS[mood]
 
     const rect = this._track(this.world.createRectangle({
       attribute: overrides?.attribute,
@@ -616,6 +449,7 @@ export class Visualnovel {
         height: this.height * 1.5,
         zIndex: 998,
         pointerEvents: false,
+        blendMode: blendMode as any,
         ...overrides?.style
       },
       transform: {

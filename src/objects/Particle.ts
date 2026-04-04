@@ -39,14 +39,10 @@ export interface ParticleInstance {
   vy: number
   /** z 방향 속도 (px/ms) */
   vz: number
-  /** 시작 크기 배율 */
-  startSize: number
-  /** 종료 크기 배율 */
-  endSize: number
-  /** 시작 투명도 배율 */
-  startOpacity: number
-  /** 종료 투명도 배율 */
-  endOpacity: number
+  /** 크기 궤적 (보간용) */
+  sizes: number[]
+  /** 투명도 궤적 (보간용) */
+  opacities: number[]
   /** 생성 timestamp */
   born: number
   /** 생존 시간 (ms) */
@@ -57,9 +53,12 @@ export interface ParticleInstance {
   angularVelocity: number
   /** strict 모드 전용 matter-js 바디 */
   body?: Matter.Body
+  /** 가상 물리(strict=false) 누적 연산용 마지막 갱신 시간 */
+  lastTick?: number
 }
 
-const GRAVITY = 0.00015 // px/ms² (내부 시뮬레이션용 중력 가속도)
+// matter-js 기본 중력(gravity.y=1, scale=0.001)에 의해 매 step 속도에 더해지는 가속도는 0.001 px/ms²로 정확히 일치합니다.
+const GRAVITY = 0.001 // px/ms²
 
 export class Particle<
   D extends Record<string, any> = Record<string, any>
@@ -208,8 +207,8 @@ export class Particle<
     // ─── 인스턴스 업데이트 & 제거 ────────────────────────
     // 비물리 모드라도 월드의 물리엔진 중력 가속도와 객체의 gravityScale을 추적하여 반영합니다.
     const gScale = this.attribute.gravityScale ?? 1
-    const gX = this._physics ? (this._physics.engine.gravity.x * this._physics.engine.gravity.scale) / 16.666 : 0
-    const gY = this._physics ? (this._physics.engine.gravity.y * this._physics.engine.gravity.scale) / 16.666 : GRAVITY
+    const gX = this._physics ? (this._physics.engine.gravity.x * this._physics.engine.gravity.scale) : 0
+    const gY = this._physics ? (this._physics.engine.gravity.y * this._physics.engine.gravity.scale) : GRAVITY
 
     const alive: ParticleInstance[] = []
     for (const inst of this._instances) {
@@ -223,12 +222,28 @@ export class Particle<
       }
 
       if (!inst.body) {
-        // 일반 모드: 초기 스폰 오프셋 + velocity 적분으로 위치 계산
-        const dt = timestamp - inst.born  // ms
-        inst.x = inst.spawnX + inst.vx * dt + 0.5 * (gX * gScale) * dt * dt
-        inst.y = inst.spawnY + inst.vy * dt + 0.5 * (gY * gScale) * dt * dt
-        inst.z = inst.spawnZ + inst.vz * dt
-        inst.angle = inst.angularVelocity * dt
+        // 일반 모드: 타임스텝 누적 연산으로 변경하여 마찰 효과 지원
+        const stepDt = timestamp - (inst.lastTick ?? inst.born)
+        inst.lastTick = timestamp
+
+        if (stepDt > 0) {
+          const friction = this.attribute.frictionAir ?? 0
+          // 60fps(16.666ms) 기준의 frictionAir 감쇠율을 현재 스텝에 맞게 보간
+          const frameRatio = stepDt / 16.666
+          const slip = Math.pow(Math.max(0, 1 - friction), frameRatio)
+
+          inst.vx += gX * gScale * stepDt
+          inst.vy += gY * gScale * stepDt
+
+          inst.vx *= slip
+          inst.vy *= slip
+          inst.vz *= slip
+
+          inst.x += inst.vx * stepDt
+          inst.y += inst.vy * stepDt
+          inst.z += inst.vz * stepDt
+          inst.angle += inst.angularVelocity * stepDt
+        }
       } else {
         // strict 모드: matter-js 바디 위치 및 각도를 상대 좌표로
         const emX = this.transform.position.x
@@ -259,19 +274,23 @@ export class Particle<
       const angle = Math.random() * Math.PI * 2
       const speed = Math.random() * clip.impulse
 
-      const startSzMin = clip.size?.start?.min ?? 1
-      const startSzMax = clip.size?.start?.max ?? 1
-      const endSzMin = clip.size?.end?.min ?? 0
-      const endSzMax = clip.size?.end?.max ?? 0
-      const startSize = startSzMin + Math.random() * (startSzMax - startSzMin)
-      const endSize = endSzMin + Math.random() * (endSzMax - endSzMin)
+      const sizes: number[] = []
+      if (clip.size && clip.size.length > 0) {
+        for (const [min, max] of clip.size) {
+          sizes.push(min + Math.random() * (max - min))
+        }
+      } else {
+        sizes.push(1, 0) // 기본값 호환: 1 -> 0
+      }
 
-      const startOpMin = clip.opacity?.start?.min ?? 1
-      const startOpMax = clip.opacity?.start?.max ?? 1
-      const endOpMin = clip.opacity?.end?.min ?? 0
-      const endOpMax = clip.opacity?.end?.max ?? 0
-      const startOpacity = startOpMin + Math.random() * (startOpMax - startOpMin)
-      const endOpacity = endOpMin + Math.random() * (endOpMax - endOpMin)
+      const opacities: number[] = []
+      if (clip.opacity && clip.opacity.length > 0) {
+        for (const [min, max] of clip.opacity) {
+          opacities.push(min + Math.random() * (max - min))
+        }
+      } else {
+        opacities.push(1, 0) // 기본값 호환: 1 -> 0
+      }
 
       // 에미터 범위 내 랜덤 스폰 위치 (중심 기준 ±range/2)
       const offsetX = rangeX > 0 ? (Math.random() - 0.5) * rangeX : 0
@@ -293,10 +312,8 @@ export class Particle<
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         vz: 0,
-        startSize,
-        endSize,
-        startOpacity,
-        endOpacity,
+        sizes,
+        opacities,
         born: timestamp,
         lifespan: clip.lifespan,
         angle: 0,

@@ -1563,8 +1563,8 @@ export class Renderer {
       }
       const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0)
       this._drawShadow(sprite, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
-      this._drawRectBorders(sprite, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity)
-      this._drawTextureMesh(texture, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity, false, [0, 0], [1, 1], 0, baseRadius)
+      this._drawRectBorders(sprite, x, y, drawW, drawH, (sprite.style.opacity ?? 1) * sprite._fadeOpacity)
+      this._drawTextureMesh(texture, x, y, drawW, drawH, (sprite.style.opacity ?? 1) * sprite._fadeOpacity, false, [0, 0], [1, 1], 0, baseRadius)
       return
     }
 
@@ -1597,12 +1597,12 @@ export class Renderer {
     }
     const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0)
     this._drawShadow(sprite, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
-    this._drawRectBorders(sprite, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity)
+    this._drawRectBorders(sprite, x, y, drawW, drawH, (sprite.style.opacity ?? 1) * sprite._fadeOpacity)
 
     this._drawTextureMesh(
       texture,
       x, y, drawW, drawH,
-      sprite.style.opacity * sprite._fadeOpacity,
+      (sprite.style.opacity ?? 1) * sprite._fadeOpacity,
       false,
       [uvOffsetX, uvOffsetY],
       [uvScaleX, uvScaleY],
@@ -1656,8 +1656,32 @@ export class Renderer {
     for (const inst of instances) {
       const age = timestamp - inst.born
       const t = Math.min(age / inst.lifespan, 1)
-      const scale = inst.startSize + (inst.endSize - inst.startSize) * t
-      const opacity = inst.startOpacity + (inst.endOpacity - inst.startOpacity) * t
+
+      let scale = 1
+      if (inst.sizes.length > 0) {
+        if (inst.sizes.length === 1) {
+          scale = inst.sizes[0]
+        } else {
+          const segments = inst.sizes.length - 1
+          const segmentIndex = Math.min(Math.floor(t * segments), segments - 1)
+          const maxSegT = 1 / segments
+          const localT = (t - segmentIndex * maxSegT) / maxSegT
+          scale = inst.sizes[segmentIndex] + (inst.sizes[segmentIndex + 1] - inst.sizes[segmentIndex]) * localT
+        }
+      }
+
+      let opacity = 1
+      if (inst.opacities.length > 0) {
+        if (inst.opacities.length === 1) {
+          opacity = inst.opacities[0]
+        } else {
+          const segments = inst.opacities.length - 1
+          const segmentIndex = Math.min(Math.floor(t * segments), segments - 1)
+          const maxSegT = 1 / segments
+          const localT = (t - segmentIndex * maxSegT) / maxSegT
+          opacity = inst.opacities[segmentIndex] + (inst.opacities[segmentIndex + 1] - inst.opacities[segmentIndex]) * localT
+        }
+      }
       if (opacity <= 0 || scale <= 0) continue
 
       // 에미터 위치 + 인스턴스 상대 오프셋
@@ -1670,7 +1694,7 @@ export class Renderer {
       this._drawTextureMesh(
         texture,
         ix, iy, iw, ih,
-        obj.style.opacity * obj._fadeOpacity * opacity,
+        (obj.style.opacity ?? 1) * obj._fadeOpacity * opacity,
         false, [0, 0], [1, 1],
         inst.z || 0,
         null,

@@ -9469,7 +9469,7 @@ var Sprite = class _Sprite extends LveObject {
 // src/objects/Particle.ts
 var import_matter_js = __toESM(require_matter(), 1);
 var DELEGATED_KEYS3 = ["src"];
-var GRAVITY = 15e-5;
+var GRAVITY = 1e-3;
 var Particle = class _Particle extends LveObject {
   _manager = null;
   _clipName = null;
@@ -9590,8 +9590,8 @@ var Particle = class _Particle extends LveObject {
       }
     }
     const gScale = this.attribute.gravityScale ?? 1;
-    const gX = this._physics ? this._physics.engine.gravity.x * this._physics.engine.gravity.scale / 16.666 : 0;
-    const gY = this._physics ? this._physics.engine.gravity.y * this._physics.engine.gravity.scale / 16.666 : GRAVITY;
+    const gX = this._physics ? this._physics.engine.gravity.x * this._physics.engine.gravity.scale : 0;
+    const gY = this._physics ? this._physics.engine.gravity.y * this._physics.engine.gravity.scale : GRAVITY;
     const alive = [];
     for (const inst of this._instances) {
       const age = timestamp - inst.born;
@@ -9602,11 +9602,22 @@ var Particle = class _Particle extends LveObject {
         continue;
       }
       if (!inst.body) {
-        const dt = timestamp - inst.born;
-        inst.x = inst.spawnX + inst.vx * dt + 0.5 * (gX * gScale) * dt * dt;
-        inst.y = inst.spawnY + inst.vy * dt + 0.5 * (gY * gScale) * dt * dt;
-        inst.z = inst.spawnZ + inst.vz * dt;
-        inst.angle = inst.angularVelocity * dt;
+        const stepDt = timestamp - (inst.lastTick ?? inst.born);
+        inst.lastTick = timestamp;
+        if (stepDt > 0) {
+          const friction = this.attribute.frictionAir ?? 0;
+          const frameRatio = stepDt / 16.666;
+          const slip = Math.pow(Math.max(0, 1 - friction), frameRatio);
+          inst.vx += gX * gScale * stepDt;
+          inst.vy += gY * gScale * stepDt;
+          inst.vx *= slip;
+          inst.vy *= slip;
+          inst.vz *= slip;
+          inst.x += inst.vx * stepDt;
+          inst.y += inst.vy * stepDt;
+          inst.z += inst.vz * stepDt;
+          inst.angle += inst.angularVelocity * stepDt;
+        }
       } else {
         const emX = this.transform.position.x;
         const emY = this.transform.position.y;
@@ -9630,18 +9641,22 @@ var Particle = class _Particle extends LveObject {
     for (let i = 0; i < clip.rate; i++) {
       const angle2 = Math.random() * Math.PI * 2;
       const speed = Math.random() * clip.impulse;
-      const startSzMin = clip.size?.start?.min ?? 1;
-      const startSzMax = clip.size?.start?.max ?? 1;
-      const endSzMin = clip.size?.end?.min ?? 0;
-      const endSzMax = clip.size?.end?.max ?? 0;
-      const startSize = startSzMin + Math.random() * (startSzMax - startSzMin);
-      const endSize = endSzMin + Math.random() * (endSzMax - endSzMin);
-      const startOpMin = clip.opacity?.start?.min ?? 1;
-      const startOpMax = clip.opacity?.start?.max ?? 1;
-      const endOpMin = clip.opacity?.end?.min ?? 0;
-      const endOpMax = clip.opacity?.end?.max ?? 0;
-      const startOpacity = startOpMin + Math.random() * (startOpMax - startOpMin);
-      const endOpacity = endOpMin + Math.random() * (endOpMax - endOpMin);
+      const sizes = [];
+      if (clip.size && clip.size.length > 0) {
+        for (const [min, max] of clip.size) {
+          sizes.push(min + Math.random() * (max - min));
+        }
+      } else {
+        sizes.push(1, 0);
+      }
+      const opacities = [];
+      if (clip.opacity && clip.opacity.length > 0) {
+        for (const [min, max] of clip.opacity) {
+          opacities.push(min + Math.random() * (max - min));
+        }
+      } else {
+        opacities.push(1, 0);
+      }
       const offsetX = rangeX > 0 ? (Math.random() - 0.5) * rangeX : 0;
       const offsetY = rangeY > 0 ? (Math.random() - 0.5) * rangeY : 0;
       const offsetZ = rangeZ > 0 ? (Math.random() - 0.5) * rangeZ : 0;
@@ -9657,10 +9672,8 @@ var Particle = class _Particle extends LveObject {
         vx: Math.cos(angle2) * speed,
         vy: Math.sin(angle2) * speed,
         vz: 0,
-        startSize,
-        endSize,
-        startOpacity,
-        endOpacity,
+        sizes,
+        opacities,
         born: timestamp,
         lifespan: clip.lifespan,
         angle: 0,
@@ -11640,8 +11653,8 @@ var Renderer2 = class {
       };
       const baseRadius2 = parseBorderRadius(sprite.style.borderRadius, drawW2, drawH2, 0);
       this._drawShadow(sprite, x, y, drawW2, drawH2, drawW2, drawH2, false, baseRadius2);
-      this._drawRectBorders(sprite, x, y, drawW2, drawH2, sprite.style.opacity * sprite._fadeOpacity);
-      this._drawTextureMesh(texture, x, y, drawW2, drawH2, sprite.style.opacity * sprite._fadeOpacity, false, [0, 0], [1, 1], 0, baseRadius2);
+      this._drawRectBorders(sprite, x, y, drawW2, drawH2, (sprite.style.opacity ?? 1) * sprite._fadeOpacity);
+      this._drawTextureMesh(texture, x, y, drawW2, drawH2, (sprite.style.opacity ?? 1) * sprite._fadeOpacity, false, [0, 0], [1, 1], 0, baseRadius2);
       return;
     }
     const { frameWidth, frameHeight } = clip;
@@ -11670,14 +11683,14 @@ var Renderer2 = class {
     };
     const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0);
     this._drawShadow(sprite, x, y, drawW, drawH, drawW, drawH, false, baseRadius);
-    this._drawRectBorders(sprite, x, y, drawW, drawH, sprite.style.opacity * sprite._fadeOpacity);
+    this._drawRectBorders(sprite, x, y, drawW, drawH, (sprite.style.opacity ?? 1) * sprite._fadeOpacity);
     this._drawTextureMesh(
       texture,
       x,
       y,
       drawW,
       drawH,
-      sprite.style.opacity * sprite._fadeOpacity,
+      (sprite.style.opacity ?? 1) * sprite._fadeOpacity,
       false,
       [uvOffsetX, uvOffsetY],
       [uvScaleX, uvScaleY],
@@ -11714,8 +11727,30 @@ var Renderer2 = class {
     for (const inst of instances) {
       const age = timestamp - inst.born;
       const t = Math.min(age / inst.lifespan, 1);
-      const scale5 = inst.startSize + (inst.endSize - inst.startSize) * t;
-      const opacity = inst.startOpacity + (inst.endOpacity - inst.startOpacity) * t;
+      let scale5 = 1;
+      if (inst.sizes.length > 0) {
+        if (inst.sizes.length === 1) {
+          scale5 = inst.sizes[0];
+        } else {
+          const segments = inst.sizes.length - 1;
+          const segmentIndex = Math.min(Math.floor(t * segments), segments - 1);
+          const maxSegT = 1 / segments;
+          const localT = (t - segmentIndex * maxSegT) / maxSegT;
+          scale5 = inst.sizes[segmentIndex] + (inst.sizes[segmentIndex + 1] - inst.sizes[segmentIndex]) * localT;
+        }
+      }
+      let opacity = 1;
+      if (inst.opacities.length > 0) {
+        if (inst.opacities.length === 1) {
+          opacity = inst.opacities[0];
+        } else {
+          const segments = inst.opacities.length - 1;
+          const segmentIndex = Math.min(Math.floor(t * segments), segments - 1);
+          const maxSegT = 1 / segments;
+          const localT = (t - segmentIndex * maxSegT) / maxSegT;
+          opacity = inst.opacities[segmentIndex] + (inst.opacities[segmentIndex + 1] - inst.opacities[segmentIndex]) * localT;
+        }
+      }
       if (opacity <= 0 || scale5 <= 0) continue;
       const ix = emX + inst.x * perspectiveScale;
       const iy = emY + inst.y * perspectiveScale;
@@ -11727,7 +11762,7 @@ var Renderer2 = class {
         iy,
         iw,
         ih,
-        obj.style.opacity * obj._fadeOpacity * opacity,
+        (obj.style.opacity ?? 1) * obj._fadeOpacity * opacity,
         false,
         [0, 0],
         [1, 1],
