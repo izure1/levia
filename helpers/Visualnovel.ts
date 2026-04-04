@@ -19,9 +19,9 @@ export interface VisualnovelOption {
 // 프리셋 타입
 // =============================================================
 
-export type EffectType = 'dust' | 'rain' | 'snow' | 'sakura' | 'sparkle'
+export type EffectType = 'dust' | 'rain' | 'snow' | 'sakura' | 'sparkle' | 'fog' | 'leaves' | 'fireflies'
 export type Intensity = 'light' | 'normal' | 'heavy'
-export type MoodType = 'day' | 'sunset' | 'night' | 'sepia' | 'horror' | 'none'
+export type MoodType = 'day' | 'sunset' | 'night' | 'sepia' | 'horror' | 'flashback' | 'dream' | 'danger' | 'none'
 export type ZoomPreset = 'close-up' | 'medium' | 'wide' | 'reset'
 export type PanPreset = 'left' | 'right' | 'up' | 'down' | 'center'
 export type ShakePreset = 'light' | 'normal' | 'heavy' | 'earthquake'
@@ -63,6 +63,21 @@ const EFFECT_PRESETS: Record<EffectType, Record<Intensity, Partial<ParticleOptio
     light: { attribute: { src: 'sparkle', gravityScale: 0.1 }, style: { width: 16, height: 16, opacity: 0.4 } },
     normal: { attribute: { src: 'sparkle', gravityScale: 0.1 }, style: { width: 16, height: 16, opacity: 0.8 } },
     heavy: { attribute: { src: 'sparkle', gravityScale: 0.1 }, style: { width: 16, height: 16, opacity: 1.0 } }
+  },
+  fog: {
+    light: { attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.01 }, style: { width: 120, height: 120, opacity: 0.01, blendMode: 'screen' } },
+    normal: { attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.01 }, style: { width: 120, height: 120, opacity: 0.02, blendMode: 'screen' } },
+    heavy: { attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.01 }, style: { width: 120, height: 120, opacity: 0.04, blendMode: 'screen' } }
+  },
+  leaves: {
+    light: { attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true }, style: { width: 20, height: 20, opacity: 0.9 } },
+    normal: { attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true }, style: { width: 20, height: 20, opacity: 0.9 } },
+    heavy: { attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true }, style: { width: 20, height: 20, opacity: 0.9 } }
+  },
+  fireflies: {
+    light: { attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true }, style: { width: 8, height: 8, opacity: 0.6, blendMode: 'lighter' } },
+    normal: { attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true }, style: { width: 8, height: 8, opacity: 0.8, blendMode: 'lighter' } },
+    heavy: { attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true }, style: { width: 8, height: 8, opacity: 1.0, blendMode: 'lighter' } }
   }
 }
 
@@ -203,16 +218,106 @@ const EFFECT_CLIP_PRESETS: Record<EffectType, Record<Intensity, Omit<ParticleCli
       size: { start: { min: 0.8, max: 1.5 }, end: { min: 0, max: 0.1 } },
       loop: true
     }
+  },
+  fog: {
+    light: {
+      impulse: 0.01,
+      angularImpulse: 0.0005,
+      rate: 1,
+      lifespan: 15000,
+      interval: 800,
+      size: { start: { min: 0, max: 0 }, end: { min: 1.5, max: 3 } },
+      opacity: { start: { min: 0, max: 0 }, end: { min: 0.1, max: 0.2 } },
+      loop: true
+    },
+    normal: {
+      impulse: 0.01,
+      angularImpulse: 0.0005,
+      rate: 2,
+      lifespan: 15000,
+      interval: 600,
+      size: { start: { min: 0, max: 0 }, end: { min: 1.5, max: 3 } },
+      opacity: { start: { min: 0, max: 0 }, end: { min: 0.2, max: 0.3 } },
+      loop: true
+    },
+    heavy: {
+      impulse: 0.02,
+      angularImpulse: 0.0005,
+      rate: 4,
+      lifespan: 20000,
+      interval: 400,
+      size: { start: { min: 0, max: 0 }, end: { min: 2, max: 4 } },
+      opacity: { start: { min: 0, max: 0 }, end: { min: 0.3, max: 0.5 } },
+      loop: true
+    }
+  },
+  leaves: {
+    light: {
+      impulse: 0.08,
+      angularImpulse: 0.05,
+      rate: 2,
+      lifespan: 8000,
+      interval: 500,
+      size: { start: { min: 0.8, max: 1.2 }, end: { min: 0.8, max: 1.2 } },
+      loop: true
+    },
+    normal: {
+      impulse: 0.08,
+      angularImpulse: 0.05,
+      rate: 5,
+      lifespan: 7000,
+      interval: 350,
+      size: { start: { min: 0.8, max: 1.2 }, end: { min: 0.8, max: 1.2 } },
+      loop: true
+    },
+    heavy: {
+      impulse: 0.1,
+      angularImpulse: 0.08,
+      rate: 10,
+      lifespan: 6000,
+      interval: 200,
+      size: { start: { min: 0.8, max: 1.2 }, end: { min: 0.8, max: 1.2 } },
+      loop: true
+    }
+  },
+  fireflies: {
+    light: {
+      impulse: 0.02,
+      rate: 2,
+      lifespan: 6000,
+      interval: 400,
+      size: { start: { min: 0.5, max: 1 }, end: { min: 0, max: 0.5 } },
+      loop: true
+    },
+    normal: {
+      impulse: 0.03,
+      rate: 5,
+      lifespan: 5000,
+      interval: 300,
+      size: { start: { min: 0.5, max: 1.5 }, end: { min: 0, max: 0.5 } },
+      loop: true
+    },
+    heavy: {
+      impulse: 0.04,
+      rate: 12,
+      lifespan: 4000,
+      interval: 200,
+      size: { start: { min: 0.8, max: 2 }, end: { min: 0, max: 0.5 } },
+      loop: true
+    }
   }
 }
 
-const MOOD_PRESETS: Record<MoodType, string> = {
-  day: 'rgba(255, 255, 255, 0)',
-  sunset: 'rgba(255, 100, 0, 0.2)',
-  night: 'rgba(0, 0, 50, 0.4)',
-  sepia: 'rgba(112, 66, 20, 0.3)',
-  horror: 'rgba(150, 0, 0, 0.3)',
-  none: 'transparent'
+const MOOD_PRESETS: Record<MoodType, { color: string, vignette?: string }> = {
+  day: { color: 'rgba(255, 255, 255, 0)', vignette: 'transparent 30%, rgba(255, 255, 255, 0.4) 100%' },
+  sunset: { color: 'rgba(255, 100, 0, 0.2)', vignette: 'transparent 40%, rgba(255, 180, 50, 0.5) 100%' },
+  night: { color: 'rgba(0, 0, 50, 0.4)', vignette: 'transparent 40%, rgba(0, 0, 0, 0.8) 100%' },
+  sepia: { color: 'rgba(112, 66, 20, 0.3)', vignette: 'transparent 40%, rgba(50, 30, 10, 0.8) 100%' },
+  horror: { color: 'rgba(150, 0, 0, 0.3)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%' },
+  flashback: { color: 'rgba(200, 200, 200, 0.2)', vignette: 'transparent 40%, rgba(255, 255, 255, 0.8) 100%' },
+  dream: { color: 'rgba(180, 150, 255, 0.2)', vignette: 'transparent 40%, rgba(255, 200, 255, 0.6) 100%' },
+  danger: { color: 'rgba(255, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(200, 0, 0, 0.8) 100%' },
+  none: { color: 'transparent' }
 }
 
 const ZOOM_PRESETS: Record<ZoomPreset, { scale: number, duration: number }> = {
@@ -335,8 +440,8 @@ export class Visualnovel {
   private _getTransitionRect(color: string): LveObject {
     if (!this._transitionObj) {
       const rect = this.world.createRectangle({
-        attribute: { color },
         style: {
+          color,
           width: this.width * 2, // 여유 있게 덮기 위해 2배
           height: this.height * 2,
           opacity: 0,
@@ -352,7 +457,7 @@ export class Visualnovel {
       this._transitionObj = rect
       // 전환 오브젝트는 clear()로 제거하지 않도록 _objects에 넣지 않습니다
     } else {
-      (this._transitionObj as any).attribute.color = color
+      this._transitionObj.style.color = color
       // wipe 등으로 변경되었을 위치 초기화
       this._transitionObj.transform.position.x = 0
       this._transitionObj.transform.position.y = 0
@@ -499,10 +604,14 @@ export class Visualnovel {
     }
     if (mood === 'none') return this
 
-    const color = MOOD_PRESETS[mood]
+    const { color, vignette } = MOOD_PRESETS[mood]
+
     const rect = this._track(this.world.createRectangle({
-      attribute: { color },
+      attribute: overrides?.attribute,
       style: {
+        color,
+        gradient: vignette,
+        gradientType: 'circular',
         width: this.width * 1.5,
         height: this.height * 1.5,
         zIndex: 998,
@@ -571,8 +680,9 @@ export class Visualnovel {
   addLight(preset: LightPreset = 'ambient', overrides?: Partial<RectangleOptions>): this {
     const p = LIGHT_PRESETS[preset]
     const rect = this._track(this.world.createRectangle({
-      attribute: { color: p.color },
+      attribute: overrides?.attribute,
       style: {
+        color: p.color,
         width: this.width,
         height: this.height,
         opacity: p.opacity,

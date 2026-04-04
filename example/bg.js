@@ -9636,6 +9636,12 @@ var Particle = class _Particle extends LveObject {
       const endSzMax = clip.size?.end?.max ?? 0;
       const startSize = startSzMin + Math.random() * (startSzMax - startSzMin);
       const endSize = endSzMin + Math.random() * (endSzMax - endSzMin);
+      const startOpMin = clip.opacity?.start?.min ?? 1;
+      const startOpMax = clip.opacity?.start?.max ?? 1;
+      const endOpMin = clip.opacity?.end?.min ?? 0;
+      const endOpMax = clip.opacity?.end?.max ?? 0;
+      const startOpacity = startOpMin + Math.random() * (startOpMax - startOpMin);
+      const endOpacity = endOpMin + Math.random() * (endOpMax - endOpMin);
       const offsetX = rangeX > 0 ? (Math.random() - 0.5) * rangeX : 0;
       const offsetY = rangeY > 0 ? (Math.random() - 0.5) * rangeY : 0;
       const offsetZ = rangeZ > 0 ? (Math.random() - 0.5) * rangeZ : 0;
@@ -9653,6 +9659,8 @@ var Particle = class _Particle extends LveObject {
         vz: 0,
         startSize,
         endSize,
+        startOpacity,
+        endOpacity,
         born: timestamp,
         lifespan: clip.lifespan,
         angle: 0,
@@ -11707,7 +11715,7 @@ var Renderer2 = class {
       const age = timestamp - inst.born;
       const t = Math.min(age / inst.lifespan, 1);
       const scale5 = inst.startSize + (inst.endSize - inst.startSize) * t;
-      const opacity = 1 - t;
+      const opacity = inst.startOpacity + (inst.endOpacity - inst.startOpacity) * t;
       if (opacity <= 0 || scale5 <= 0) continue;
       const ix = emX + inst.x * perspectiveScale;
       const iy = emY + inst.y * perspectiveScale;

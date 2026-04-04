@@ -13,7 +13,8 @@ await world.loader.load({
   'dust': '../asset/image/star.png',
   'rain': '../asset/image/rain.png',
   'snow': '../asset/image/snow.png',
-  'sakura': '../asset/image/sakura.png'
+  'sakura': '../asset/image/sakura.png',
+  'fog': '../asset/image/fog.png',
 })
 
 // Visualnovel 인스턴스 생성
@@ -26,8 +27,8 @@ const vn = new Visualnovel(world, {
 
 // 씬 연출 시작
 vn.setBackground('bg', 'cover')
-  .setMood('night')
-  .addEffect('sakura', 'heavy')
+  .setMood('none')
+  .addEffect('fog', 'heavy')
   .addCharacter('girl_before', 'center')
   .addOverlay('테스트 씬이 시작되었습니다...', 'caption')
 

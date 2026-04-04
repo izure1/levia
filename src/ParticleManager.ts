@@ -33,6 +33,11 @@ export interface ParticleClipOptions {
     start?: SizeRange
     end?: SizeRange
   }
+  /** 파티클 투명도 시작/종료 범위 지정 */
+  opacity?: {
+    start?: SizeRange
+    end?: SizeRange
+  }
 }
 
 export interface ParticleClip extends ParticleClipOptions { }

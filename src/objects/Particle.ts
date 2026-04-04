@@ -43,6 +43,10 @@ export interface ParticleInstance {
   startSize: number
   /** 종료 크기 배율 */
   endSize: number
+  /** 시작 투명도 배율 */
+  startOpacity: number
+  /** 종료 투명도 배율 */
+  endOpacity: number
   /** 생성 timestamp */
   born: number
   /** 생존 시간 (ms) */
@@ -262,6 +266,13 @@ export class Particle<
       const startSize = startSzMin + Math.random() * (startSzMax - startSzMin)
       const endSize = endSzMin + Math.random() * (endSzMax - endSzMin)
 
+      const startOpMin = clip.opacity?.start?.min ?? 1
+      const startOpMax = clip.opacity?.start?.max ?? 1
+      const endOpMin = clip.opacity?.end?.min ?? 0
+      const endOpMax = clip.opacity?.end?.max ?? 0
+      const startOpacity = startOpMin + Math.random() * (startOpMax - startOpMin)
+      const endOpacity = endOpMin + Math.random() * (endOpMax - endOpMin)
+
       // 에미터 범위 내 랜덤 스폰 위치 (중심 기준 ±range/2)
       const offsetX = rangeX > 0 ? (Math.random() - 0.5) * rangeX : 0
       const offsetY = rangeY > 0 ? (Math.random() - 0.5) * rangeY : 0
@@ -284,6 +295,8 @@ export class Particle<
         vz: 0,
         startSize,
         endSize,
+        startOpacity,
+        endOpacity,
         born: timestamp,
         lifespan: clip.lifespan,
         angle: 0,

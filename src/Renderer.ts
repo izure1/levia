@@ -1657,7 +1657,7 @@ export class Renderer {
       const age = timestamp - inst.born
       const t = Math.min(age / inst.lifespan, 1)
       const scale = inst.startSize + (inst.endSize - inst.startSize) * t
-      const opacity = 1 - t
+      const opacity = inst.startOpacity + (inst.endOpacity - inst.startOpacity) * t
       if (opacity <= 0 || scale <= 0) continue
 
       // 에미터 위치 + 인스턴스 상대 오프셋
