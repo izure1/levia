@@ -41,9 +41,9 @@ vn.setBackground('bg', 'cover')
   .addEffect('dust', 'light')
   .addCharacter('girl_before', 'center')
   .addOverlay('테스트 씬이 시작되었습니다...', 'caption')
-  
+
 // 화면을 검게 암전시킨 후, 서서히 나타남
-vn.screenFade('out', 'black', 0) 
+vn.screenFade('out', 'black', 0)
 setTimeout(() => {
   vn.screenFade('in', 'black', 1500)
 }, 500)
@@ -51,18 +51,18 @@ setTimeout(() => {
 let step = 0
 world.on('click', () => {
   step++
-  
+
   if (step === 1) {
     vn.clearOverlay()
     vn.addOverlay('선생님이 다가옵니다!', 'title')
     vn.focusCharacter('center', 'medium', 1000)
     vn.screenFlash('white')
-  } 
+  }
   else if (step === 2) {
     vn.clearOverlay()
     vn.addOverlay('밤이 되었습니다.', 'caption')
     vn.setMood('night')
-    vn.addLight('spot', { style: { width: 500, height: 500 }})
+    vn.addLight('spot', { style: { width: 500, height: 500 } })
     // vn.setFlicker('candle') // 조명 생성 후 깜빡임 적용 가능
   }
   else if (step === 3) {

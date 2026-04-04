@@ -8,41 +8,7 @@ export interface SpriteAttribute {
   src?: string
 }
 
-const DELEGATED_GETTERS: Record<string, (self: Sprite) => any> = {
-  src: (self) => self['_clipName'] ?? undefined,
-  currentTime: (self) => self._clip ? Math.max(0, self._currentFrame - self._clip.start) : 0,
-  playbackRate: (self) => self._playbackRate ?? (self._clip ? self._clip.frameRate : 0),
-}
-
-const DELEGATED_SETTERS: Record<string, (self: Sprite, value: any) => void> = {
-  src: (self, value: string) => {
-    const anySelf = self as any
-    if (!anySelf._manager) {
-      console.warn('[Sprite] __setManager()를 먼저 호출하십시오.')
-      return
-    }
-    const clip = anySelf._manager.get(value)
-    if (!clip) {
-      console.warn(`[Sprite] 클립 '${value}'을 찾을 수 없습니다.`)
-      return
-    }
-    anySelf._clipName = value
-    self._clip = clip
-    self._currentFrame = clip.start
-    self._lastFrameTime = 0
-    self._playing = false
-    self._paused = false
-  },
-  currentTime: (self, value: number) => {
-    if (!self._clip) return
-    self._currentFrame = self._clip.start + Math.floor(value)
-    if (self._currentFrame >= self._clip.end) self._currentFrame = self._clip.end - 1
-    if (self._currentFrame < self._clip.start) self._currentFrame = self._clip.start
-  },
-  playbackRate: (self, value: number) => {
-    self._playbackRate = value
-  },
-}
+const DELEGATED_KEYS = ['src', 'currentTime', 'playbackRate']
 
 export class Sprite<
   D extends Record<string, any> = Record<string, any>
@@ -73,8 +39,43 @@ export class Sprite<
   /** 일시정지 여부 */
   _paused: boolean = false
 
+  private static readonly DELEGATED_GETTERS: Record<string, (self: Sprite) => any> = {
+    src: (self) => self._clipName ?? undefined,
+    currentTime: (self) => self._clip ? Math.max(0, self._currentFrame - self._clip.start) : 0,
+    playbackRate: (self) => self._playbackRate ?? (self._clip ? self._clip.frameRate : 0),
+  }
+
+  private static readonly DELEGATED_SETTERS: Record<string, (self: Sprite, value: any) => void> = {
+    src: (self, value: string) => {
+      if (!self._manager) {
+        console.warn('[Sprite] __setManager()를 먼저 호출하십시오.')
+        return
+      }
+      const clip = self._manager.get(value)
+      if (!clip) {
+        console.warn(`[Sprite] 클립 '${value}'을 찾을 수 없습니다.`)
+        return
+      }
+      self._clipName = value
+      self._clip = clip
+      self._currentFrame = clip.start
+      self._lastFrameTime = 0
+      self._playing = false
+      self._paused = false
+    },
+    currentTime: (self, value: number) => {
+      if (!self._clip) return
+      self._currentFrame = self._clip.start + Math.floor(value)
+      if (self._currentFrame >= self._clip.end) self._currentFrame = self._clip.end - 1
+      if (self._currentFrame < self._clip.start) self._currentFrame = self._clip.start
+    },
+    playbackRate: (self, value: number) => {
+      self._playbackRate = value
+    },
+  }
+
   constructor(options?: LveObjectOptions<SpriteAttribute, D>) {
-    super('sprite', options, Object.keys(DELEGATED_GETTERS))
+    super('sprite', options, DELEGATED_KEYS)
     // src setter는 _manager에 의존하므로 생성자 시점에 처리할 수 없습니다.
     // __setManager() 호출 시 자동으로 적용됩니다.
     this._pendingSrc = (options?.attribute as any)?.src ?? null
@@ -161,13 +162,13 @@ export class Sprite<
   }
 
   protected _getDelegatedAttribute(key: string): any {
-    const handler = DELEGATED_GETTERS[key]
+    const handler = Sprite.DELEGATED_GETTERS[key]
     if (handler) return handler(this)
     return super._getDelegatedAttribute(key)
   }
 
   protected _setDelegatedAttribute(key: string, value: any): void {
-    const handler = DELEGATED_SETTERS[key]
+    const handler = Sprite.DELEGATED_SETTERS[key]
     if (handler) {
       handler(this, value)
     } else {

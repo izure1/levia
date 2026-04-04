@@ -38,10 +38,10 @@ export type OverlayPreset = 'caption' | 'title' | 'whisper'
 // =============================================================
 
 const EFFECT_PRESETS: Record<EffectType, Record<Intensity, Partial<ParticleOptions>>> = {
-  dust:    { light: { attribute: { src: 'dust' }, style: { opacity: 0.3 } }, normal: { attribute: { src: 'dust' }, style: { opacity: 0.6 } }, heavy: { attribute: { src: 'dust' }, style: { opacity: 0.9 } } },
-  rain:    { light: { attribute: { src: 'rain' }, style: { opacity: 0.4 } }, normal: { attribute: { src: 'rain' }, style: { opacity: 0.7 } }, heavy: { attribute: { src: 'rain' }, style: { opacity: 1.0 } } },
-  snow:    { light: { attribute: { src: 'snow' }, style: { opacity: 0.5 } }, normal: { attribute: { src: 'snow' }, style: { opacity: 0.8 } }, heavy: { attribute: { src: 'snow' }, style: { opacity: 1.0 } } },
-  sakura:  { light: { attribute: { src: 'sakura' }, style: { opacity: 0.6 } }, normal: { attribute: { src: 'sakura' }, style: { opacity: 0.85 } }, heavy: { attribute: { src: 'sakura' }, style: { opacity: 1.0 } } },
+  dust: { light: { attribute: { src: 'dust' }, style: { opacity: 0.3 } }, normal: { attribute: { src: 'dust' }, style: { opacity: 0.6 } }, heavy: { attribute: { src: 'dust' }, style: { opacity: 0.9 } } },
+  rain: { light: { attribute: { src: 'rain' }, style: { opacity: 0.4 } }, normal: { attribute: { src: 'rain' }, style: { opacity: 0.7 } }, heavy: { attribute: { src: 'rain' }, style: { opacity: 1.0 } } },
+  snow: { light: { attribute: { src: 'snow' }, style: { opacity: 0.5 } }, normal: { attribute: { src: 'snow' }, style: { opacity: 0.8 } }, heavy: { attribute: { src: 'snow' }, style: { opacity: 1.0 } } },
+  sakura: { light: { attribute: { src: 'sakura' }, style: { opacity: 0.6 } }, normal: { attribute: { src: 'sakura' }, style: { opacity: 0.85 } }, heavy: { attribute: { src: 'sakura' }, style: { opacity: 1.0 } } },
   sparkle: { light: { attribute: { src: 'sparkle' }, style: { opacity: 0.4 } }, normal: { attribute: { src: 'sparkle' }, style: { opacity: 0.8 } }, heavy: { attribute: { src: 'sparkle' }, style: { opacity: 1.0 } } }
 }
 
@@ -56,56 +56,56 @@ const MOOD_PRESETS: Record<MoodType, string> = {
 
 const ZOOM_PRESETS: Record<ZoomPreset, { scale: number, duration: number }> = {
   'close-up': { scale: 1.5, duration: 1500 },
-  'medium':   { scale: 1.2, duration: 1000 },
-  'wide':     { scale: 0.8, duration: 1500 },
-  'reset':    { scale: 1.0, duration: 1000 }
+  'medium': { scale: 1.2, duration: 1000 },
+  'wide': { scale: 0.8, duration: 1500 },
+  'reset': { scale: 1.0, duration: 1000 }
 }
 
 const PAN_PRESETS: Record<PanPreset, { x: number, y: number, duration: number }> = {
-  left:   { x: -200, y: 0, duration: 1000 },
-  right:  { x: 200,  y: 0, duration: 1000 },
-  up:     { x: 0, y: -200, duration: 1000 },
-  down:   { x: 0, y:  200, duration: 1000 },
-  center: { x: 0, y:    0, duration: 1000 }
+  left: { x: -200, y: 0, duration: 1000 },
+  right: { x: 200, y: 0, duration: 1000 },
+  up: { x: 0, y: -200, duration: 1000 },
+  down: { x: 0, y: 200, duration: 1000 },
+  center: { x: 0, y: 0, duration: 1000 }
 }
 
 // 캐릭터 위치별 x축 비율 룩업
 const CHARACTER_X_RATIO: Record<CharacterPositionPreset, number> = {
   'far-left': 0.1,
-  'left':     0.25,
-  'center':   0.5,
-  'right':    0.75,
+  'left': 0.25,
+  'center': 0.5,
+  'right': 0.75,
   'far-right': 0.9
 }
 
 const SHAKE_PRESETS: Record<ShakePreset, { intensity: number, duration: number }> = {
-  light:      { intensity: 5,  duration: 300 },
-  normal:     { intensity: 10, duration: 500 },
-  heavy:      { intensity: 20, duration: 800 },
+  light: { intensity: 5, duration: 300 },
+  normal: { intensity: 10, duration: 500 },
+  heavy: { intensity: 20, duration: 800 },
   earthquake: { intensity: 50, duration: 2000 }
 }
 
 // 페이드 전환 색상 + 이징 룩업
 const FADE_PRESETS: Record<FadeColorPreset, { color: string, easing: EasingType }> = {
-  black: { color: 'rgba(0,0,0,1)',         easing: 'linear' },
-  white: { color: 'rgba(255,255,255,1)',   easing: 'linear' },
-  red:   { color: 'rgba(200,0,0,1)',       easing: 'easeIn' },
-  dream: { color: 'rgba(200,180,255,1)',   easing: 'easeInOut' },
-  sepia: { color: 'rgba(150,100,50,1)',    easing: 'easeIn' }
+  black: { color: 'rgba(0,0,0,1)', easing: 'linear' },
+  white: { color: 'rgba(255,255,255,1)', easing: 'linear' },
+  red: { color: 'rgba(200,0,0,1)', easing: 'easeIn' },
+  dream: { color: 'rgba(200,180,255,1)', easing: 'easeInOut' },
+  sepia: { color: 'rgba(150,100,50,1)', easing: 'easeIn' }
 }
 
 const FLASH_PRESETS: Record<FlashPreset, { color: string, duration: number }> = {
-  white:  { color: 'rgba(255,255,255,1)', duration: 300 },
-  red:    { color: 'rgba(255,0,0,1)',     duration: 300 },
-  yellow: { color: 'rgba(255,220,0,1)',   duration: 250 }
+  white: { color: 'rgba(255,255,255,1)', duration: 300 },
+  red: { color: 'rgba(255,0,0,1)', duration: 300 },
+  yellow: { color: 'rgba(255,220,0,1)', duration: 250 }
 }
 
 // 조명 효과 — gradient 색상 룩업
 const LIGHT_PRESETS: Record<LightPreset, { color: string, opacity: number }> = {
-  spot:    { color: 'rgba(255,240,180,0.25)', opacity: 0.25 },
-  ambient: { color: 'rgba(255,255,220,0.1)',  opacity: 0.1 },
-  warm:    { color: 'rgba(255,150,50,0.2)',   opacity: 0.2 },
-  cold:    { color: 'rgba(100,150,255,0.15)', opacity: 0.15 }
+  spot: { color: 'rgba(255,240,180,0.25)', opacity: 0.25 },
+  ambient: { color: 'rgba(255,255,220,0.1)', opacity: 0.1 },
+  warm: { color: 'rgba(255,150,50,0.2)', opacity: 0.2 },
+  cold: { color: 'rgba(100,150,255,0.15)', opacity: 0.15 }
 }
 
 // 텍스트 오버레이 스타일 룩업
@@ -117,8 +117,8 @@ const OVERLAY_PRESETS: Record<OverlayPreset, {
   y: 'top' | 'center' | 'bottom'
 }> = {
   caption: { fontSize: 24, color: '#ffffff', opacity: 0.9, zIndex: 1000, y: 'bottom' },
-  title:   { fontSize: 48, color: '#ffffff', opacity: 1.0, zIndex: 1000, y: 'center' },
-  whisper: { fontSize: 18, color: '#ccccdd', opacity: 0.6, zIndex: 1000, y: 'center'  }
+  title: { fontSize: 48, color: '#ffffff', opacity: 1.0, zIndex: 1000, y: 'center' },
+  whisper: { fontSize: 18, color: '#ccccdd', opacity: 0.6, zIndex: 1000, y: 'center' }
 }
 
 // =============================================================
@@ -432,9 +432,9 @@ export class Visualnovel {
     }
 
     const configs: Record<FlickerPreset, { interval: number, range: [number, number] }> = {
-      candle:  { interval: 120, range: [0.7, 1.0] },
-      flicker: { interval: 80,  range: [0.4, 1.0] },
-      strobe:  { interval: 60,  range: [0.0, 1.0] }
+      candle: { interval: 120, range: [0.7, 1.0] },
+      flicker: { interval: 80, range: [0.4, 1.0] },
+      strobe: { interval: 60, range: [0.0, 1.0] }
     }
     const cfg = configs[preset]
 
@@ -459,7 +459,7 @@ export class Visualnovel {
   addOverlay(text: string, preset: OverlayPreset = 'caption', overrides?: any): this {
     const p = OVERLAY_PRESETS[preset]
     const yPosMap: Record<'top' | 'center' | 'bottom', number> = {
-      top:    this.height * 0.1,
+      top: this.height * 0.1,
       center: this.height * 0.5,
       bottom: this.height * 0.85
     }
@@ -650,10 +650,10 @@ export class Visualnovel {
     rect.style.opacity = 1
 
     const targetPos: Record<WipePreset, { x: number, y: number }> = {
-      left:  { x: -this.width,   y: 0 },
-      right: { x: this.width,    y: 0 },
-      up:    { x: 0, y: -this.height },
-      down:  { x: 0, y: this.height }
+      left: { x: -this.width, y: 0 },
+      right: { x: this.width, y: 0 },
+      up: { x: 0, y: -this.height },
+      down: { x: 0, y: this.height }
     }
 
     const target = targetPos[preset]

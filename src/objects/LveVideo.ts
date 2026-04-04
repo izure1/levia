@@ -10,49 +10,7 @@ export interface VideoAttribute {
   src?: string
 }
 
-const DELEGATED_GETTERS: Record<string, (self: LveVideo) => any> = {
-  src: (self) => self['_clipName'] ?? undefined,
-  currentTime: (self) => self._videoElement?.currentTime ?? 0,
-  playbackRate: (self) => self._videoElement?.playbackRate ?? 1.0,
-  volume: (self) => self._videoElement?.volume ?? 1.0,
-}
-
-const DELEGATED_SETTERS: Record<string, (self: LveVideo, value: any) => void> = {
-  src: (self, value: string) => {
-    const anySelf = self as any
-    if (!anySelf._manager) {
-      console.warn('[LveVideo] __setManager()를 먼저 호출하십시오.')
-      return
-    }
-    const clip = anySelf._manager.get(value)
-    if (!clip) {
-      console.warn(`[LveVideo] 클립 '${value}'을 찾을 수 없습니다.`)
-      return
-    }
-    anySelf._clipName = value
-    self._clip = clip
-    self._src = clip.src
-    self._playing = false
-    self._paused = false
-    self._needsSeekToStart = true
-    if (self._videoElement) self._videoElement.currentTime = 0
-    else self._pendingSeek = 0
-  },
-  currentTime: (self, value: number) => {
-    self._needsSeekToStart = false
-    if (self._videoElement) {
-      self._videoElement.currentTime = value
-    } else {
-      self._pendingSeek = value
-    }
-  },
-  playbackRate: (self, value: number) => {
-    if (self._videoElement) self._videoElement.playbackRate = value
-  },
-  volume: (self, value: number) => {
-    if (self._videoElement) self._videoElement.volume = Math.max(0, Math.min(1, value))
-  },
-}
+const DELEGATED_KEYS = ['src', 'currentTime', 'playbackRate', 'volume']
 
 export class LveVideo<
   D extends Record<string, any> = Record<string, any>
@@ -65,6 +23,7 @@ export class LveVideo<
 
   /** 현재 클립 정보 (Renderer에서 직접 참조) */
   _clip: VideoClip | null = null
+
   /** 생성자 시점에 _manager가 없어서 보류된 src 값 */
   private _pendingSrc: string | null = null
 
@@ -86,8 +45,51 @@ export class LveVideo<
   /** currentTime setter에서 _videoElement가 null일 때 대기 중인 seek 값 (Renderer에서 적용 후 null로 리셋) */
   _pendingSeek: number | null = null
 
+  private static readonly DELEGATED_GETTERS: Record<string, (self: LveVideo) => any> = {
+    src: (self) => self._clipName ?? undefined,
+    currentTime: (self) => self._videoElement?.currentTime ?? 0,
+    playbackRate: (self) => self._videoElement?.playbackRate ?? 1.0,
+    volume: (self) => self._videoElement?.volume ?? 1.0,
+  }
+
+  private static readonly DELEGATED_SETTERS: Record<string, (self: LveVideo, value: any) => void> = {
+    src: (self, value: string) => {
+      if (!self._manager) {
+        console.warn('[LveVideo] __setManager()를 먼저 호출하십시오.')
+        return
+      }
+      const clip = self._manager.get(value)
+      if (!clip) {
+        console.warn(`[LveVideo] 클립 '${value}'을 찾을 수 없습니다.`)
+        return
+      }
+      self._clipName = value
+      self._clip = clip
+      self._src = clip.src
+      self._playing = false
+      self._paused = false
+      self._needsSeekToStart = true
+      if (self._videoElement) self._videoElement.currentTime = 0
+      else self._pendingSeek = 0
+    },
+    currentTime: (self, value: number) => {
+      self._needsSeekToStart = false
+      if (self._videoElement) {
+        self._videoElement.currentTime = value
+      } else {
+        self._pendingSeek = value
+      }
+    },
+    playbackRate: (self, value: number) => {
+      if (self._videoElement) self._videoElement.playbackRate = value
+    },
+    volume: (self, value: number) => {
+      if (self._videoElement) self._videoElement.volume = Math.max(0, Math.min(1, value))
+    },
+  }
+
   constructor(options?: LveObjectOptions<VideoAttribute, D>) {
-    super('video', options, Object.keys(DELEGATED_GETTERS))
+    super('video', options, DELEGATED_KEYS)
     // src setter는 _manager에 의존하므로 생성자 시점에 처리할 수 없습니다.
     // __setManager() 호출 시 자동으로 적용됩니다.
     this._pendingSrc = (options?.attribute as any)?.src ?? null
@@ -168,13 +170,13 @@ export class LveVideo<
   }
 
   protected _getDelegatedAttribute(key: string): any {
-    const handler = DELEGATED_GETTERS[key]
+    const handler = LveVideo.DELEGATED_GETTERS[key]
     if (handler) return handler(this)
     return super._getDelegatedAttribute(key)
   }
 
   protected _setDelegatedAttribute(key: string, value: any): void {
-    const handler = DELEGATED_SETTERS[key]
+    const handler = LveVideo.DELEGATED_SETTERS[key]
     if (handler) {
       handler(this, value)
     } else {

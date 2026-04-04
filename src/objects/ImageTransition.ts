@@ -7,16 +7,15 @@ export class ImageTransition extends BaseTransition<LveImage> {
   start(newSrc: string, durationMs: number): this {
     if (this._anim) this._anim.stop()
 
-    if (!this.target._src || durationMs <= 0 || this.target._src === newSrc) {
-      this.target.play(newSrc)
+    if (!this.target.attribute?.src || durationMs <= 0 || this.target.attribute.src === newSrc) {
+      this.target.attribute.src = newSrc
       this.target._transitionOldSrc = null
       this.target._transitionProgress = 0
       return this
     }
-
-    this.target._transitionOldSrc = this.target._src
+    this.target._transitionOldSrc = this.target.attribute.src
     this.target._transitionProgress = 0
-    this.target.play(newSrc)
+    this.target.attribute.src = newSrc
 
     this._startTransition(durationMs, 'linear',
       (progress) => {

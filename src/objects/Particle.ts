@@ -13,31 +13,7 @@ export interface ParticleAttribute {
   strictPhysics?: boolean
 }
 
-const DELEGATED_GETTERS: Record<string, (self: Particle) => any> = {
-  src: (self) => self['_clipName'] ?? undefined,
-}
-
-const DELEGATED_SETTERS: Record<string, (self: Particle, value: any) => void> = {
-  src: (self, value: string) => {
-    const anySelf = self as any
-    if (!anySelf._manager) {
-      console.warn('[Particle] __setManager()를 먼저 호출하십시오.')
-      return
-    }
-    const clip = anySelf._manager.get(value)
-    if (!clip) {
-      console.warn(`[Particle] 클립 '${value}'을 찾을 수 없습니다.`)
-      return
-    }
-    anySelf._clipName = value
-    self._clip = clip
-    anySelf._playing = false
-    anySelf._paused = false
-    anySelf._lastSpawnTime = 0
-    anySelf._spawnCount = 0
-    self._instances = []
-  },
-}
+const DELEGATED_KEYS = ['src']
 
 export interface ParticleOptions<
   D extends Record<string, any> = Record<string, any>
@@ -100,8 +76,33 @@ export class Particle<
   /** 일시정지 여부 */
   private _paused: boolean = false
 
+  private static readonly DELEGATED_GETTERS: Record<string, (self: Particle) => any> = {
+    src: (self) => self._clipName ?? undefined,
+  }
+
+  private static readonly DELEGATED_SETTERS: Record<string, (self: Particle, value: any) => void> = {
+    src: (self, value: string) => {
+      if (!self._manager) {
+        console.warn('[Particle] __setManager()를 먼저 호출하십시오.')
+        return
+      }
+      const clip = self._manager.get(value)
+      if (!clip) {
+        console.warn(`[Particle] 클립 '${value}'을 찾을 수 없습니다.`)
+        return
+      }
+      self._clipName = value
+      self._clip = clip
+      self._playing = false
+      self._paused = false
+      self._lastSpawnTime = 0
+      self._spawnCount = 0
+      self._instances = []
+    },
+  }
+
   constructor(options?: ParticleOptions<D>) {
-    super('particle', options, Object.keys(DELEGATED_GETTERS))
+    super('particle', options, DELEGATED_KEYS)
     // src setter는 _manager에 의존하므로 생성자 시점에 처리할 수 없습니다.
     // __setManager() 호출 시 자동으로 적용됩니다.
     this._pendingSrc = (options?.attribute as any)?.src ?? null
@@ -311,13 +312,13 @@ export class Particle<
   }
 
   protected _getDelegatedAttribute(key: string): any {
-    const handler = DELEGATED_GETTERS[key]
+    const handler = Particle.DELEGATED_GETTERS[key]
     if (handler) return handler(this)
     return super._getDelegatedAttribute(key)
   }
 
   protected _setDelegatedAttribute(key: string, value: any): void {
-    const handler = DELEGATED_SETTERS[key]
+    const handler = Particle.DELEGATED_SETTERS[key]
     if (handler) {
       handler(this, value)
     } else {

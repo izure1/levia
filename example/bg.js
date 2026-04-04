@@ -9124,15 +9124,15 @@ var ImageTransition = class extends BaseTransition {
   }
   start(newSrc, durationMs) {
     if (this._anim) this._anim.stop();
-    if (!this.target._src || durationMs <= 0 || this.target._src === newSrc) {
-      this.target.play(newSrc);
+    if (!this.target.attribute?.src || durationMs <= 0 || this.target.attribute.src === newSrc) {
+      this.target.attribute.src = newSrc;
       this.target._transitionOldSrc = null;
       this.target._transitionProgress = 0;
       return this;
     }
-    this.target._transitionOldSrc = this.target._src;
+    this.target._transitionOldSrc = this.target.attribute.src;
     this.target._transitionProgress = 0;
-    this.target.play(newSrc);
+    this.target.attribute.src = newSrc;
     this._startTransition(
       durationMs,
       "linear",
@@ -9149,17 +9149,7 @@ var ImageTransition = class extends BaseTransition {
 };
 
 // src/objects/LveImage.ts
-var DELEGATED_GETTERS = {
-  src: (self) => self._src ?? void 0
-};
-var DELEGATED_SETTERS = {
-  src: (self, value) => {
-    self._src = value;
-  }
-};
 var LveImage = class extends LveObject {
-  /** 현재 표시할 에셋 키 */
-  _src = null;
   /** 트랜지션용 과거 에셋 키 */
   _transitionOldSrc = null;
   /** 트랜지션 진행도 (0 ~ 1) */
@@ -9167,7 +9157,7 @@ var LveImage = class extends LveObject {
   /** 전환 관리자 */
   _transitioner;
   constructor(options) {
-    super("image", options, Object.keys(DELEGATED_GETTERS));
+    super("image", options);
   }
   /**
    * 새 이미지로 서서히 변경(크로스페이드)되는 애니메이션 효과를 줍니다.
@@ -9181,65 +9171,11 @@ var LveImage = class extends LveObject {
     this._transitioner.start(newSrc, durationMs);
     return this._transitioner;
   }
-  _getDelegatedAttribute(key) {
-    const handler = DELEGATED_GETTERS[key];
-    if (handler) return handler(this);
-    return super._getDelegatedAttribute(key);
-  }
-  _setDelegatedAttribute(key, value) {
-    const handler = DELEGATED_SETTERS[key];
-    if (handler) {
-      handler(this, value);
-    } else {
-      super._setDelegatedAttribute(key, value);
-    }
-  }
 };
 
 // src/objects/LveVideo.ts
-var DELEGATED_GETTERS2 = {
-  src: (self) => self["_clipName"] ?? void 0,
-  currentTime: (self) => self._videoElement?.currentTime ?? 0,
-  playbackRate: (self) => self._videoElement?.playbackRate ?? 1,
-  volume: (self) => self._videoElement?.volume ?? 1
-};
-var DELEGATED_SETTERS2 = {
-  src: (self, value) => {
-    const anySelf = self;
-    if (!anySelf._manager) {
-      console.warn("[LveVideo] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
-      return;
-    }
-    const clip = anySelf._manager.get(value);
-    if (!clip) {
-      console.warn(`[LveVideo] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
-      return;
-    }
-    anySelf._clipName = value;
-    self._clip = clip;
-    self._src = clip.src;
-    self._playing = false;
-    self._paused = false;
-    self._needsSeekToStart = true;
-    if (self._videoElement) self._videoElement.currentTime = 0;
-    else self._pendingSeek = 0;
-  },
-  currentTime: (self, value) => {
-    self._needsSeekToStart = false;
-    if (self._videoElement) {
-      self._videoElement.currentTime = value;
-    } else {
-      self._pendingSeek = value;
-    }
-  },
-  playbackRate: (self, value) => {
-    if (self._videoElement) self._videoElement.playbackRate = value;
-  },
-  volume: (self, value) => {
-    if (self._videoElement) self._videoElement.volume = Math.max(0, Math.min(1, value));
-  }
-};
-var LveVideo = class extends LveObject {
+var DELEGATED_KEYS = ["src", "currentTime", "playbackRate", "volume"];
+var LveVideo = class _LveVideo extends LveObject {
   /** 연결된 VideoManager */
   _manager = null;
   /** 현재 재생 중인 클립 이름 */
@@ -9260,8 +9196,49 @@ var LveVideo = class extends LveObject {
   _needsSeekToStart = false;
   /** currentTime setter에서 _videoElement가 null일 때 대기 중인 seek 값 (Renderer에서 적용 후 null로 리셋) */
   _pendingSeek = null;
+  static DELEGATED_GETTERS = {
+    src: (self) => self._clipName ?? void 0,
+    currentTime: (self) => self._videoElement?.currentTime ?? 0,
+    playbackRate: (self) => self._videoElement?.playbackRate ?? 1,
+    volume: (self) => self._videoElement?.volume ?? 1
+  };
+  static DELEGATED_SETTERS = {
+    src: (self, value) => {
+      if (!self._manager) {
+        console.warn("[LveVideo] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
+        return;
+      }
+      const clip = self._manager.get(value);
+      if (!clip) {
+        console.warn(`[LveVideo] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+        return;
+      }
+      self._clipName = value;
+      self._clip = clip;
+      self._src = clip.src;
+      self._playing = false;
+      self._paused = false;
+      self._needsSeekToStart = true;
+      if (self._videoElement) self._videoElement.currentTime = 0;
+      else self._pendingSeek = 0;
+    },
+    currentTime: (self, value) => {
+      self._needsSeekToStart = false;
+      if (self._videoElement) {
+        self._videoElement.currentTime = value;
+      } else {
+        self._pendingSeek = value;
+      }
+    },
+    playbackRate: (self, value) => {
+      if (self._videoElement) self._videoElement.playbackRate = value;
+    },
+    volume: (self, value) => {
+      if (self._videoElement) self._videoElement.volume = Math.max(0, Math.min(1, value));
+    }
+  };
   constructor(options) {
-    super("video", options, Object.keys(DELEGATED_GETTERS2));
+    super("video", options, DELEGATED_KEYS);
     this._pendingSrc = options?.attribute?.src ?? null;
   }
   /**
@@ -9332,12 +9309,12 @@ var LveVideo = class extends LveObject {
     this.emit("ended");
   }
   _getDelegatedAttribute(key) {
-    const handler = DELEGATED_GETTERS2[key];
+    const handler = _LveVideo.DELEGATED_GETTERS[key];
     if (handler) return handler(this);
     return super._getDelegatedAttribute(key);
   }
   _setDelegatedAttribute(key, value) {
-    const handler = DELEGATED_SETTERS2[key];
+    const handler = _LveVideo.DELEGATED_SETTERS[key];
     if (handler) {
       handler(this, value);
     } else {
@@ -9347,41 +9324,8 @@ var LveVideo = class extends LveObject {
 };
 
 // src/objects/Sprite.ts
-var DELEGATED_GETTERS3 = {
-  src: (self) => self["_clipName"] ?? void 0,
-  currentTime: (self) => self._clip ? Math.max(0, self._currentFrame - self._clip.start) : 0,
-  playbackRate: (self) => self._playbackRate ?? (self._clip ? self._clip.frameRate : 0)
-};
-var DELEGATED_SETTERS3 = {
-  src: (self, value) => {
-    const anySelf = self;
-    if (!anySelf._manager) {
-      console.warn("[Sprite] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
-      return;
-    }
-    const clip = anySelf._manager.get(value);
-    if (!clip) {
-      console.warn(`[Sprite] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
-      return;
-    }
-    anySelf._clipName = value;
-    self._clip = clip;
-    self._currentFrame = clip.start;
-    self._lastFrameTime = 0;
-    self._playing = false;
-    self._paused = false;
-  },
-  currentTime: (self, value) => {
-    if (!self._clip) return;
-    self._currentFrame = self._clip.start + Math.floor(value);
-    if (self._currentFrame >= self._clip.end) self._currentFrame = self._clip.end - 1;
-    if (self._currentFrame < self._clip.start) self._currentFrame = self._clip.start;
-  },
-  playbackRate: (self, value) => {
-    self._playbackRate = value;
-  }
-};
-var Sprite = class extends LveObject {
+var DELEGATED_KEYS2 = ["src", "currentTime", "playbackRate"];
+var Sprite = class _Sprite extends LveObject {
   /** 연결된 SpriteManager */
   _manager = null;
   /** 현재 재생 중인 클립 이름 */
@@ -9400,8 +9344,41 @@ var Sprite = class extends LveObject {
   _playing = false;
   /** 일시정지 여부 */
   _paused = false;
+  static DELEGATED_GETTERS = {
+    src: (self) => self._clipName ?? void 0,
+    currentTime: (self) => self._clip ? Math.max(0, self._currentFrame - self._clip.start) : 0,
+    playbackRate: (self) => self._playbackRate ?? (self._clip ? self._clip.frameRate : 0)
+  };
+  static DELEGATED_SETTERS = {
+    src: (self, value) => {
+      if (!self._manager) {
+        console.warn("[Sprite] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
+        return;
+      }
+      const clip = self._manager.get(value);
+      if (!clip) {
+        console.warn(`[Sprite] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+        return;
+      }
+      self._clipName = value;
+      self._clip = clip;
+      self._currentFrame = clip.start;
+      self._lastFrameTime = 0;
+      self._playing = false;
+      self._paused = false;
+    },
+    currentTime: (self, value) => {
+      if (!self._clip) return;
+      self._currentFrame = self._clip.start + Math.floor(value);
+      if (self._currentFrame >= self._clip.end) self._currentFrame = self._clip.end - 1;
+      if (self._currentFrame < self._clip.start) self._currentFrame = self._clip.start;
+    },
+    playbackRate: (self, value) => {
+      self._playbackRate = value;
+    }
+  };
   constructor(options) {
-    super("sprite", options, Object.keys(DELEGATED_GETTERS3));
+    super("sprite", options, DELEGATED_KEYS2);
     this._pendingSrc = options?.attribute?.src ?? null;
   }
   /**
@@ -9475,12 +9452,12 @@ var Sprite = class extends LveObject {
     }
   }
   _getDelegatedAttribute(key) {
-    const handler = DELEGATED_GETTERS3[key];
+    const handler = _Sprite.DELEGATED_GETTERS[key];
     if (handler) return handler(this);
     return super._getDelegatedAttribute(key);
   }
   _setDelegatedAttribute(key, value) {
-    const handler = DELEGATED_SETTERS3[key];
+    const handler = _Sprite.DELEGATED_SETTERS[key];
     if (handler) {
       handler(this, value);
     } else {
@@ -9491,32 +9468,9 @@ var Sprite = class extends LveObject {
 
 // src/objects/Particle.ts
 var import_matter_js = __toESM(require_matter(), 1);
-var DELEGATED_GETTERS4 = {
-  src: (self) => self["_clipName"] ?? void 0
-};
-var DELEGATED_SETTERS4 = {
-  src: (self, value) => {
-    const anySelf = self;
-    if (!anySelf._manager) {
-      console.warn("[Particle] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
-      return;
-    }
-    const clip = anySelf._manager.get(value);
-    if (!clip) {
-      console.warn(`[Particle] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
-      return;
-    }
-    anySelf._clipName = value;
-    self._clip = clip;
-    anySelf._playing = false;
-    anySelf._paused = false;
-    anySelf._lastSpawnTime = 0;
-    anySelf._spawnCount = 0;
-    self._instances = [];
-  }
-};
+var DELEGATED_KEYS3 = ["src"];
 var GRAVITY = 15e-5;
-var Particle = class extends LveObject {
+var Particle = class _Particle extends LveObject {
   _manager = null;
   _clipName = null;
   _clip = null;
@@ -9532,8 +9486,31 @@ var Particle = class extends LveObject {
   _physics = null;
   /** 일시정지 여부 */
   _paused = false;
+  static DELEGATED_GETTERS = {
+    src: (self) => self._clipName ?? void 0
+  };
+  static DELEGATED_SETTERS = {
+    src: (self, value) => {
+      if (!self._manager) {
+        console.warn("[Particle] __setManager()\uB97C \uBA3C\uC800 \uD638\uCD9C\uD558\uC2ED\uC2DC\uC624.");
+        return;
+      }
+      const clip = self._manager.get(value);
+      if (!clip) {
+        console.warn(`[Particle] \uD074\uB9BD '${value}'\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+        return;
+      }
+      self._clipName = value;
+      self._clip = clip;
+      self._playing = false;
+      self._paused = false;
+      self._lastSpawnTime = 0;
+      self._spawnCount = 0;
+      self._instances = [];
+    }
+  };
   constructor(options) {
-    super("particle", options, Object.keys(DELEGATED_GETTERS4));
+    super("particle", options, DELEGATED_KEYS3);
     this._pendingSrc = options?.attribute?.src ?? null;
   }
   /**
@@ -9704,12 +9681,12 @@ var Particle = class extends LveObject {
     inst.body = void 0;
   }
   _getDelegatedAttribute(key) {
-    const handler = DELEGATED_GETTERS4[key];
+    const handler = _Particle.DELEGATED_GETTERS[key];
     if (handler) return handler(this);
     return super._getDelegatedAttribute(key);
   }
   _setDelegatedAttribute(key, value) {
-    const handler = DELEGATED_SETTERS4[key];
+    const handler = _Particle.DELEGATED_SETTERS[key];
     if (handler) {
       handler(this, value);
     } else {
@@ -11507,7 +11484,7 @@ var Renderer2 = class {
   }
   // ─── Image ──────────────────────────────────────────────────────────────
   _drawAsset(obj, x, y, w, h, perspectiveScale, assets) {
-    const src = obj._src;
+    const src = obj.attribute?.src;
     const oldSrc = obj._transitionOldSrc;
     const progress = obj._transitionProgress ?? 0;
     const drawAssetInner = (assetSrc, drawOpacity) => {

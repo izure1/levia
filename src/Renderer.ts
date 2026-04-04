@@ -1391,7 +1391,7 @@ export class Renderer {
   // ─── Image ──────────────────────────────────────────────────────────────
 
   private _drawAsset(obj: LveImage, x: number, y: number, w: number, h: number, perspectiveScale: number, assets: LoadedAssets) {
-    const src = obj._src
+    const src = obj.attribute?.src
     const oldSrc = obj._transitionOldSrc
     const progress = obj._transitionProgress ?? 0
 
