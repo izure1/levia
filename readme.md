@@ -8,15 +8,7 @@
   <img src="docs/assets/logo.png" width="600" alt="levia logo" style="border-radius: 50% 10%" />
 </p>
 
----
-
 **levia**는 WebGL의 강력한 성능을 기반으로, 복잡한 3D 수식 없이도 압도적인 **2.5D 시각 효과**와 **현실적인 물리 엔진**을 구현할 수 있는 모던 렌더링 엔진입니다.
-
----
-
-> [!IMPORTANT]
-> ### 💎 핵심 철학: 객체 제어의 원칙 (Attributes First)
-> 레비아 엔진은 **속성(Attribute/Style/Transform)을 직접 수정하는 방식**을 가장 직관적이고 효율적인 제어 방식으로 정의합니다. 메서드는 속성만으로 표현하기 어려운 복잡한 물리 연작용이나 애니메이션 트랜지션을 보존하기 위해 존재하는 강력한 서포터입니다.
 
 ---
 
@@ -31,6 +23,8 @@
 ## 🏗️ 핵심 아키텍처
 
 레비아 엔진은 객체를 6가지 명확한 레이어로 구분하여 정밀하게 제어합니다.
+
+직관적이고 효율적인 제어하기 위해 **속성(Attribute/Style/Transform)을 직접 수정하는 방식**을 지향합니다. 메서드는 속성만으로 표현하기 어려운 복잡한 물리 연작용이나 애니메이션 트랜지션을 보존하기 위해 존재하는 강력한 서포터입니다.
 
 -  🏷️ **[Attribute](docs/attribute.md)**: 객체의 ID, 물리 특성 및 타입을 정의하는 식별 계층.
 -  🎨 **[Style](docs/style.md)**: CSS 기반의 친숙한 외형 디자인 (BorderRadius, Shadow 등).
@@ -58,8 +52,7 @@ const box = world.createRectangle({
   style: { 
     color: '#3498db', width: 100, height: 100, 
     borderRadius: 15, boxShadowBlur: 20 
-  },
-  transform: { position: { x: 0, y: 0, z: 0 } }
+  }
 })
 
 // 속성을 직접 수정하여 회전시키며 투명하게 만드는 애니메이션!
