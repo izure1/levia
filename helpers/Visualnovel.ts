@@ -227,7 +227,7 @@ const EFFECT_CLIP_PRESETS: Record<EffectType, Record<Intensity, Omit<ParticleCli
       lifespan: 15000,
       interval: 800,
       size: { start: { min: 0, max: 0 }, end: { min: 1.5, max: 3 } },
-      opacity: { start: { min: 0, max: 0 }, end: { min: 0.1, max: 0.2 } },
+      opacity: { start: { min: 0, max: 0 }, end: { min: 0.2, max: 0.3 } },
       loop: true
     },
     normal: {
@@ -237,7 +237,7 @@ const EFFECT_CLIP_PRESETS: Record<EffectType, Record<Intensity, Omit<ParticleCli
       lifespan: 15000,
       interval: 600,
       size: { start: { min: 0, max: 0 }, end: { min: 1.5, max: 3 } },
-      opacity: { start: { min: 0, max: 0 }, end: { min: 0.2, max: 0.3 } },
+      opacity: { start: { min: 0, max: 0 }, end: { min: 0.3, max: 0.4 } },
       loop: true
     },
     heavy: {
@@ -247,7 +247,7 @@ const EFFECT_CLIP_PRESETS: Record<EffectType, Record<Intensity, Omit<ParticleCli
       lifespan: 20000,
       interval: 400,
       size: { start: { min: 0, max: 0 }, end: { min: 2, max: 4 } },
-      opacity: { start: { min: 0, max: 0 }, end: { min: 0.3, max: 0.5 } },
+      opacity: { start: { min: 0, max: 0 }, end: { min: 0.4, max: 0.5 } },
       loop: true
     }
   },

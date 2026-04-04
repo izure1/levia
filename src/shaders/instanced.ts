@@ -84,6 +84,6 @@ export const instancedFragment = /* glsl */ `
     }
 
     vec4 color = texture2D(uTexture, vUV);
-    gl_FragColor = vec4(color.rgb, color.a * vOpacity);
+    gl_FragColor = vec4(color.rgb * color.a * vOpacity, color.a * vOpacity);
   }
 `

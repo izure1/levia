@@ -41,7 +41,7 @@ export const colorFragment = /* glsl */ `
       float d = sdRoundedBox(p, uSize * 0.5, uBorderRadius);
       if (d > 0.0) discard;
     }
-    gl_FragColor = vec4(uColor.rgb, uColor.a * uOpacity);
+    gl_FragColor = vec4(uColor.rgb * uColor.a * uOpacity, uColor.a * uOpacity);
   }
 `
 
@@ -71,6 +71,6 @@ export const ellipseFragment = /* glsl */ `
     vec2 p = vUV * 2.0 - 1.0;
     float d = dot(p, p);  // p.x^2 + p.y^2
     if (d > 1.0) discard;
-    gl_FragColor = vec4(uColor.rgb, uColor.a * uOpacity);
+    gl_FragColor = vec4(uColor.rgb * uColor.a * uOpacity, uColor.a * uOpacity);
   }
 `

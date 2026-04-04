@@ -10051,7 +10051,7 @@ var colorFragment = (
       float d = sdRoundedBox(p, uSize * 0.5, uBorderRadius);
       if (d > 0.0) discard;
     }
-    gl_FragColor = vec4(uColor.rgb, uColor.a * uOpacity);
+    gl_FragColor = vec4(uColor.rgb * uColor.a * uOpacity, uColor.a * uOpacity);
   }
 `
 );
@@ -10084,7 +10084,7 @@ var ellipseFragment = (
     vec2 p = vUV * 2.0 - 1.0;
     float d = dot(p, p);  // p.x^2 + p.y^2
     if (d > 1.0) discard;
-    gl_FragColor = vec4(uColor.rgb, uColor.a * uOpacity);
+    gl_FragColor = vec4(uColor.rgb * uColor.a * uOpacity, uColor.a * uOpacity);
   }
 `
 );
@@ -10120,7 +10120,7 @@ var textureFragment = (
 
   void main() {
     vec4 color = texture2D(uTexture, vUV);
-    gl_FragColor = vec4(color.rgb, color.a * uOpacity);
+    gl_FragColor = vec4(color.rgb * color.a * uOpacity, color.a * uOpacity);
   }
 `
 );
@@ -10212,7 +10212,7 @@ var instancedFragment = (
     }
 
     vec4 color = texture2D(uTexture, vUV);
-    gl_FragColor = vec4(color.rgb, color.a * vOpacity);
+    gl_FragColor = vec4(color.rgb * color.a * vOpacity, color.a * vOpacity);
   }
 `
 );
@@ -10953,13 +10953,13 @@ var Renderer2 = class {
     this._currentBlendMode = mode;
     const gl = this.gl;
     let eq = gl.FUNC_ADD;
-    let src = gl.SRC_ALPHA;
+    let src = gl.ONE;
     let dst = gl.ONE_MINUS_SRC_ALPHA;
     let srcA = gl.ONE;
     let dstA = gl.ONE_MINUS_SRC_ALPHA;
     switch (mode) {
       case "source-over":
-        src = gl.SRC_ALPHA;
+        src = gl.ONE;
         dst = gl.ONE_MINUS_SRC_ALPHA;
         srcA = gl.ONE;
         dstA = gl.ONE_MINUS_SRC_ALPHA;
@@ -11001,7 +11001,7 @@ var Renderer2 = class {
         dstA = gl.ONE_MINUS_SRC_ALPHA;
         break;
       case "lighter":
-        src = gl.SRC_ALPHA;
+        src = gl.ONE;
         dst = gl.ONE;
         srcA = gl.ONE;
         dstA = gl.ONE;

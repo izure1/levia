@@ -719,14 +719,14 @@ export class Renderer {
 
     const gl = this.gl;
     let eq: number = gl.FUNC_ADD;
-    let src: number = gl.SRC_ALPHA;
+    let src: number = gl.ONE;
     let dst: number = gl.ONE_MINUS_SRC_ALPHA;
     let srcA: number = gl.ONE;
     let dstA: number = gl.ONE_MINUS_SRC_ALPHA;
 
     switch (mode) {
       case 'source-over':
-        src = gl.SRC_ALPHA; dst = gl.ONE_MINUS_SRC_ALPHA;
+        src = gl.ONE; dst = gl.ONE_MINUS_SRC_ALPHA;
         srcA = gl.ONE; dstA = gl.ONE_MINUS_SRC_ALPHA;
         break;
       case 'source-in':
@@ -754,7 +754,7 @@ export class Renderer {
         srcA = gl.ZERO; dstA = gl.ONE_MINUS_SRC_ALPHA;
         break;
       case 'lighter':
-        src = gl.SRC_ALPHA; dst = gl.ONE;
+        src = gl.ONE; dst = gl.ONE;
         srcA = gl.ONE; dstA = gl.ONE;
         break;
       case 'copy':
