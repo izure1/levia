@@ -57,7 +57,7 @@ export class World extends EventEmitter<WorldEvents> {
   private physics: PhysicsEngine = new PhysicsEngine()
   private _canvas: HTMLCanvasElement | null = null
   /** 현재 포커스 중인 카메라 (지정되지 않으면 객체 중 Camera를 찾습니다) */
-  private _activeCamera: LveObject | null = null
+  private _activeCamera: Camera | null = null
   /** 물리 엔진의 중력 프로퍼티 프록시 */
   private _gravityProxy: { x: number; y: number }
   /** mouseover 상태 추적 (객체 id → boolean) */
@@ -372,7 +372,7 @@ export class World extends EventEmitter<WorldEvents> {
   /**
    * 월드의 활성 카메라 객체를 반환합니다. 
    */
-  get camera(): LveObject | null {
+  get camera(): Camera | null {
     return this._activeCamera
   }
 
@@ -380,7 +380,7 @@ export class World extends EventEmitter<WorldEvents> {
    * 월드의 카메라를 특정 객체로 지정합니다. 카메라 객체만 지정할 수 있습니다.
    * `null`을 할당하면 기본 동작으로 돌아갑니다.
    */
-  set camera(camera: LveObject | null) {
+  set camera(camera: Camera | null) {
     if (camera != null && camera.attribute.type !== 'camera') {
       throw new Error('The assigned object must be of camera type.');
     }

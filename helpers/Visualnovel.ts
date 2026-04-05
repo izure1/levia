@@ -1,12 +1,27 @@
-import { World } from '../src/World'
-import type { ParticleClipOptions } from '../src/ParticleManager'
-import type { LveObject } from '../src/LveObject'
+/**
+ * Visualnovel.ts — Typed Visual Novel scene manager
+ *
+ * Usage:
+ *   const vn = Visualnovel.create()
+ *     .defineCharacter({
+ *       heroine: { images: { normal: 'girl_normal', happy: 'girl_happy' }, focusPoint: { x: 0.5, y: 0.2 } }
+ *     })
+ *     .defineBackground({
+ *       library: { src: 'bg_library', parallax: true },
+ *       rooftop: { src: 'bg_rooftop', parallax: false }
+ *     })
+ *     .build(world, { width: 800, height: 600, depth: 500 })
+ *
+ *   vn.showCharacter('heroine', 'center', 'normal')
+ *   vn.setBackground('library', 'cover', 1000)
+ */
+
+import type { World, LveObject, EasingType } from '../src'
 import type { ParticleOptions } from '../src/objects/Particle'
 import type { RectangleOptions } from '../src/objects/Rectangle'
-import type { EasingType } from '../src/types'
 
 // =============================================================
-// 옵션 인터페이스
+// Public Types
 // =============================================================
 
 export interface VisualnovelOption {
@@ -15,169 +30,69 @@ export interface VisualnovelOption {
   depth: number
 }
 
-// =============================================================
-// 프리셋 타입
-// =============================================================
+/** Image variant map: imageKey → asset src */
+export type CharImages = Record<string, string>
 
-export type EffectType = 'dust' | 'rain' | 'snow' | 'sakura' | 'sparkle' | 'fog' | 'leaves' | 'fireflies'
-export type MoodType = 'day' | 'sunset' | 'night' | 'sepia' | 'horror' | 'flashback' | 'dream' | 'danger' | 'none'
+/** Single character definition */
+export interface CharDef {
+  images: CharImages
+  /** Focus point (0~1 normalized). x: left→right, y: top→bottom. Default { x:0.5, y:0.5 } */
+  focusPoint?: { x: number, y: number }
+}
+
+/** Single background definition */
+export interface BgDef {
+  src: string
+  /**
+   * Parallax mode. Default: true
+   * - true : placed at world Z-depth, extra padding for camera movement
+   * - false: attached as camera child (always screen-fixed)
+   */
+  parallax?: boolean
+}
+
+export type CharDefs = Record<string, CharDef>
+export type BgDefs = Record<string, BgDef>
+
 export type ZoomPreset = 'close-up' | 'medium' | 'wide' | 'reset'
 export type PanPreset = 'left' | 'right' | 'up' | 'down' | 'center'
 export type ShakePreset = 'light' | 'normal' | 'heavy' | 'earthquake'
-export type CharacterPositionPreset = 'far-left' | 'left' | 'center' | 'right' | 'far-right'
+export type CharacterPositionPreset = 'far-left' | 'left' | 'center' | 'right' | 'far-right' | string
 export type BackgroundFitPreset = 'stretch' | 'contain' | 'cover'
 export type FadeColorPreset = 'black' | 'white' | 'red' | 'dream' | 'sepia'
 export type FlashPreset = 'white' | 'red' | 'yellow'
 export type WipePreset = 'left' | 'right' | 'up' | 'down'
+export type MoodType = 'day' | 'night' | 'sunset' | 'foggy' | 'sepia' | 'cold' | 'noir' | 'none'
 export type LightPreset = 'spot' | 'ambient' | 'warm' | 'cold'
-export type FlickerPreset = 'candle' | 'strobe' | 'flicker'
+export type FlickerPreset = 'candle' | 'flicker' | 'strobe'
 export type OverlayPreset = 'caption' | 'title' | 'whisper'
+export type EffectType = 'dust' | 'rain' | 'snow' | 'sakura' | 'sparkle' | 'fog' | 'leaves' | 'fireflies'
 
 // =============================================================
-// 프리셋 룩업 테이블
+// Preset Lookup Tables
 // =============================================================
 
-const EFFECT_PRESETS: Record<EffectType, Partial<ParticleOptions>> = {
-  dust: {
-    attribute: { src: 'dust', frictionAir: 0, gravityScale: 0.001 },
-    style: { width: 10, height: 10, blendMode: 'lighter' }
-  },
-  rain: {
-    attribute: { src: 'rain', gravityScale: 1 },
-    style: { width: 3, height: 6, opacity: 0.3, blendMode: 'screen' }
-  },
-  snow: {
-    attribute: { src: 'snow', gravityScale: 0.01, frictionAir: 0 },
-    style: { width: 15, height: 15, blendMode: 'lighter' }
-  },
-  sakura: {
-    attribute: { src: 'sakura', gravityScale: 0.02, frictionAir: 0 },
-    style: { width: 12, height: 15, opacity: 0.8 }
-  },
-  sparkle: {
-    attribute: { src: 'sparkle', gravityScale: 0.1 },
-    style: { width: 16, height: 16, opacity: 0.8 }
-  },
-  fog: {
-    attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.003 },
-    style: { width: 120, height: 120, blendMode: 'screen' }
-  },
-  leaves: {
-    attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true },
-    style: { width: 20, height: 20, opacity: 0.9 }
-  },
-  fireflies: {
-    attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true },
-    style: { width: 8, height: 8, opacity: 0.8, blendMode: 'lighter' }
-  }
-}
-
-const DEFAULT_RATES: Record<EffectType, number> = {
-  dust: 5, rain: 200, snow: 8, sakura: 8, sparkle: 10, fog: 4, leaves: 5, fireflies: 5
-}
-
-// 파티클 클립 기본값 설정 (src 제외)
-const EFFECT_CLIP_PRESETS: Record<EffectType, Omit<ParticleClipOptions, 'name' | 'src' | 'spawnX' | 'spawnY' | 'spawnZ' | 'rate'>> = {
-  dust: {
-    impulse: 0.05,
-    lifespan: 10000,
-    interval: 250,
-    size: [[0.5, 1], [0, 0.5]],
-    opacity: [[0, 0], [1, 1], [0, 0]],
-    loop: true
-  },
-  rain: {
-    impulse: 0,
-    lifespan: 3000,
-    interval: 40,
-    size: [[0.1, 0.3], [0.1, 0.3]],
-    opacity: [[1, 1], [1, 1]],
-    loop: true
-  },
-  snow: {
-    impulse: 0.01,
-    angularImpulse: 0.001,
-    lifespan: 10000,
-    interval: 100,
-    size: [[0.3, 0.8], [0.0, 0.0]],
-    opacity: [[1, 1], [0, 0]],
-    loop: true
-  },
-  sakura: {
-    impulse: 0.02,
-    angularImpulse: 0.001,
-    lifespan: 6000,
-    interval: 300,
-    size: [[0.5, 0.8], [0.3, 0.5]],
-    loop: true
-  },
-  sparkle: {
-    impulse: 0.02,
-    lifespan: 1500,
-    interval: 150,
-    size: [[0.5, 1], [0, 0.1]],
-    loop: true
-  },
-  fog: {
-    impulse: 0.01,
-    angularImpulse: 0.0001,
-    lifespan: 15000,
-    interval: 800,
-    size: [[2, 2], [5, 10]],
-    opacity: [[0, 0], [0.1, 0.2], [0, 0]],
-    loop: true
-  },
-  leaves: {
-    impulse: 0.08,
-    angularImpulse: 0.05,
-    lifespan: 7000,
-    interval: 350,
-    size: [[0.8, 1.2], [0.8, 1.2]],
-    loop: true
-  },
-  fireflies: {
-    impulse: 0.03,
-    lifespan: 5000,
-    interval: 300,
-    size: [[0.5, 1.5], [0, 0.5]],
-    loop: true
-  }
-}
-
-const MOOD_PRESETS: Record<MoodType, { color: string, vignette?: string, blendMode?: string }> = {
-  day: { color: 'rgba(255, 255, 255, 0)', vignette: 'transparent 30%, rgba(255, 255, 255, 0.4) 100%', blendMode: 'lighter' },
-  sunset: { color: 'rgba(255, 100, 0, 0.2)', vignette: 'transparent 40%, rgba(255, 180, 50, 0.5) 100%', blendMode: 'overlay' },
-  night: { color: 'rgba(0, 0, 50, 0.4)', vignette: 'transparent 40%, rgba(0, 0, 0, 0.8) 100%', blendMode: 'multiply' },
-  sepia: { color: 'rgba(112, 66, 20, 0.3)', vignette: 'transparent 40%, rgba(50, 30, 10, 0.8) 100%', blendMode: 'multiply' },
-  horror: { color: 'rgba(150, 0, 0, 0.3)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%', blendMode: 'multiply' },
-  flashback: { color: 'rgba(200, 200, 200, 0.2)', vignette: 'transparent 40%, rgba(255, 255, 255, 0.8) 100%', blendMode: 'screen' },
-  dream: { color: 'rgba(180, 150, 255, 0.2)', vignette: 'transparent 40%, rgba(255, 200, 255, 0.6) 100%', blendMode: 'screen' },
-  danger: { color: 'rgba(255, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(200, 0, 0, 0.8) 100%', blendMode: 'color-burn' },
-  none: { color: 'transparent' }
-}
-
-const ZOOM_PRESETS: Record<ZoomPreset, { scale: number, duration: number }> = {
-  'close-up': { scale: 1.5, duration: 1500 },
-  'medium': { scale: 1.2, duration: 1000 },
-  'wide': { scale: 0.8, duration: 1500 },
-  'reset': { scale: 1.0, duration: 1000 }
-}
-
-const PAN_PRESETS: Record<PanPreset, { x: number, y: number, duration: number }> = {
-  left: { x: -200, y: 0, duration: 1000 },
-  right: { x: 200, y: 0, duration: 1000 },
-  up: { x: 0, y: -200, duration: 1000 },
-  down: { x: 0, y: 200, duration: 1000 },
-  center: { x: 0, y: 0, duration: 1000 }
-}
-
-// 캐릭터 위치별 x축 비율 룩업
-const CHARACTER_X_RATIO: Record<CharacterPositionPreset, number> = {
+const CHARACTER_X_RATIO: Record<string, number> = {
   'far-left': 0.1,
   'left': 0.25,
   'center': 0.5,
   'right': 0.75,
   'far-right': 0.9
+}
+
+const ZOOM_PRESETS: Record<ZoomPreset, { scale: number, duration: number }> = {
+  'close-up': { scale: 1.5, duration: 800 },
+  'medium': { scale: 1.2, duration: 600 },
+  'wide': { scale: 0.8, duration: 800 },
+  'reset': { scale: 1.0, duration: 600 }
+}
+
+const PAN_PRESETS: Record<PanPreset, { x: number, y: number, duration: number }> = {
+  left: { x: -200, y: 0, duration: 1000 },
+  right: { x: 200, y: 0, duration: 1000 },
+  up: { x: 0, y: 200, duration: 1000 },
+  down: { x: 0, y: -200, duration: 1000 },
+  center: { x: 0, y: 0, duration: 1000 }
 }
 
 const SHAKE_PRESETS: Record<ShakePreset, { intensity: number, duration: number }> = {
@@ -187,7 +102,6 @@ const SHAKE_PRESETS: Record<ShakePreset, { intensity: number, duration: number }
   earthquake: { intensity: 50, duration: 2000 }
 }
 
-// 페이드 전환 색상 + 이징 룩업
 const FADE_PRESETS: Record<FadeColorPreset, { color: string, easing: EasingType }> = {
   black: { color: 'rgba(0,0,0,1)', easing: 'linear' },
   white: { color: 'rgba(255,255,255,1)', easing: 'linear' },
@@ -202,101 +116,228 @@ const FLASH_PRESETS: Record<FlashPreset, { color: string, duration: number }> = 
   yellow: { color: 'rgba(255,220,0,1)', duration: 250 }
 }
 
-// 조명 효과 — gradient 색상 룩업
+const WIPE_PRESETS: Record<WipePreset, { x: number, y: number }> = {
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  up: { x: 0, y: 1 },
+  down: { x: 0, y: -1 }
+}
+
+const MOOD_PRESETS: Record<MoodType, { color: string, vignette?: string, blendMode?: string }> = {
+  day: { color: 'rgba(255,220,120,0.08)' },
+  night: { color: 'rgba(0,20,80,0.55)', vignette: 'rgba(0,0,50,0.6)', blendMode: 'multiply' },
+  sunset: { color: 'rgba(255,100,40,0.35)', vignette: 'rgba(150,40,0,0.4)' },
+  foggy: { color: 'rgba(200,210,220,0.4)', vignette: 'rgba(180,190,200,0.3)', blendMode: 'screen' },
+  sepia: { color: 'rgba(160,120,60,0.35)', vignette: 'rgba(100,70,30,0.3)', blendMode: 'multiply' },
+  cold: { color: 'rgba(80,120,200,0.25)', vignette: 'rgba(40,60,150,0.2)', blendMode: 'screen' },
+  noir: { color: 'rgba(0,0,0,0.5)', vignette: 'rgba(0,0,0,0.6)', blendMode: 'multiply' },
+  none: { color: 'transparent' }
+}
+
 const LIGHT_PRESETS: Record<LightPreset, { color: string, opacity: number }> = {
-  spot: { color: 'rgba(255,240,180,0.25)', opacity: 0.25 },
-  ambient: { color: 'rgba(255,255,220,0.1)', opacity: 0.1 },
-  warm: { color: 'rgba(255,150,50,0.2)', opacity: 0.2 },
-  cold: { color: 'rgba(100,150,255,0.15)', opacity: 0.15 }
+  spot: { color: 'radial-gradient(circle,rgba(255,240,180,0.8) 0%,transparent 70%)', opacity: 0.6 },
+  ambient: { color: 'rgba(255,230,150,1)', opacity: 0.15 },
+  warm: { color: 'rgba(255,160,50,1)', opacity: 0.25 },
+  cold: { color: 'rgba(100,160,255,1)', opacity: 0.2 }
 }
 
-// 텍스트 오버레이 스타일 룩업
-const OVERLAY_PRESETS: Record<OverlayPreset, {
-  fontSize: number
-  color: string
-  opacity: number
-  zIndex: number
-  y: 'top' | 'center' | 'bottom'
-}> = {
-  caption: { fontSize: 24, color: '#ffffff', opacity: 0.9, zIndex: 1000, y: 'bottom' },
-  title: { fontSize: 48, color: '#ffffff', opacity: 1.0, zIndex: 1000, y: 'center' },
-  whisper: { fontSize: 18, color: '#ccccdd', opacity: 0.6, zIndex: 1000, y: 'center' }
+const OVERLAY_PRESETS: Record<OverlayPreset, { fontSize: number, color: string, opacity: number, zIndex: number, y: 'top' | 'center' | 'bottom' }> = {
+  caption: { fontSize: 24, color: '#ffffff', opacity: 1, zIndex: 1000, y: 'bottom' },
+  title: { fontSize: 48, color: '#ffffff', opacity: 1, zIndex: 1001, y: 'center' },
+  whisper: { fontSize: 18, color: '#cccccc', opacity: 0.7, zIndex: 999, y: 'bottom' }
+}
+
+const EFFECT_PRESETS: Record<EffectType, Partial<ParticleOptions>> = {
+  dust: { attribute: { src: 'dust' }, style: { width: 4, height: 4, opacity: 0.5, color: '#cccccc' } },
+  rain: { attribute: { src: 'rain' }, style: { width: 2, height: 12, opacity: 0.6, color: '#aaccff' } },
+  snow: { attribute: { src: 'snow' }, style: { width: 8, height: 8, opacity: 0.8, color: '#ffffff' } },
+  sakura: { attribute: { src: 'sakura' }, style: { width: 12, height: 12, opacity: 0.9, color: '#ffaacc' } },
+  sparkle: { attribute: { src: 'sparkle' }, style: { width: 6, height: 6, opacity: 0.9, color: '#ffffaa' } },
+  fog: { attribute: { src: 'fog' }, style: { width: 80, height: 40, opacity: 0.3, color: '#aabbcc' } },
+  leaves: { attribute: { src: 'leaves' }, style: { width: 14, height: 14, opacity: 0.85, color: '#88bb44' } },
+  fireflies: { attribute: { src: 'fireflies' }, style: { width: 6, height: 6, opacity: 0.9, color: '#aaffaa' } }
+}
+
+const EFFECT_CLIP_PRESETS: Record<EffectType, object> = {
+  dust: { gravity: -0.01, velocityY: -0.5, velocityX: 0.3, velocityZ: 0, lifespan: 300 },
+  rain: { gravity: 0.3, velocityY: -8, velocityX: -1, velocityZ: 0, lifespan: 80 },
+  snow: { gravity: 0.02, velocityY: -1, velocityX: 0.2, velocityZ: 0, lifespan: 400 },
+  sakura: { gravity: 0.01, velocityY: -0.8, velocityX: 0.5, velocityZ: 0.1, lifespan: 500 },
+  sparkle: { gravity: -0.02, velocityY: -0.5, velocityX: 0.1, velocityZ: 0, lifespan: 120 },
+  fog: { gravity: 0, velocityY: 0, velocityX: 0.1, velocityZ: 0, lifespan: 600 },
+  leaves: { gravity: 0.02, velocityY: -0.6, velocityX: 0.4, velocityZ: 0.1, lifespan: 450 },
+  fireflies: { gravity: -0.01, velocityY: 0.2, velocityX: 0.1, velocityZ: 0, lifespan: 350 }
+}
+
+const DEFAULT_RATES: Partial<Record<EffectType, number>> = {
+  dust: 5, rain: 40, snow: 15, sakura: 8, sparkle: 12, fog: 3, leaves: 6, fireflies: 4
 }
 
 // =============================================================
-// Visualnovel 클래스
+// VisualnovelBuilder
 // =============================================================
 
-export class Visualnovel {
+/**
+ * Typed builder that accumulates character/background definitions
+ * and constructs a fully-typed Visualnovel instance.
+ */
+export class VisualnovelBuilder<
+  TC extends CharDefs = Record<never, never>,
+  TB extends BgDefs = Record<never, never>
+> {
+  private readonly _c: TC
+  private readonly _b: TB
+
+  constructor(c: TC, b: TB) {
+    this._c = c
+    this._b = b
+  }
+
+  /**
+   * Define character assets. Keys become type-safe identifiers.
+   * @example
+   * .defineCharacter({
+   *   heroine: { images: { normal: 'girl_normal', happy: 'girl_happy' }, focusPoint: { x:0.5, y:0.2 } }
+   * })
+   */
+  defineCharacter<C extends CharDefs>(defs: C): VisualnovelBuilder<C, TB> {
+    return new VisualnovelBuilder(defs, this._b)
+  }
+
+  /**
+   * Define backgrounds. Keys become type-safe identifiers.
+   * @example
+   * .defineBackground({
+   *   library: { src: 'bg_library', parallax: true },
+   *   rooftop: { src: 'bg_roof',    parallax: false }
+   * })
+   */
+  defineBackground<B extends BgDefs>(defs: B): VisualnovelBuilder<TC, B> {
+    return new VisualnovelBuilder(this._c, defs)
+  }
+
+  /** Instantiate the Visualnovel engine. */
+  build(world: World, option: VisualnovelOption): Visualnovel<TC, TB> {
+    return new Visualnovel(world, option, this._c, this._b)
+  }
+}
+
+// =============================================================
+// Visualnovel (generic)
+// =============================================================
+
+export class Visualnovel<
+  TC extends CharDefs = Record<never, never>,
+  TB extends BgDefs = Record<never, never>
+> {
   protected readonly world: World
   protected readonly width: number
   protected readonly height: number
   protected readonly depth: number
+  /** Max camera X displacement (world units). Used to calculate background padding. */
+  protected readonly maxCameraX: number
+  /** Max camera Y displacement (world units). Used to calculate background padding. */
+  protected readonly maxCameraY: number
 
-  /** 이 인스턴스가 생성한 모든 오브젝트 */
+  private readonly _charDefs: TC
+  private readonly _bgDefs: TB
+
   private _objects: Set<LveObject> = new Set()
-  /** 키(또는 위치) → 캐릭터 오브젝트 */
   private _characters: Map<string, LveObject> = new Map()
-  /** 키(또는 타입) → 환경 파티클 효과 오브젝트 */
   private _effects: Map<string, LveObject> = new Map()
-  /** 현재 배경 오브젝트 */
   private _backgroundObj: LveObject | null = null
-  /** 무드 필터 오브젝트 */
+  private _backgroundIsParallax: boolean = true
   private _moodObj: LveObject | null = null
-  /** 화면 전환용 오버레이 오브젝트 (재사용) */
   private _transitionObj: LveObject | null = null
-  /** 키 → 텍스트 오버레이 목록 */
   private _overlayObjs: Map<string, LveObject> = new Map()
-  /** 키 → 조명 오브젝트 목록 */
   private _lightObjs: Map<string, LveObject> = new Map()
-  /** 깜빡임 타이머 핸들 */
-  private _flickerHandle: ReturnType<typeof setInterval> | null = null
+  private _flickerObj: LveObject | null = null
+  private _initialCamZ: number = 0
 
-  constructor(world: World, option: VisualnovelOption) {
+  // -----------------------------------------------------------
+  // Static entry point
+  // -----------------------------------------------------------
+
+  /** Returns a new builder. */
+  static create(): VisualnovelBuilder {
+    return new VisualnovelBuilder(
+      {} as Record<never, never>,
+      {} as Record<never, never>
+    )
+  }
+
+  // -----------------------------------------------------------
+  // Constructor (internal; use Visualnovel.create()...build())
+  // -----------------------------------------------------------
+
+  constructor(world: World, option: VisualnovelOption, charDefs: TC, bgDefs: TB) {
     this.world = world
     this.width = option.width
     this.height = option.height
     this.depth = option.depth
+    this._charDefs = charDefs
+    this._bgDefs = bgDefs
 
-    // 씬 구성을 위한 필수 요소인 카메라가 없다면 자동으로 생성 및 연결
     if (!this.world.camera) {
       this.world.camera = this.world.createCamera()
     }
+    this._initialCamZ = this.world.camera!.transform.position.z
+
+    // Compute maxCamera values based on actual scene geometry
+    // (engine focal=100 → objects at depth/2 have much larger world units than canvas pixels)
+    const cam = this.world.camera as any
+    const calcRatio = typeof cam?.calcDepthRatio === 'function'
+      ? (z: number, s: number) => cam.calcDepthRatio(z, s) as number
+      : (_z: number, s: number) => s
+    const charW = calcRatio(this.depth / 2, 500)
+    this.maxCameraX = Math.ceil(this.width * 0.4 + charW * 0.5)
+    this.maxCameraY = Math.ceil(charW * 1.0 + this.height * 0.1)
   }
 
   // -----------------------------------------------------------
-  // 내부 헬퍼
+  // Internal helpers
   // -----------------------------------------------------------
 
-  /** 오브젝트를 생성 후 내부 Set에 등록합니다 */
+  private get _characterPlaneLocalZ(): number {
+    const cam = this.world.camera
+    if (!cam) return this.depth / 2
+    return (this.depth / 2) - cam.transform.position.z
+  }
+
+  /**
+   * Resolve a position string to a 0~1 x-ratio.
+   * 1) Preset name lookup
+   * 2) "n/m" fraction → xRatio = n / (m+1)
+   * 3) Fallback 0.5
+   */
+  private _resolvePositionX(position: string): number {
+    if (CHARACTER_X_RATIO[position] !== undefined) return CHARACTER_X_RATIO[position]
+    const m = position.match(/^(\d+)\/(\d+)$/)
+    if (m) {
+      const n = parseInt(m[1], 10)
+      const d = parseInt(m[2], 10)
+      if (d > 0) return n / (d + 1)
+    }
+    return 0.5
+  }
+
   private _track<T extends LveObject>(obj: T): T {
     this._objects.add(obj)
     return obj
   }
 
-  /** 전환 오버레이 Rectangle을 지연 생성하거나 재사용합니다 */
   private _getTransitionRect(color: string): LveObject {
     if (!this._transitionObj) {
+      const w = this.world.canvas ? Math.max((this.world.canvas as any).width, this.width) : this.width
+      const h = this.world.canvas ? Math.max((this.world.canvas as any).height, this.height) : this.height
       const rect = this.world.createRectangle({
-        style: {
-          color,
-          width: this.width * 2, // 여유 있게 덮기 위해 2배
-          height: this.height * 2,
-          opacity: 0,
-          zIndex: 9999,
-          pointerEvents: false
-        },
-        transform: {
-          // 카메라는 z:100 거리에서 1:1 스케일을 가집니다.
-          position: { x: 0, y: 0, z: 100 }
-        }
+        style: { color, width: w * 2, height: h * 2, opacity: 0, zIndex: 9999, pointerEvents: false },
+        transform: { position: { x: 0, y: 0, z: 100 } }
       })
       this.world.camera?.addChild(rect)
       this._transitionObj = rect
-      // 전환 오브젝트는 clear()로 제거하지 않도록 _objects에 넣지 않습니다
     } else {
       this._transitionObj.style.color = color
-      // wipe 등으로 변경되었을 위치 초기화
       this._transitionObj.transform.position.x = 0
       this._transitionObj.transform.position.y = 0
     }
@@ -304,36 +345,46 @@ export class Visualnovel {
   }
 
   // -----------------------------------------------------------
-  // 환경 효과 (파티클)
+  // Scene management
+  // -----------------------------------------------------------
+
+  /** Remove all scene objects (characters, effects, background, mood, overlays, lights). */
+  clear(): this {
+    this._objects.forEach(obj => obj.remove())
+    this._objects.clear()
+    this._characters.clear()
+    this._effects.clear()
+    this._backgroundObj = null
+    if (this._moodObj) { this._moodObj.remove(); this._moodObj = null }
+    this._overlayObjs.forEach(obj => obj.remove()); this._overlayObjs.clear()
+    this._lightObjs.forEach(obj => obj.remove()); this._lightObjs.clear()
+    this._flickerObj = null
+    return this
+  }
+
+  // -----------------------------------------------------------
+  // Environment effects
   // -----------------------------------------------------------
 
   /**
-   * 프리셋 환경 효과(파티클)를 공간에 추가합니다.
-   * @param type 효과 종류 (dust, rain, snow, sakura, sparkle, fog, leaves, fireflies)
-   * @param rate 초당(혹은 인터벌 당) 생성되는 파티클 갯수
-   * @param key 효과를 식별할 고유 키 (기본값: type)
-   * @param overrides 세부 옵션 오버라이드
+   * Add a particle effect. The effect type is also its identifier (one per type).
+   * @param type   Effect preset name
+   * @param rate   Particles per interval
+   * @param overrides Fine-grained option overrides
    */
-  addEffect(type: EffectType = 'dust', rate?: number, key?: string, overrides?: Partial<ParticleOptions>): this {
+  addEffect(type: EffectType = 'dust', rate?: number, overrides?: Partial<ParticleOptions>): this {
     const preset = EFFECT_PRESETS[type] ?? EFFECT_PRESETS.dust
     const finalRate = rate ?? DEFAULT_RATES[type] ?? 10
-    const finalKey = key || type
-    
-    // 중복 추가 방지: 기존 키가 존재하면 삭제
-    if (this._effects.has(finalKey)) {
-      this.removeEffect(finalKey)
-    }
 
-    // 고유한 클립 이름을 위해 rate 값을 클립명에 명시합니다.
+    if (this._effects.has(type)) this.removeEffect(type)
+
     const clipName = `${type}_rate_${finalRate}`
     if (!this.world.particleManager.get(clipName)) {
       const clipBase = EFFECT_CLIP_PRESETS[type] ?? EFFECT_CLIP_PRESETS.dust
-      const customSrc = overrides?.attribute?.src ?? preset.attribute?.src ?? type
-
+      const customSrc = overrides?.attribute?.src ?? (preset.attribute as any)?.src ?? type
       this.world.particleManager.create({
-        name: clipName,
-        src: customSrc,
-        ...clipBase,
+        name: clipName, src: customSrc,
+        ...(clipBase as any),
         rate: finalRate,
         spawnX: this.width * 2,
         spawnY: this.height * 2,
@@ -342,119 +393,122 @@ export class Visualnovel {
     }
 
     const particle = this._track(this.world.createParticle({
-      attribute: { ...preset.attribute, src: clipName, ...overrides?.attribute },
-      style: {
-        ...preset.style,
-        ...overrides?.style
-      },
-      transform: {
-        position: { x: 0, y: 0, z: 0 },
-        ...overrides?.transform
-      },
-      ...overrides
+      attribute: { ...(preset.attribute as any), src: clipName, ...overrides?.attribute },
+      style: { ...(preset.style as any), ...overrides?.style },
+      transform: { position: { x: 0, y: 0, z: 0 }, ...overrides?.transform },
+      ...(overrides as any)
     }))
-
-    this._effects.set(finalKey, particle)
+    this._effects.set(type, particle)
     particle.play()
     return this
   }
 
-  /** addEffect('dust') 의 간편 래퍼 */
-  addDust(rate?: number, key?: string, overrides?: Partial<ParticleOptions>): this {
-    return this.addEffect('dust', rate, key, overrides)
-  }
-
-  /** 지정된 키의 파티클 효과를 완전히 제거합니다. */
-  removeEffect(key: string, duration: number = 600): this {
-    const effect = this._effects.get(key)
+  /** Remove a particle effect. */
+  removeEffect(type: EffectType, duration: number = 600): this {
+    const effect = this._effects.get(type)
     if (effect) {
-      this._effects.delete(key)
+      this._effects.delete(type)
       if (duration > 0 && typeof effect.fadeOut === 'function') {
         effect.fadeOut(duration)
-        setTimeout(() => {
-          effect.remove()
-          this._objects.delete(effect)
-        }, duration)
+        setTimeout(() => { effect.remove(); this._objects.delete(effect) }, duration)
       } else {
-        effect.remove()
-        this._objects.delete(effect)
+        effect.remove(); this._objects.delete(effect)
       }
     }
     return this
   }
 
   // -----------------------------------------------------------
-  // 배경
+  // Background
   // -----------------------------------------------------------
 
   /**
-   * 공간 배경을 설정합니다. 기존 배경이 있다면 부드럽게 화면을 교체합니다. (duration이 0이면 즉시 교체)
-   * @param src 에셋 이름 또는 URL
-   * @param fit 배경 맞춤 방식
-   * @param duration 전환 지속 시간 (ms). 0이면 즉시 교체
-   * @param isVideo 비디오 여부
-   * @param overrides 세부 옵션 오버라이드
+   * Set the background using a key from defineBackground.
+   * @param key       Background key (type-safe)
+   * @param fit       Fit mode
+   * @param duration  Crossfade duration (0 = instant)
+   * @param isVideo   Treat src as video
    */
-  setBackground(src: string, fit: BackgroundFitPreset = 'stretch', duration: number = 1000, isVideo: boolean = false, overrides?: any): this {
-    // 기존 배경이 있고, 트랜지션 시간이 주어졌다면 부드럽게 전환
-    if (this._backgroundObj && duration > 0 && typeof (this._backgroundObj as any).transition === 'function') {
-      (this._backgroundObj as any).transition(src, duration)
+  setBackground<K extends keyof TB & string>(
+    key: K,
+    fit: BackgroundFitPreset = 'stretch',
+    duration: number = 1000,
+    isVideo: boolean = false,
+    overrides?: any
+  ): this {
+    const def = this._bgDefs[key]
+    if (!def) return this
+
+    const finalSrc = def.src
+    const useParallax = def.parallax ?? true
+
+    // Same parallax mode → crossfade in place
+    if (this._backgroundObj && duration > 0
+      && this._backgroundIsParallax === useParallax
+      && typeof (this._backgroundObj as any).transition === 'function') {
+      ; (this._backgroundObj as any).transition(finalSrc, duration)
       return this
     }
 
-    // 그렇지 않으면 기존 배경 파괴 후 다시 생성
     if (this._backgroundObj) {
       this._backgroundObj.remove()
       this._objects.delete(this._backgroundObj)
       this._backgroundObj = null
     }
 
-    const aspectRatio = this.width / this.height
-    let finalW = this.width
-    let finalH = this.height
-    if (fit === 'contain') { finalH = finalW / aspectRatio }
-    else if (fit === 'cover') { finalW = finalH * aspectRatio }
-
-    // 깊이에 따른 원근 스케일 보정 (카메라가 존재하므로 바로 사용 가능)
+    this._backgroundIsParallax = useParallax
     const cam = this.world.camera as any
-    const zPos = overrides?.transform?.position?.z ?? this.depth
-    if (cam && typeof cam.calcDepthRatio === 'function') {
-      finalW = cam.calcDepthRatio(zPos, finalW)
-      finalH = cam.calcDepthRatio(zPos, finalH)
+    const aspectRatio = this.width / this.height
+
+    if (useParallax) {
+      let baseW = this.width, baseH = this.height
+      if (fit === 'contain') baseH = baseW / aspectRatio
+      else if (fit === 'cover') baseW = baseH * aspectRatio
+
+      const bgZ = overrides?.transform?.position?.z ?? this.depth
+      let finalW = baseW, finalH = baseH
+      if (cam && typeof cam.calcDepthRatio === 'function') {
+        finalW = cam.calcDepthRatio(bgZ, baseW) + 2 * this.maxCameraX
+        finalH = cam.calcDepthRatio(bgZ, baseH) + 2 * this.maxCameraY
+      }
+
+      const opts = {
+        attribute: { src: finalSrc, ...overrides?.attribute },
+        style: { width: finalW, height: finalH, zIndex: -1, ...overrides?.style },
+        transform: { position: { x: 0, y: 0, z: bgZ }, ...overrides?.transform },
+        ...overrides
+      }
+      const bg = isVideo
+        ? (() => { const v = this.world.createVideo(opts as any); v.play(); return v })()
+        : this.world.createImage(opts as any)
+      if (duration > 0 && typeof (bg as any).fadeIn === 'function') (bg as any).fadeIn(duration)
+      this._backgroundObj = this._track(bg)
+    } else {
+      let finalW = this.width, finalH = this.height
+      if (fit === 'contain') finalH = finalW / aspectRatio
+      else if (fit === 'cover') finalW = finalH * aspectRatio
+
+      const opts = {
+        attribute: { src: finalSrc, ...overrides?.attribute },
+        style: { width: finalW, height: finalH, zIndex: -1, ...overrides?.style },
+        transform: { position: { x: 0, y: 0, z: 100 }, ...overrides?.transform },
+        ...overrides
+      }
+      const bg = isVideo
+        ? (() => { const v = this.world.createVideo(opts as any); v.play(); return v })()
+        : this.world.createImage(opts as any)
+      this.world.camera?.addChild(bg)
+      if (duration > 0 && typeof (bg as any).fadeIn === 'function') (bg as any).fadeIn(duration)
+      this._backgroundObj = this._track(bg)
     }
-
-    const options = {
-      attribute: { src, ...overrides?.attribute },
-      style: { width: finalW, height: finalH, zIndex: -1, ...overrides?.style },
-      transform: {
-        position: { x: 0, y: 0, z: zPos },
-        ...overrides?.transform
-      },
-      ...overrides
-    }
-
-    const bg = isVideo
-      ? (() => { const v = this.world.createVideo(options as any); v.play(); return v })()
-      : this.world.createImage(options as any)
-
-    // 최초 생성일 때에도 부드러운 페이드인이 가능하다면 적용
-    if (duration > 0 && typeof (bg as any).fadeIn === 'function') {
-      (bg as any).fadeIn(duration)
-    }
-
-    this._backgroundObj = this._track(bg)
     return this
   }
 
   // -----------------------------------------------------------
-  // 무드 (화면 색조 필터)
+  // Mood
   // -----------------------------------------------------------
 
-  /**
-   * 화면 전체에 색조 오버레이를 추가합니다.
-   * @param mood 무드 프리셋
-   * @param overrides 세부 사각형 옵션 오버라이드
-   */
+  /** Apply a mood colour/vignette overlay on the character plane. */
   setMood(mood: MoodType = 'none', overrides?: Partial<RectangleOptions>): this {
     if (this._moodObj) {
       this._moodObj.remove()
@@ -464,24 +518,18 @@ export class Visualnovel {
     if (mood === 'none') return this
 
     const { color, vignette, blendMode } = MOOD_PRESETS[mood]
-
     const rect = this._track(this.world.createRectangle({
       attribute: overrides?.attribute,
       style: {
         color,
-        gradient: vignette,
-        gradientType: 'circular',
-        width: this.width * 1.5,
-        height: this.height * 1.5,
-        zIndex: 998,
-        pointerEvents: false,
+        gradient: vignette, gradientType: 'circular',
+        width: this.world.camera!.calcDepthRatio(this.depth / 2, this.width * 2),
+        height: this.world.camera!.calcDepthRatio(this.depth / 2, this.height * 2),
+        zIndex: 998, pointerEvents: false,
         blendMode: blendMode as any,
         ...overrides?.style
       },
-      transform: {
-        position: { x: 0, y: 0, z: 100 },
-        ...overrides?.transform
-      },
+      transform: { position: { x: 0, y: 0, z: this._characterPlaneLocalZ }, ...overrides?.transform },
       ...overrides
     }))
     this.world.camera?.addChild(rect)
@@ -490,472 +538,351 @@ export class Visualnovel {
   }
 
   // -----------------------------------------------------------
-  // 캐릭터
+  // Characters
   // -----------------------------------------------------------
 
   /**
-   * 캐릭터 이미지를 지정 위치에 배치합니다.
-   * @param src 캐릭터 에셋 이름
-   * @param position 위치 프리셋
-   * @param key 캐릭터 식별 고유 키 (기본값: position)
-   * @param overrides 세부 오버라이드
+   * Show a character at the given position.
+   * - **New character**: creates and fades in.
+   * - **Existing character (same key)**: animates to the new position;
+   *   if `imageKey` differs from current, crossfades the image.
+   *
+   * @param key      Character key (from defineCharacter — type-safe)
+   * @param position Position preset or 'n/m' fraction
+   * @param imageKey Image variant (from the character's images map — type-safe). Defaults to first image.
    */
-  addCharacter(src: string, position: CharacterPositionPreset = 'center', key?: string, overrides?: any): this {
-    const finalKey = key || position
+  showCharacter<K extends keyof TC & string>(
+    key: K,
+    position: CharacterPositionPreset = 'center',
+    imageKey?: keyof TC[K]['images'] & string
+  ): this {
+    const def = this._charDefs[key]
+    if (!def) return this
 
-    // 같은 위치에 이미 캐릭터가 있으면 교체
-    if (this._characters.has(finalKey)) {
-      this.removeCharacter(finalKey)
+    const resolvedKey = imageKey ?? (Object.keys(def.images)[0] as string)
+    const src = def.images[resolvedKey]
+    const xPos = this.width * (this._resolvePositionX(position) - 0.5)
+    const zPos = this.depth / 2
+
+    const existing = this._characters.get(key)
+    if (existing) {
+      // Move to new x position
+      existing.animate({ transform: { position: { x: xPos } } }, 400, 'easeInOutQuad')
+      // Change image if specified
+      if (imageKey) {
+        if (typeof (existing as any).transition === 'function') {
+          ; (existing as any).transition(src, 300)
+        } else if ((existing as any).attribute) {
+          ; (existing as any).attribute.src = src
+        }
+      }
+    } else {
+      const targetW = this.world.camera!.calcDepthRatio(zPos, 500)
+      const img = this._track(this.world.createImage({
+        attribute: { src },
+        style: { width: targetW, zIndex: 10 },
+        transform: { position: { x: xPos, y: 0, z: zPos } }
+      }))
+      if (typeof (img as any).fadeIn === 'function') (img as any).fadeIn(400)
+      this._characters.set(key, img)
     }
-
-    const xPos = this.width * (CHARACTER_X_RATIO[position] - 0.5)
-    const zPos = overrides?.transform?.position?.z ?? (this.depth / 2)
-
-    // 캐릭터 원본 혹은 비율 유지
-    const cam = this.world.camera as any
-    const targetW = cam && typeof cam.calcDepthRatio === 'function' ? cam.calcDepthRatio(zPos, 500) : 500
-
-    const img = this._track(this.world.createImage({
-      attribute: { src, ...overrides?.attribute },
-      style: { width: targetW, zIndex: 10, ...overrides?.style },
-      transform: {
-        position: { x: xPos, y: 0, z: zPos },
-        ...overrides?.transform
-      },
-      ...overrides
-    }))
-
-    this._characters.set(finalKey, img)
     return this
   }
 
-  /** 지정된 키를 가진 캐릭터를 제거합니다. */
-  removeCharacter(key: string, duration: number = 600): this {
+  /** Remove a character with fade-out. */
+  removeCharacter<K extends keyof TC & string>(key: K, duration: number = 600): this {
     const obj = this._characters.get(key)
     if (obj) {
       this._characters.delete(key)
       if (duration > 0 && typeof obj.fadeOut === 'function') {
         obj.fadeOut(duration)
-        setTimeout(() => {
-          obj.remove()
-          this._objects.delete(obj)
-        }, duration)
+        setTimeout(() => { obj.remove(); this._objects.delete(obj) }, duration)
       } else {
-        obj.remove()
-        this._objects.delete(obj)
+        obj.remove(); this._objects.delete(obj)
       }
     }
     return this
   }
 
   /**
-   * 캐릭터의 에셋을 부드럽게 변경합니다 (표정, 포즈, 옷차림 전환 등에 활용). (duration이 0이면 즉시 교체)
-   * @param keyOrPosition 변경할 캐릭터 식별 키
-   * @param newSrc 새로운 에셋 이름
-   * @param duration 전환 지속 시간 (ms). 0이면 즉시 교체
+   * Pan + zoom the camera to focus on a specific character.
+   * Uses the character's `focusPoint` from defineCharacter, overridable at call time.
    */
-  changeCharacter(keyOrPosition: string, newSrc: string, duration: number = 600): this {
-    const target = this._characters.get(keyOrPosition)
+  focusCharacter<K extends keyof TC & string>(
+    key: K,
+    zoomPreset: ZoomPreset = 'close-up',
+    duration: number = 800,
+    focusPoint?: { x: number, y: number }
+  ): this {
+    const target = this._characters.get(key)
     if (!target) return this
 
-    if (duration > 0 && typeof (target as any).transition === 'function') {
-      (target as any).transition(newSrc, duration)
-    } else {
-      (target as any).attribute.src = newSrc
-    }
+    const def = this._charDefs[key]
+    const fp = focusPoint ?? def?.focusPoint ?? { x: 0.5, y: 0.5 }
+
+    const targetX = (target as any).transform?.position?.x ?? 0
+    const targetZ = (target as any).transform?.position?.z ?? (this.depth / 2)
+    const charW = (target as any).style?.width ?? this.world.camera!.calcDepthRatio(targetZ, 500)
+    const charH = charW * 2
+
+    const panX = targetX + charW * (fp.x - 0.5)
+    const panY = charH * (0.5 - fp.y)
+
+    this.panCamera('custom', duration, panX, panY)
+    this.zoomCamera(zoomPreset, duration)
+    return this
+  }
+
+  /** Dim all characters except the highlighted one. */
+  highlightCharacter<K extends keyof TC & string>(key: K): this {
+    this._characters.forEach((obj, k) => {
+      if (typeof obj.animate === 'function') {
+        obj.animate({ style: { opacity: k === key ? 1 : 0.3 } }, 400, 'easeInOutQuad')
+      }
+    })
     return this
   }
 
   // -----------------------------------------------------------
-  // 조명 효과
+  // Lighting
   // -----------------------------------------------------------
 
-  /**
-   * 공간에 조명 효과를 추가합니다.
-   * @param preset 조명 프리셋 (spot, ambient, warm, cold)
-   * @param key 조명 식별 고유 키 (기본값: preset)
-   * @param overrides 세부 오버라이드
-   */
-  addLight(preset: LightPreset = 'ambient', key?: string, overrides?: Partial<RectangleOptions>): this {
+  /** Add a light effect. Identified by preset (one active light per preset). */
+  addLight(preset: LightPreset = 'ambient', overrides?: Partial<RectangleOptions>): this {
     const p = LIGHT_PRESETS[preset]
-    const finalKey = key || preset
-    
-    if (this._lightObjs.has(finalKey)) {
-      this.removeLight(finalKey)
-    }
+    if (this._lightObjs.has(preset)) this.removeLight(preset)
 
     const rect = this._track(this.world.createRectangle({
       attribute: overrides?.attribute,
       style: {
         color: p.color,
-        width: this.width,
-        height: this.height,
-        opacity: p.opacity,
-        zIndex: 997,
-        pointerEvents: false,
-        blendMode: 'screen',
+        width: this.world.camera!.calcDepthRatio(this.depth / 2, this.width * 2),
+        height: this.world.camera!.calcDepthRatio(this.depth / 2, this.height * 2),
+        opacity: p.opacity, zIndex: 997, pointerEvents: false, blendMode: 'screen',
         ...overrides?.style
       },
-      transform: {
-        position: { x: 0, y: 0, z: 100 },
-        ...overrides?.transform
-      },
+      transform: { position: { x: 0, y: 0, z: this._characterPlaneLocalZ }, ...overrides?.transform },
       ...overrides
     }))
     this.world.camera?.addChild(rect)
-    this._lightObjs.set(finalKey, rect)
+    this._lightObjs.set(preset, rect)
     return this
   }
 
-  /** 지정된 키의 조명을 제거합니다. */
-  removeLight(key: string, duration: number = 600): this {
-    const obj = this._lightObjs.get(key)
+  /** Remove a light by its preset key. */
+  removeLight(preset: LightPreset, duration: number = 600): this {
+    const obj = this._lightObjs.get(preset)
     if (obj) {
-      this._lightObjs.delete(key)
+      this._lightObjs.delete(preset)
       if (duration > 0 && typeof obj.fadeOut === 'function') {
         obj.fadeOut(duration)
-        setTimeout(() => {
-          obj.remove()
-          this._objects.delete(obj)
-        }, duration)
+        setTimeout(() => { obj.remove(); this._objects.delete(obj) }, duration)
       } else {
-        obj.remove()
-        this._objects.delete(obj)
+        obj.remove(); this._objects.delete(obj)
       }
     }
     return this
   }
 
   /**
-   * 조명이 자연스럽게 깜빡이는 효과를 적용합니다.
-   * @param preset 깜빡임 프리셋 (candle, strobe, flicker)
-   * @param key 적용할 조명의 키 (생략 시 마지막 등록된 조명에 적용)
+   * Apply a flickering effect to a light.
+   * @param lightPreset   Which light (its addLight preset key)
+   * @param flickerPreset Flicker style
    */
-  setFlicker(preset: FlickerPreset = 'candle', key?: string): this {
-    const target = key ? this._lightObjs.get(key) : Array.from(this._lightObjs.values()).pop()
+  setFlicker(lightPreset: LightPreset, flickerPreset: FlickerPreset = 'candle'): this {
+    const target = this._lightObjs.get(lightPreset) ?? Array.from(this._lightObjs.values()).pop()
     if (!target) return this
 
-    // 기존 깜빡임 취소
-    if (this._flickerHandle) {
-      clearInterval(this._flickerHandle)
-      this._flickerHandle = null
-    }
+    this._flickerObj = null
+    const baseOpacity = (target as any)._flickerBaseOpacity ?? target.style.opacity ?? 1
+      ; (target as any)._flickerBaseOpacity = baseOpacity
 
     const configs: Record<FlickerPreset, { interval: number, range: [number, number] }> = {
-      candle: { interval: 120, range: [0.7, 1.0] },
-      flicker: { interval: 80, range: [0.4, 1.0] },
+      candle: { interval: 120, range: [0.6, 1.0] },
+      flicker: { interval: 80, range: [0.3, 1.0] },
       strobe: { interval: 60, range: [0.0, 1.0] }
     }
-    const cfg = configs[preset]
+    const cfg = configs[flickerPreset]
+    this._flickerObj = target
 
-    this._flickerHandle = setInterval(() => {
+    const step = () => {
+      if (this._flickerObj !== target) {
+        target.animate({ style: { opacity: baseOpacity } }, 300, 'easeInOutQuad')
+        return
+      }
       const [min, max] = cfg.range
-      target.style.opacity = min + Math.random() * (max - min)
-    }, cfg.interval)
-
+      const next = baseOpacity * (min + Math.random() * (max - min))
+      target.animate({ style: { opacity: next } }, cfg.interval, 'linear').on('end', step)
+    }
+    step()
     return this
   }
 
   // -----------------------------------------------------------
-  // 텍스트 오버레이
+  // Text overlays
   // -----------------------------------------------------------
 
-  /**
-   * 화면에 텍스트 오버레이를 추가합니다.
-   * @param text 표시할 텍스트
-   * @param preset 오버레이 스타일 프리셋
-   * @param key 오버레이 식별 고유 키 (기본값: preset)
-   * @param overrides 세부 오버라이드
-   */
-  addOverlay(text: string, preset: OverlayPreset = 'caption', key?: string, overrides?: any): this {
+  /** Add a text overlay (one per preset). */
+  addOverlay(text: string, preset: OverlayPreset = 'caption', overrides?: any): this {
     const p = OVERLAY_PRESETS[preset]
-    const finalKey = key || preset
+    if (this._overlayObjs.has(preset)) this.removeOverlay(preset)
 
-    if (this._overlayObjs.has(finalKey)) {
-      this.removeOverlay(finalKey)
-    }
-
-    const yPosMap: Record<'top' | 'center' | 'bottom', number> = {
+    const yMap: Record<'top' | 'center' | 'bottom', number> = {
       top: this.height * 0.1,
       center: this.height * 0.5,
       bottom: this.height * 0.85
     }
-
     const cam = this.world.camera as any
-    const targetPos = cam && typeof cam.canvasToLocal === 'function'
-      ? cam.canvasToLocal(this.width / 2, yPosMap[p.y])
+    const pos = cam && typeof cam.canvasToLocal === 'function'
+      ? cam.canvasToLocal(this.width / 2, yMap[p.y])
       : { x: 0, y: 0, z: 100 }
 
     const textObj = this._track(this.world.createText({
       attribute: { text, ...overrides?.attribute },
       style: {
-        fontSize: p.fontSize,
-        color: p.color,
-        opacity: p.opacity,
-        zIndex: p.zIndex,
-        pointerEvents: false,
+        fontSize: p.fontSize, color: p.color, opacity: p.opacity,
+        zIndex: p.zIndex, pointerEvents: false,
         ...overrides?.style
       },
-      transform: {
-        position: targetPos,
-        ...overrides?.transform
-      },
+      transform: { position: pos, ...overrides?.transform },
       ...overrides
     }))
-
     this.world.camera?.addChild(textObj)
-    this._overlayObjs.set(finalKey, textObj)
+    this._overlayObjs.set(preset, textObj)
     return this
   }
 
-  /** 지정된 키의 텍스트 오버레이를 제거합니다. */
-  removeOverlay(key: string, duration: number = 600): this {
-    const obj = this._overlayObjs.get(key)
+  /** Remove a text overlay by preset key. */
+  removeOverlay(preset: OverlayPreset, duration: number = 600): this {
+    const obj = this._overlayObjs.get(preset)
     if (obj) {
-      this._overlayObjs.delete(key)
+      this._overlayObjs.delete(preset)
       if (duration > 0 && typeof obj.fadeOut === 'function') {
         obj.fadeOut(duration)
-        setTimeout(() => {
-          obj.remove()
-          this._objects.delete(obj)
-        }, duration)
+        setTimeout(() => { obj.remove(); this._objects.delete(obj) }, duration)
       } else {
-        obj.remove()
-        this._objects.delete(obj)
+        obj.remove(); this._objects.delete(obj)
       }
     }
     return this
   }
 
-  /** 모든 텍스트 오버레이를 제거합니다 */
-  clearOverlay(): this {
-    for (const obj of this._overlayObjs.values()) {
-      obj.remove()
-      this._objects.delete(obj)
-    }
-    this._overlayObjs.clear()
+  /** Remove all text overlays. */
+  clearOverlay(duration: number = 400): this {
+    const keys = Array.from(this._overlayObjs.keys()) as OverlayPreset[]
+    keys.forEach(k => this.removeOverlay(k, duration))
     return this
   }
 
   // -----------------------------------------------------------
-  // 카메라 동적 효과
+  // Camera
   // -----------------------------------------------------------
 
-  /**
-   * 프리셋 기반 카메라 줌인/아웃.
-   * @param preset close-up / medium / wide / reset
-   * @param overrides scale 또는 duration 수동 지정
-   */
-  zoomCamera(preset: ZoomPreset = 'reset', overrides?: { scale?: number, duration?: number }): this {
-    const cam = this.world.camera
-    const p = ZOOM_PRESETS[preset]
-    const scale = overrides?.scale ?? p.scale
-    const duration = overrides?.duration ?? p.duration
-
-    if (cam && typeof cam.animate === 'function') {
-      cam.animate({ transform: { scale: { x: scale, y: scale } } }, duration, 'easeInOutQuad')
-    }
-    return this
-  }
-
-  /**
-   * 프리셋 기반 카메라 패닝.
-   * @param preset left / right / up / down / center
-   * @param overrides x, y, duration 수동 지정
-   */
-  panCamera(preset: PanPreset = 'center', overrides?: { x?: number, y?: number, duration?: number }): this {
-    const cam = this.world.camera
-    const p = PAN_PRESETS[preset]
-    const x = overrides?.x ?? p.x
-    const y = overrides?.y ?? p.y
-    const duration = overrides?.duration ?? p.duration
-
-    if (cam && typeof cam.animate === 'function') {
-      cam.animate({ transform: { position: { x, y } } }, duration, 'easeInOutQuad')
-    }
-    return this
-  }
-
-  /**
-   * 프리셋 기반 카메라 흔들기.
-   */
-  shakeCamera(preset: ShakePreset = 'normal', overrides?: { intensity?: number, duration?: number }): this {
+  /** Zoom camera using a preset or custom scale. */
+  zoomCamera(preset: ZoomPreset = 'reset', duration?: number, overrideScale?: number): this {
     const cam = this.world.camera
     if (!cam) return this
-
-    const p = SHAKE_PRESETS[preset]
-    const intensity = overrides?.intensity ?? p.intensity
-    const duration = overrides?.duration ?? p.duration
-
-    const originX = cam.transform.position.x
-    const originY = cam.transform.position.y
-    const interval = 50
-    let elapsed = 0
-
-    const handle = setInterval(() => {
-      elapsed += interval
-      if (elapsed >= duration) {
-        clearInterval(handle)
-        cam.transform.position.x = originX
-        cam.transform.position.y = originY
-        return
-      }
-      cam.transform.position.x = originX + (Math.random() - 0.5) * intensity
-      cam.transform.position.y = originY + (Math.random() - 0.5) * intensity
-    }, interval)
-
+    const { scale, duration: pd } = ZOOM_PRESETS[preset]
+    const finalScale = overrideScale ?? scale
+    const finalDur = duration ?? pd
+    const baseDist = this.depth / 2
+    const newZ = this._initialCamZ + baseDist - baseDist / finalScale
+    cam.animate({ transform: { position: { z: newZ } } }, finalDur, 'easeInOutQuad')
     return this
   }
 
-  /**
-   * 지정 위치의 캐릭터를 향해 카메라를 팬 + 줌인 합산으로 포커스합니다.
-   * keyOrPosition은 추가 시 부여된 캐릭터 고유 키 (기본 위치명과 동일) 입니다.
-   */
-  focusCharacter(keyOrPosition: string, zoomPreset: ZoomPreset = 'close-up', duration: number = 1200): this {
-    const target = this._characters.get(keyOrPosition)
-    if (!target) return this
-
-    const xPos = target.transform.position.x
-    this.panCamera('center', { x: xPos, y: 0, duration })
-    this.zoomCamera(zoomPreset, { duration })
+  /** Pan camera to a preset position or custom world coordinates. */
+  panCamera(preset: PanPreset | 'custom', duration?: number, customX?: number, customY?: number): this {
+    const cam = this.world.camera
+    if (!cam) return this
+    let x: number, y: number, dur: number
+    if (preset === 'custom') {
+      x = customX ?? 0; y = customY ?? 0; dur = duration ?? 800
+    } else {
+      const p = PAN_PRESETS[preset]
+      x = customX ?? p.x; y = customY ?? p.y; dur = duration ?? p.duration
+    }
+    cam.animate({ transform: { position: { x, y } } }, dur, 'easeInOutQuad')
     return this
   }
 
-  /**
-   * 지정 위치의 캐릭터를 강조합니다 (무드 레이어를 해당 캐릭터 뒤에만 적용).
-   * 기존 무드를 어둡게 바꾸고, 해당 캐릭터만 zIndex를 올립니다.
-   */
-  highlightCharacter(keyOrPosition: string): this {
-    const target = this._characters.get(keyOrPosition)
-    if (!target) return this
-
-    // 무드를 어둠으로 교체
-    this.setMood('night')
-
-    // 대상 캐릭터만 무드 레이어 앞으로 올리기
-    target.style.zIndex = 1001
+  /** Shake camera with a preset. */
+  shakeCamera(preset: ShakePreset = 'normal', overrideDuration?: number, overrideIntensity?: number): this {
+    const cam = this.world.camera
+    if (!cam) return this
+    const { intensity: pi, duration: pd } = SHAKE_PRESETS[preset]
+    const intensity = overrideIntensity ?? pi
+    const totalDuration = overrideDuration ?? pd
+    const baseX = cam.transform.position.x
+    const baseY = cam.transform.position.y
+    const steps = Math.floor(totalDuration / 50)
+    let i = 0
+    const shake = () => {
+      if (i >= steps) { cam.animate({ transform: { position: { x: baseX, y: baseY } } }, 100, 'easeOut'); return }
+      const dx = (Math.random() - 0.5) * intensity * 2
+      const dy = (Math.random() - 0.5) * intensity * 2
+      cam.animate({ transform: { position: { x: baseX + dx, y: baseY + dy } } }, 50, 'linear').on('end', shake)
+      i++
+    }
+    shake()
     return this
   }
 
   // -----------------------------------------------------------
-  // 화면 전환 (Screen Transition)
+  // Screen transitions
   // -----------------------------------------------------------
 
-  /**
-   * 화면 전체를 지정 색상으로 서서히 전환합니다.
-   * @param dir 'in' (화면 등장) | 'out' (화면 퇴장)
-   * @param preset 페이드 색상/이징 프리셋
-   * @param duration 지속 시간 (ms)
-   */
-  screenFade(dir: 'in' | 'out', preset: FadeColorPreset = 'black', duration: number = 800): this {
+  /** Fade in or out. */
+  screenFade(dir: 'in' | 'out', preset: FadeColorPreset = 'black', duration: number = 600): this {
     const { color, easing } = FADE_PRESETS[preset]
     const rect = this._getTransitionRect(color)
-
-    if (dir === 'out') {
-      // 투명 → 불투명
-      if (typeof rect.animate === 'function') {
-        rect.animate({ style: { opacity: 1 } }, duration, easing)
-      }
-    } else {
-      // 불투명 → 투명
-      if (typeof rect.animate === 'function') {
-        rect.animate({ style: { opacity: 0 } }, duration, easing)
-      }
-    }
+    rect.animate({ style: { opacity: dir === 'out' ? 1 : 0 } }, duration, easing)
     return this
   }
 
-  /**
-   * 화면을 순간적으로 번쩍이게 합니다.
-   * @param preset 번쩍임 색상 프리셋
-   */
+  /** Quick flash. */
   screenFlash(preset: FlashPreset = 'white'): this {
     const { color, duration } = FLASH_PRESETS[preset]
     const rect = this._getTransitionRect(color)
+    rect.animate({ style: { opacity: 1 } }, duration / 2, 'easeOut')
+      .on('end', () => rect.animate({ style: { opacity: 0 } }, duration / 2, 'easeIn'))
+    return this
+  }
 
-    rect.style.opacity = 1
-    if (typeof rect.animate === 'function') {
-      rect.animate({ style: { opacity: 0 } }, duration, 'easeOut')
+  /** Wipe transition. */
+  screenWipe(dir: 'in' | 'out', preset: WipePreset = 'left', duration: number = 800): this {
+    const rect = this._getTransitionRect('rgba(0,0,0,1)')
+    const w = this.world.canvas ? Math.max((this.world.canvas as any).width, this.width) : this.width
+    const h = this.world.canvas ? Math.max((this.world.canvas as any).height, this.height) : this.height
+    const { x: dx, y: dy } = WIPE_PRESETS[preset]
+    if (dir === 'out') {
+      rect.transform.position.x = dx * w * 2
+      rect.transform.position.y = dy * h * 2
+      rect.style.opacity = 1
+      rect.animate({ transform: { position: { x: 0, y: 0 } } }, duration, 'easeInOutQuad')
+    } else {
+      rect.transform.position.x = 0
+      rect.transform.position.y = 0
+      rect.style.opacity = 1
+      rect.animate({ transform: { position: { x: dx * w * 2, y: dy * h * 2 } } }, duration, 'easeInOutQuad')
+        .on('end', () => { rect.style.opacity = 0 })
     }
     return this
   }
 
-  /**
-   * 지정 방향으로 화면을 닦아내듯 전환합니다.
-   * @param preset 닦아내기 방향
-   * @param duration 지속 시간 (ms)
-   */
-  screenWipe(preset: WipePreset = 'left', duration: number = 800): this {
+  /** Convenience: fade from black to scene. */
+  fadeIn(duration: number = 800): this {
     const rect = this._getTransitionRect('rgba(0,0,0,1)')
     rect.style.opacity = 1
-
-    const w = this.world.canvas ? Math.max(this.world.canvas.width, this.width) : this.width
-    const h = this.world.canvas ? Math.max(this.world.canvas.height, this.height) : this.height
-
-    const targetPos: Record<WipePreset, { x: number, y: number }> = {
-      left: { x: -w * 1.5, y: 0 },
-      right: { x: w * 1.5, y: 0 },
-      up: { x: 0, y: -h * 1.5 },
-      down: { x: 0, y: h * 1.5 }
-    }
-
-    const target = targetPos[preset]
-    if (typeof rect.animate === 'function') {
-      rect.animate({
-        transform: { position: { x: target.x, y: target.y } }
-      }, duration, 'easeInOutQuad')
-    }
+    rect.animate({ style: { opacity: 0 } }, duration, 'easeInOut')
     return this
   }
 
-  // -----------------------------------------------------------
-  // 씬 일괄 관리
-  // -----------------------------------------------------------
-
-  /**
-   * 이 Visualnovel 인스턴스가 생성한 오브젝트를 모두 제거합니다.
-   */
-  clear(): this {
-    if (this._flickerHandle) {
-      clearInterval(this._flickerHandle)
-      this._flickerHandle = null
-    }
-
-    for (const obj of this._objects) {
-      obj.remove()
-    }
-
-    this._objects.clear()
-    this._characters.clear()
-    this._effects.clear()
-    this._backgroundObj = null
-    this._moodObj = null
-    this._overlayObjs.clear()
-    this._lightObjs.clear()
-    return this
-  }
-
-  /**
-   * 이 Visualnovel 인스턴스가 생성한 모든 오브젝트를 부드럽게 등장시킵니다.
-   */
-  fadeIn(duration: number = 600): this {
-    for (const obj of this._objects) {
-      if (typeof obj.fadeIn === 'function') {
-        obj.fadeIn(duration)
-      }
-    }
-    return this
-  }
-
-  /**
-   * 이 Visualnovel 인스턴스가 생성한 모든 오브젝트를 부드럽게 퇴장시킵니다.
-   */
-  fadeOut(duration: number = 600): this {
-    for (const obj of this._objects) {
-      if (typeof obj.fadeOut === 'function') {
-        obj.fadeOut(duration)
-      }
-    }
+  /** Convenience: fade scene to black. */
+  fadeOut(duration: number = 800): this {
+    const rect = this._getTransitionRect('rgba(0,0,0,1)')
+    rect.style.opacity = 0
+    rect.animate({ style: { opacity: 1 } }, duration, 'easeInOut')
     return this
   }
 }
