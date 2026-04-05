@@ -367,10 +367,9 @@ export class Visualnovel<
     if (!this.world.camera) {
       this.world.camera = this.world.createCamera()
     }
-    // 배경 영역(depth)과 캐릭터 영역(Z=0)의 설계를 준수하여, 카메라의 기본 위치를 -focalLength 로 설정합니다.
-    const focalLength = this.world.camera?.attribute?.focalLength ?? 100
-    this.world.camera!.transform.position.z = -focalLength
-    this._initialCamZ = this.world.camera!.transform.position.z
+    // 정정된 물리 공간 설계: 카메라는 0, 캐릭터는 focalLength 에 배치됩니다.
+    this.world.camera!.transform.position.z = 0
+    this._initialCamZ = 0
 
     // Compute maxCamera values based on actual scene geometry
     // (engine focal=100 → objects at depth/2 have much larger world units than canvas pixels)
@@ -389,9 +388,9 @@ export class Visualnovel<
 
   private get _characterPlaneLocalZ(): number {
     const cam = this.world.camera
-    if (!cam) return 100 // fallback focalLength
-    // 캐릭터 평면(Z=0)과 카메라(Z=-distance) 사이의 Local Z 거리
-    return 0 - cam.transform.position.z
+    const focalLength = cam?.attribute?.focalLength ?? 100
+    // 캐릭터 평면(Z=focalLength)과 카메라 사이의 Local Z 거리
+    return focalLength - (cam?.transform.position.z ?? 0)
   }
 
   /**
@@ -615,14 +614,19 @@ export class Visualnovel<
     if (mood === 'none') return this
 
     const { color, vignette, blendMode } = MOOD_PRESETS[mood]
+    const focalLength = this.world.camera?.attribute?.focalLength ?? 100
+    const exactW = this.world.camera!.calcDepthRatio(focalLength, this.width)
+    const exactH = this.world.camera!.calcDepthRatio(focalLength, this.height)
+
     const rect = this._track(this.world.createRectangle({
       attribute: overrides?.attribute,
       style: {
         color,
         gradient: vignette, gradientType: 'circular',
         // 카메라의 자식 객체이므로 X, Y 패닝 이동 시 화면에서 절대 벗어나지 않음. (여백 배수 삭제)
-        width: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.width),
-        height: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.height),
+        // calcDepthRatio의 인자는 World Z를 받으므로 캐릭터 평면(focalLength)을 전달합니다.
+        width: exactW,
+        height: exactH,
         zIndex: 998,
         pointerEvents: false,
         blendMode: blendMode as any,
@@ -661,7 +665,8 @@ export class Visualnovel<
     const resolvedKey = imageKey ?? (Object.keys(def.images)[0] as string)
     const src = def.images[resolvedKey]
     const xPos = this.width * (this._resolvePositionX(position) - 0.5)
-    const zPos = 0
+    // 캐릭터 생성 기준 평면을 focalLength 로 고정합니다.
+    const zPos = this.world.camera?.attribute?.focalLength ?? 100
 
     const existing = this._characters.get(key)
     if (existing) {
@@ -720,7 +725,7 @@ export class Visualnovel<
     const fp = (pointKey && def?.points) ? def.points[pointKey] : { x: 0.5, y: 0.5 }
 
     const targetX = (target as any).transform?.position?.x ?? 0
-    const targetZ = (target as any).transform?.position?.z ?? 0
+    const targetZ = (target as any).transform?.position?.z ?? (this.world.camera?.attribute?.focalLength ?? 100)
     const charW = (target as any).style?.width ?? 500
     const charH = charW * 2
 
@@ -750,12 +755,16 @@ export class Visualnovel<
     const p = LIGHT_PRESETS[preset]
     if (this._lightObjs.has(preset)) this.removeLight(preset)
 
+    const focalLength = this.world.camera?.attribute?.focalLength ?? 100
+    const exactW = this.world.camera!.calcDepthRatio(focalLength, this.width)
+    const exactH = this.world.camera!.calcDepthRatio(focalLength, this.height)
+
     const rect = this._track(this.world.createRectangle({
       attribute: overrides?.attribute,
       style: {
         color: p.color,
-        width: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.width),
-        height: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.height),
+        width: exactW,
+        height: exactH,
         opacity: p.opacity, zIndex: 997, pointerEvents: false, blendMode: 'screen',
         ...overrides?.style
       },
@@ -884,16 +893,22 @@ export class Visualnovel<
     const finalScale = overrideScale ?? scale
     const finalDur = duration ?? pd
     const baseDist = cam.attribute?.focalLength ?? 100
-    // 캐릭터가 World Z=0 평면에 있으므로, 확대 배율(finalScale)을 달성하기 위한 카메라의 World Z는 음수 distance 값
-    const newZ = - (baseDist / finalScale)
+    const charAreaZ = baseDist
+
+    // 카메라의 새로운 Z축 위치 = 캐릭터 위치(charAreaZ) - 줄어든 거리(baseDist / finalScale)
+    const newZ = charAreaZ - (baseDist / finalScale)
 
     cam.animate({ transform: { position: { z: newZ } } }, finalDur, 'easeInOutQuad')
 
-    // 카메라가 줌인/줌아웃될 때, 무드 및 라이트 패널들도 World Z=0 평면을 유지하도록 역동기화하고
-    // Z거리에 상응하는 삼각함수 비율(calcDepthRatio) 수식으로 정확한 width/height를 재계산하여 동시에 애니메이팅
-    const localZ = 0 - newZ
-    const exactW = cam.calcDepthRatio(localZ, this.width)
-    const exactH = cam.calcDepthRatio(localZ, this.height)
+    // 무드 등 UI 패널이 함께 이동하지 않도록 캐릭터 Z평면에 묶어두는 역동기화 거리
+    const localZ = charAreaZ - newZ
+    
+    // 도착 시점(새로운 Z)에서의 정확한 면적 사전 계산
+    // cam.calcDepthRatio는 '현재' 카메라 Z를 기준으로 하므로, 미리 미래 시점의 depth 계산
+    const depthAtDest = charAreaZ - newZ
+    const scaleAtDest = baseDist / depthAtDest
+    const exactW = this.width / scaleAtDest
+    const exactH = this.height / scaleAtDest
 
     if (this._moodObj) {
       this._moodObj.animate({
