@@ -58,13 +58,13 @@ export type BgDefs = Record<string, BgDef>
 
 export type ZoomPreset = 'close-up' | 'medium' | 'wide' | 'reset'
 export type PanPreset = 'left' | 'right' | 'up' | 'down' | 'center'
-export type ShakePreset = 'light' | 'normal' | 'heavy' | 'earthquake'
+export type CameraEffectPreset = 'shake' | 'bounce' | 'wave' | 'nod' | 'shake-x' | 'fall'
 export type CharacterPositionPreset = 'far-left' | 'left' | 'center' | 'right' | 'far-right' | string
 export type BackgroundFitPreset = 'stretch' | 'contain' | 'cover'
 export type FadeColorPreset = 'black' | 'white' | 'red' | 'dream' | 'sepia'
 export type FlashPreset = 'white' | 'red' | 'yellow'
 export type WipePreset = 'left' | 'right' | 'up' | 'down'
-export type MoodType = 'day' | 'night' | 'sunset' | 'foggy' | 'sepia' | 'cold' | 'noir' | 'horror' | 'flashback' | 'dream' | 'danger' | 'none'
+export type MoodType = 'day' | 'night' | 'dawn' | 'sunset' | 'foggy' | 'sepia' | 'cold' | 'noir' | 'horror' | 'flashback' | 'dream' | 'danger' | 'none'
 export type LightPreset = 'spot' | 'ambient' | 'warm' | 'cold'
 export type FlickerPreset = 'candle' | 'flicker' | 'strobe'
 export type OverlayPreset = 'caption' | 'title' | 'whisper'
@@ -97,11 +97,13 @@ const PAN_PRESETS: Record<PanPreset, { x: number, y: number, duration: number }>
   center: { x: 0, y: 0, duration: 1000 }
 }
 
-const SHAKE_PRESETS: Record<ShakePreset, { intensity: number, duration: number }> = {
-  light: { intensity: 5, duration: 300 },
-  normal: { intensity: 10, duration: 500 },
-  heavy: { intensity: 20, duration: 800 },
-  earthquake: { intensity: 50, duration: 2000 }
+const CAMERA_EFFECT_PRESETS: Record<CameraEffectPreset, { intensity: number, duration: number }> = {
+  shake: { intensity: 10, duration: 500 },
+  bounce: { intensity: 15, duration: 600 },
+  wave: { intensity: 20, duration: 1000 },
+  nod: { intensity: 10, duration: 400 },
+  'shake-x': { intensity: 15, duration: 500 },
+  fall: { intensity: 15, duration: 800 }
 }
 
 const FADE_PRESETS: Record<FadeColorPreset, { color: string, easing: EasingType }> = {
@@ -126,17 +128,18 @@ const WIPE_PRESETS: Record<WipePreset, { x: number, y: number }> = {
 }
 
 const MOOD_PRESETS: Record<MoodType, { color: string, vignette?: string, blendMode?: string }> = {
-  day: { color: 'rgba(255, 230, 180, 0.1)', vignette: 'transparent 60%, rgba(255, 200, 100, 0.25) 100%', blendMode: 'screen' },
-  night: { color: 'rgba(10, 15, 60, 0.5)', vignette: 'transparent 20%, rgba(0, 5, 25, 0.85) 100%', blendMode: 'multiply' },
-  sunset: { color: 'rgba(255, 120, 50, 0.25)', vignette: 'transparent 30%, rgba(120, 30, 0, 0.7) 100%', blendMode: 'overlay' },
-  foggy: { color: 'rgba(200, 210, 220, 0.4)', vignette: 'rgba(255,255,255,0.1) 0%, rgba(150, 160, 170, 0.6) 100%', blendMode: 'screen' },
-  sepia: { color: 'rgba(160, 110, 50, 0.3)', vignette: 'transparent 40%, rgba(80, 50, 20, 0.8) 100%', blendMode: 'multiply' },
-  cold: { color: 'rgba(80, 130, 220, 0.25)', vignette: 'transparent 30%, rgba(20, 40, 100, 0.6) 100%', blendMode: 'hard-light' },
-  noir: { color: 'rgba(0, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%', blendMode: 'luminosity' },
-  horror: { color: 'rgba(150, 0, 0, 0.3)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%', blendMode: 'multiply' },
-  flashback: { color: 'rgba(200, 200, 200, 0.2)', vignette: 'transparent 40%, rgba(255, 255, 255, 0.8) 100%', blendMode: 'screen' },
-  dream: { color: 'rgba(180, 150, 255, 0.2)', vignette: 'transparent 40%, rgba(255, 200, 255, 0.6) 100%', blendMode: 'screen' },
-  danger: { color: 'rgba(255, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(200, 0, 0, 0.8) 100%', blendMode: 'color-burn' },
+  day: { color: 'rgba(255, 230, 180, 0.1)', vignette: 'transparent 70%, rgba(255, 200, 100, 0.15) 100%', blendMode: 'screen' },
+  night: { color: 'rgba(10, 15, 60, 0.5)', vignette: 'transparent 50%, rgba(0, 5, 25, 0.6) 100%', blendMode: 'multiply' },
+  dawn: { color: 'rgba(25, 35, 70, 0.4)', vignette: 'transparent 50%, rgba(65, 122, 164, 0.6) 100%', blendMode: 'multiply' },
+  sunset: { color: 'rgba(255, 120, 50, 0.25)', vignette: 'transparent 50%, rgba(255, 100, 50, 0.4) 100%', blendMode: 'screen' },
+  foggy: { color: 'rgba(200, 210, 220, 0.4)', vignette: 'rgba(255,255,255,0.05) 0%, rgba(150, 160, 170, 0.4) 100%', blendMode: 'screen' },
+  sepia: { color: 'rgba(160, 110, 50, 0.3)', vignette: 'transparent 60%, rgba(80, 50, 20, 0.5) 100%', blendMode: 'multiply' },
+  cold: { color: 'rgba(80, 130, 220, 0.25)', vignette: 'transparent 50%, rgba(20, 40, 100, 0.4) 100%', blendMode: 'hard-light' },
+  noir: { color: 'rgba(0, 0, 0, 0.1)', vignette: 'transparent 50%, rgba(0, 0, 0, 0.6) 100%', blendMode: 'luminosity' },
+  horror: { color: 'rgba(150, 0, 0, 0.3)', vignette: 'transparent 40%, rgba(0, 0, 0, 0.7) 100%', blendMode: 'multiply' },
+  flashback: { color: 'rgba(200, 200, 200, 0.2)', vignette: 'transparent 60%, rgba(255, 255, 255, 0.5) 100%', blendMode: 'screen' },
+  dream: { color: 'rgba(180, 150, 255, 0.2)', vignette: 'transparent 60%, rgba(255, 200, 255, 0.4) 100%', blendMode: 'screen' },
+  danger: { color: 'rgba(255, 0, 0, 0.1)', vignette: 'transparent 50%, rgba(200, 0, 0, 0.5) 100%', blendMode: 'color-burn' },
   none: { color: 'transparent' }
 }
 
@@ -471,7 +474,7 @@ export class Visualnovel<
     if (!this.world.particleManager.get(clipName)) {
       const clipBase = EFFECT_CLIP_PRESETS[type] ?? EFFECT_CLIP_PRESETS.dust
       const customSrc = overrides?.attribute?.src ?? (preset.attribute as any)?.src ?? type
-      
+
       // 파티클을 카메라와 배경(depth)의 딱 중간 평면(depth / 2)에 띄웁니다.
       const particleZ = this.depth / 2
       const ratio = this.world.camera?.calcDepthRatio(particleZ, 1) ?? 1
@@ -573,7 +576,7 @@ export class Visualnovel<
     // [핵심 변경] depth 깊이(예: 2000)가 클 경우, width 자체를 무지막지하게 키우면 
     // HTML/Canvas 텍스처 할당 시 끔찍한 OOM(Out of Memory) 렉이 발생합니다.
     // 따라서 원본 base resolution을 유지한 채 렌더러의 transform.scale 로 스케일링합니다.
-    
+
     const bgOpts = {
       attribute: { src: finalSrc, ...options?.attribute },
       style: { width: exactViewW, height: exactViewH, zIndex: -1, ...options?.style },
@@ -605,11 +608,27 @@ export class Visualnovel<
   // -----------------------------------------------------------
 
   /** Apply a mood colour/vignette overlay on the character plane. */
-  setMood(mood: MoodType = 'none', overrides?: Partial<RectangleOptions>): this {
+  setMood(mood: MoodType = 'none', intensity: number = 1, duration: number = 800, overrides?: Partial<RectangleOptions>): this {
     if (this._moodObj) {
-      this._moodObj.remove()
-      this._objects.delete(this._moodObj)
-      this._moodObj = null
+      if ((this._moodObj as any)._currentMood === mood) {
+        // 동일 무드, intensity만 변경
+        if (duration > 0) {
+          this._moodObj.animate({ style: { opacity: intensity } }, duration, 'easeInOutQuad')
+        } else {
+          this._moodObj.style.opacity = intensity
+        }
+        return this
+      } else {
+        const oldObj = this._moodObj
+        if (duration > 0) {
+          oldObj.animate({ style: { opacity: 0 } }, duration, 'easeOut')
+            .on('end', () => { oldObj.remove(); this._objects.delete(oldObj) })
+        } else {
+          oldObj.remove()
+          this._objects.delete(oldObj)
+        }
+        this._moodObj = null
+      }
     }
     if (mood === 'none') return this
 
@@ -622,9 +641,9 @@ export class Visualnovel<
       attribute: overrides?.attribute,
       style: {
         color,
+        opacity: 0, // 생성 시 투명
         gradient: vignette, gradientType: 'circular',
-        // 카메라의 자식 객체이므로 X, Y 패닝 이동 시 화면에서 절대 벗어나지 않음. (여백 배수 삭제)
-        // calcDepthRatio의 인자는 World Z를 받으므로 캐릭터 평면(focalLength)을 전달합니다.
+        // 카메라의 자식 객체이므로 X, Y 패닝 이동 시 화면에서 절대 벗어나지 않음.
         width: exactW,
         height: exactH,
         zIndex: 998,
@@ -636,7 +655,15 @@ export class Visualnovel<
       ...overrides
     }))
     this.world.camera?.addChild(rect)
+
+      ; (rect as any)._currentMood = mood
     this._moodObj = rect
+
+    if (duration > 0) {
+      rect.animate({ style: { opacity: intensity } }, duration, 'easeInOutQuad')
+    } else {
+      rect.style.opacity = intensity
+    }
     return this
   }
 
@@ -902,7 +929,7 @@ export class Visualnovel<
 
     // 무드 등 UI 패널이 함께 이동하지 않도록 캐릭터 Z평면에 묶어두는 역동기화 거리
     const localZ = charAreaZ - newZ
-    
+
     // 도착 시점(새로운 Z)에서의 정확한 면적 사전 계산
     // cam.calcDepthRatio는 '현재' 카메라 Z를 기준으로 하므로, 미리 미래 시점의 depth 계산
     const depthAtDest = charAreaZ - newZ
@@ -941,25 +968,79 @@ export class Visualnovel<
     return this
   }
 
-  /** Shake camera with a preset. */
-  shakeCamera(preset: ShakePreset = 'normal', overrideDuration?: number, overrideIntensity?: number): this {
+  /** Apply a camera effect using predefined presets. */
+  cameraEffect(preset: CameraEffectPreset = 'shake', duration?: number, intensity?: number): this {
     const cam = this.world.camera
     if (!cam) return this
-    const { intensity: pi, duration: pd } = SHAKE_PRESETS[preset]
-    const intensity = overrideIntensity ?? pi
-    const totalDuration = overrideDuration ?? pd
+    const { intensity: pi, duration: pd } = CAMERA_EFFECT_PRESETS[preset]
+    const finalIntensity = intensity ?? pi
+    const finalDuration = duration ?? pd
     const baseX = cam.transform.position.x
     const baseY = cam.transform.position.y
-    const steps = Math.floor(totalDuration / 50)
-    let i = 0
-    const shake = () => {
-      if (i >= steps) { cam.animate({ transform: { position: { x: baseX, y: baseY } } }, 100, 'easeOut'); return }
-      const dx = (Math.random() - 0.5) * intensity * 2
-      const dy = (Math.random() - 0.5) * intensity * 2
-      cam.animate({ transform: { position: { x: baseX + dx, y: baseY + dy } } }, 50, 'linear').on('end', shake)
-      i++
+    const baseZ = cam.transform.position.z
+
+    if (preset === 'shake') {
+      const steps = Math.floor(finalDuration / 50)
+      let i = 0
+      const run = () => {
+        if (i >= steps) { cam.animate({ transform: { position: { x: baseX, y: baseY } } }, 100, 'easeOut'); return }
+        const dx = (Math.random() - 0.5) * finalIntensity * 2
+        const dy = (Math.random() - 0.5) * finalIntensity * 2
+        cam.animate({ transform: { position: { x: baseX + dx, y: baseY + dy } } }, 50, 'linear').on('end', run)
+        i++
+      }
+      run()
+    } else if (preset === 'bounce') {
+      const steps = Math.floor(finalDuration / 100)
+      let i = 0
+      const run = () => {
+        if (i >= steps) { cam.animate({ transform: { position: { y: baseY } } }, 100, 'easeOut'); return }
+        const dy = i % 2 === 0 ? finalIntensity : 0
+        cam.animate({ transform: { position: { y: baseY + dy } } }, 100, 'easeInOutQuad').on('end', run)
+        i++
+      }
+      run()
+    } else if (preset === 'wave') {
+      const steps = Math.floor(finalDuration / 50)
+      let i = 0
+      const run = () => {
+        if (i >= steps) { cam.animate({ transform: { position: { x: baseX, y: baseY } } }, 100, 'easeOut'); return }
+        const t = (i / steps) * Math.PI * 4 // 2 waves
+        const dx = Math.sin(t) * finalIntensity
+        const dy = Math.cos(t) * finalIntensity * 0.5
+        cam.animate({ transform: { position: { x: baseX + dx, y: baseY + dy } } }, 50, 'linear').on('end', run)
+        i++
+      }
+      run()
+    } else if (preset === 'nod') {
+      const steps = 4
+      let i = 0
+      const run = () => {
+        if (i >= steps) { cam.animate({ transform: { position: { y: baseY } } }, 100, 'easeOut'); return }
+        const dy = i % 2 === 0 ? -finalIntensity : 0
+        cam.animate({ transform: { position: { y: baseY + dy } } }, finalDuration / steps, 'easeInOutQuad').on('end', run)
+        i++
+      }
+      run()
+    } else if (preset === 'shake-x') {
+      const steps = 4
+      let i = 0
+      const run = () => {
+        if (i >= steps) { cam.animate({ transform: { position: { x: baseX } } }, 100, 'easeOut'); return }
+        const dx = (i % 2 === 0) ? finalIntensity : -finalIntensity
+        cam.animate({ transform: { position: { x: baseX + dx } } }, finalDuration / steps, 'easeInOutQuad').on('end', run)
+        i++
+      }
+      run()
+    } else if (preset === 'fall') {
+      const dropY = finalIntensity * 3
+      cam.animate({ transform: { position: { y: baseY - dropY }, rotation: { z: finalIntensity } } }, finalDuration * 0.6, 'easeOutElastic')
+        .on('end', () => {
+          setTimeout(() => {
+            cam.animate({ transform: { position: { y: baseY }, rotation: { z: 0 } } }, finalDuration * 0.4, 'easeInOutQuad')
+          }, 300)
+        })
     }
-    shake()
     return this
   }
 

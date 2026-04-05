@@ -23,6 +23,7 @@ await world.loader.load({
 const vn = Visualnovel.create()
   .defineCharacter({
     heroine: {
+      width: 500,
       images: { normal: 'girl_before', after: 'girl_after' },
       points: {
         face: { x: 0.5, y: 0.25 },
@@ -42,7 +43,7 @@ const vn = Visualnovel.create()
   })
 
 // 초기 오버레이
-vn.addOverlay("클릭 또는 엔터로 진행 (step 1~11)", 'caption')
+vn.addOverlay("클릭 또는 엔터로 진행 (step 1~16)", 'caption')
 
 let step = 0
 let isWiping = false
@@ -56,7 +57,7 @@ function nextStep() {
     case 1:
       vn.clear()
       vn.setBackground('library', 'cover', 1000)
-      vn.setMood('sunset')
+      vn.setMood('sunset', 0.5)
       vn.addEffect('sakura', 20)
       // 분수 위치: 3명 배치 (1/3=좌, 2/3=중앙, 3/3=우)
       vn.showCharacter('heroine', '1/3', 'normal')   // 정의된 캐릭터 키 + 이미지 키 모두 타입 추론
@@ -107,14 +108,49 @@ function nextStep() {
     // ---- 7. 무드 변경 + 셰이크 + 플래시 ----
     case 7:
       vn.clearOverlay()
-      vn.addOverlay("테스트: 무드(night) + shakeCamera + screenFlash", 'caption')
+      vn.addOverlay("테스트: 무드(night) + cameraEffect('shake', 800, 20) + screenFlash", 'caption')
       vn.setMood('night')
-      vn.shakeCamera('heavy')
+      vn.cameraEffect('shake', 800, 20)
       vn.screenFlash('white')
       break
 
-    // ---- 8. highlightCharacter ----
+    // ---- 8. 카메라 이펙트 (bounce) ----
     case 8:
+      vn.clearOverlay()
+      vn.addOverlay("테스트: cameraEffect('bounce') - 매개변수 적용", 'caption')
+      vn.cameraEffect('bounce', 1000, 30)
+      break
+
+    // ---- 9. 카메라 이펙트 (wave) ----
+    case 9:
+      vn.clearOverlay()
+      vn.addOverlay("테스트: cameraEffect('wave')", 'caption')
+      vn.cameraEffect('wave')
+      break
+
+    // ---- 10. 카메라 이펙트 (nod) ----
+    case 10:
+      vn.clearOverlay()
+      vn.addOverlay("테스트: cameraEffect('nod') - 끄덕", 'caption')
+      vn.cameraEffect('nod')
+      break
+
+    // ---- 11. 카메라 이펙트 (shake-x) ----
+    case 11:
+      vn.clearOverlay()
+      vn.addOverlay("테스트: cameraEffect('shake-x') - 도리도리", 'caption')
+      vn.cameraEffect('shake-x')
+      break
+
+    // ---- 12. 카메라 이펙트 (fall) ----
+    case 12:
+      vn.clearOverlay()
+      vn.addOverlay("테스트: cameraEffect('fall') - 쿵 (회전하며 쓰러짐)", 'caption')
+      vn.cameraEffect('fall')
+      break
+
+    // ---- 13. highlightCharacter ----
+    case 13:
       vn.clearOverlay()
       vn.addOverlay("테스트: highlightCharacter (다른 캐릭터 희미하게)", 'caption')
       vn.panCamera('center', 800)
@@ -122,17 +158,19 @@ function nextStep() {
       vn.highlightCharacter('heroine')
       break
 
-    // ---- 9. 배경 전환 — 무패럴럭스(floor) ----
-    case 9:
+    // ---- 14. 배경 전환 — 무패럴럭스(floor) ----
+    case 14:
       vn.clearOverlay()
       vn.addOverlay("테스트: 배경 전환 → floor (parallax: false, 카메라 고정)", 'caption')
-      vn.setMood('none')
+      vn.setMood('dawn', 1, 1000)
       vn.setBackground('floor', 'contain', 1500)
+      vn.focusCharacter('heroine', 'chest', 'reset')
       break
 
-    // ---- 10. addLight + setFlicker ----
-    case 10: {
+    // ---- 15. addLight + setFlicker ----
+    case 15: {
       vn.clearOverlay()
+      vn.setMood('day', 1, 2000)
       vn.addOverlay("테스트: addLight(spot) + setFlicker(spot, candle)", 'caption')
       vn.removeEffect('sakura')
       vn.removeEffect('dust')
@@ -142,8 +180,8 @@ function nextStep() {
       break
     }
 
-    // ---- 11. screenWipe + 씬 리셋 ----
-    case 11:
+    // ---- 16. screenWipe + 씬 리셋 ----
+    case 16:
       vn.clearOverlay()
       vn.addOverlay("테스트: screenWipe(out) → 씬 초기화", 'caption')
       isWiping = true
