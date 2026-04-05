@@ -36,6 +36,8 @@ export type CharImages = Record<string, string>
 /** Single character definition */
 export interface CharDef {
   images: CharImages
+  /** Character's base width in pixels */
+  width?: number
   /** Focus points (0~1 normalized). x: left→right, y: top→bottom. */
   points?: Record<string, { x: number, y: number }>
 }
@@ -365,6 +367,9 @@ export class Visualnovel<
     if (!this.world.camera) {
       this.world.camera = this.world.createCamera()
     }
+    // 배경 영역(depth)과 캐릭터 영역(Z=0)의 설계를 준수하여, 카메라의 기본 위치를 -focalLength 로 설정합니다.
+    const focalLength = this.world.camera?.attribute?.focalLength ?? 100
+    this.world.camera!.transform.position.z = -focalLength
     this._initialCamZ = this.world.camera!.transform.position.z
 
     // Compute maxCamera values based on actual scene geometry
@@ -373,7 +378,7 @@ export class Visualnovel<
     const calcRatio = typeof cam?.calcDepthRatio === 'function'
       ? (z: number, s: number) => cam.calcDepthRatio(z, s) as number
       : (_z: number, s: number) => s
-    const charW = calcRatio(this.depth / 2, 500)
+    const charW = 500
     this.maxCameraX = Math.ceil(this.width * 0.4 + charW * 0.5)
     this.maxCameraY = Math.ceil(charW * 1.0 + this.height * 0.1)
   }
@@ -384,8 +389,9 @@ export class Visualnovel<
 
   private get _characterPlaneLocalZ(): number {
     const cam = this.world.camera
-    if (!cam) return this.depth / 2
-    return (this.depth / 2) - cam.transform.position.z
+    if (!cam) return 100 // fallback focalLength
+    // 캐릭터 평면(Z=0)과 카메라(Z=-distance) 사이의 Local Z 거리
+    return 0 - cam.transform.position.z
   }
 
   /**
@@ -416,7 +422,7 @@ export class Visualnovel<
       const h = this.world.canvas ? Math.max((this.world.canvas as any).height, this.height) : this.height
       const rect = this.world.createRectangle({
         style: { color, width: w * 2, height: h * 2, opacity: 0, zIndex: 9999, pointerEvents: false },
-        transform: { position: { x: 0, y: 0, z: 100 } }
+        transform: { position: { x: 0, y: 0, z: 10 } }
       })
       this.world.camera?.addChild(rect)
       this._transitionObj = rect
@@ -466,13 +472,24 @@ export class Visualnovel<
     if (!this.world.particleManager.get(clipName)) {
       const clipBase = EFFECT_CLIP_PRESETS[type] ?? EFFECT_CLIP_PRESETS.dust
       const customSrc = overrides?.attribute?.src ?? (preset.attribute as any)?.src ?? type
+      
+      // 파티클을 카메라와 배경(depth)의 딱 중간 평면(depth / 2)에 띄웁니다.
+      const particleZ = this.depth / 2
+      const ratio = this.world.camera?.calcDepthRatio(particleZ, 1) ?? 1
+
+      // 배경과 동일하게, X/Y축 카메라 최대 패닝 범위에 맞도록 최적 여백을 더합니다.
+      const maxPanX = this.width * 0.4
+      const maxPanY = this.height * 0.5
+      const spanW = this.width + maxPanX * 2
+      const spanH = this.height + maxPanY * 2
+
       this.world.particleManager.create({
         name: clipName, src: customSrc,
         ...(clipBase as any),
         rate: finalRate,
-        spawnX: this.width * 2,
-        spawnY: this.height * 2,
-        spawnZ: this.depth
+        spawnX: spanW * ratio,
+        spawnY: spanH * ratio,
+        spawnZ: particleZ
       })
     }
 
@@ -518,7 +535,7 @@ export class Visualnovel<
     fit: BackgroundFitPreset = 'stretch',
     duration: number = 1000,
     isVideo: boolean = false,
-    overrides?: any
+    options?: any
   ): this {
     const def = this._bgDefs[key]
     if (!def) return this
@@ -541,46 +558,42 @@ export class Visualnovel<
     }
 
     this._backgroundIsParallax = useParallax
+    const zPos = options?.transform?.position?.z ?? this.depth
+
     const cam = this.world.camera as any
-    const aspectRatio = this.width / this.height
+    const ratio = cam && typeof cam.calcDepthRatio === 'function' ? cam.calcDepthRatio(zPos, 1) : 1
+
+    // 패닝에 대비한 화면 여백 수학적 계산 (캐릭터 far-right가 width * 0.4 에 위치함. focus 시 약간 더 이동 가능)
+    const maxCameraX = this.width * 0.4
+    // Y 포커스의 최대 편차 고려 (위아래 0.5)
+    const maxCameraY = this.height * 0.5
+
+    const exactViewW = this.width + maxCameraX * 2
+    const exactViewH = this.height + maxCameraY * 2
+
+    // [핵심 변경] depth 깊이(예: 2000)가 클 경우, width 자체를 무지막지하게 키우면 
+    // HTML/Canvas 텍스처 할당 시 끔찍한 OOM(Out of Memory) 렉이 발생합니다.
+    // 따라서 원본 base resolution을 유지한 채 렌더러의 transform.scale 로 스케일링합니다.
+    
+    const bgOpts = {
+      attribute: { src: finalSrc, ...options?.attribute },
+      style: { width: exactViewW, height: exactViewH, zIndex: -1, ...options?.style },
+      transform: {
+        position: { x: 0, y: 0, z: zPos },
+        scale: { x: ratio, y: ratio, z: 1 },
+        ...options?.transform
+      },
+      ...options
+    }
+
+    const bg = isVideo
+      ? (() => { const v = this.world.createVideo(bgOpts as any); v.play(); return v })()
+      : this.world.createImage(bgOpts as any)
 
     if (useParallax) {
-      let baseW = this.width, baseH = this.height
-      if (fit === 'contain') baseH = baseW / aspectRatio
-      else if (fit === 'cover') baseW = baseH * aspectRatio
-
-      const bgZ = overrides?.transform?.position?.z ?? this.depth
-      let finalW = baseW, finalH = baseH
-      if (cam && typeof cam.calcDepthRatio === 'function') {
-        finalW = cam.calcDepthRatio(bgZ, baseW) + 2 * this.maxCameraX
-        finalH = cam.calcDepthRatio(bgZ, baseH) + 2 * this.maxCameraY
-      }
-
-      const opts = {
-        attribute: { src: finalSrc, ...overrides?.attribute },
-        style: { width: finalW, height: finalH, zIndex: -1, ...overrides?.style },
-        transform: { position: { x: 0, y: 0, z: bgZ }, ...overrides?.transform },
-        ...overrides
-      }
-      const bg = isVideo
-        ? (() => { const v = this.world.createVideo(opts as any); v.play(); return v })()
-        : this.world.createImage(opts as any)
       if (duration > 0 && typeof (bg as any).fadeIn === 'function') (bg as any).fadeIn(duration)
       this._backgroundObj = this._track(bg)
     } else {
-      let finalW = this.width, finalH = this.height
-      if (fit === 'contain') finalH = finalW / aspectRatio
-      else if (fit === 'cover') finalW = finalH * aspectRatio
-
-      const opts = {
-        attribute: { src: finalSrc, ...overrides?.attribute },
-        style: { width: finalW, height: finalH, zIndex: -1, ...overrides?.style },
-        transform: { position: { x: 0, y: 0, z: 100 }, ...overrides?.transform },
-        ...overrides
-      }
-      const bg = isVideo
-        ? (() => { const v = this.world.createVideo(opts as any); v.play(); return v })()
-        : this.world.createImage(opts as any)
       this.world.camera?.addChild(bg)
       if (duration > 0 && typeof (bg as any).fadeIn === 'function') (bg as any).fadeIn(duration)
       this._backgroundObj = this._track(bg)
@@ -607,9 +620,11 @@ export class Visualnovel<
       style: {
         color,
         gradient: vignette, gradientType: 'circular',
-        width: this.world.camera!.calcDepthRatio(this.depth / 2, this.width * 2),
-        height: this.world.camera!.calcDepthRatio(this.depth / 2, this.height * 2),
-        zIndex: 998, pointerEvents: false,
+        // 카메라의 자식 객체이므로 X, Y 패닝 이동 시 화면에서 절대 벗어나지 않음. (여백 배수 삭제)
+        width: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.width),
+        height: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.height),
+        zIndex: 998,
+        pointerEvents: false,
         blendMode: blendMode as any,
         ...overrides?.style
       },
@@ -646,7 +661,7 @@ export class Visualnovel<
     const resolvedKey = imageKey ?? (Object.keys(def.images)[0] as string)
     const src = def.images[resolvedKey]
     const xPos = this.width * (this._resolvePositionX(position) - 0.5)
-    const zPos = this.depth / 2
+    const zPos = 0
 
     const existing = this._characters.get(key)
     if (existing) {
@@ -661,7 +676,7 @@ export class Visualnovel<
         }
       }
     } else {
-      const targetW = this.world.camera!.calcDepthRatio(zPos, 500)
+      const targetW = def.width ?? 500
       const img = this._track(this.world.createImage({
         attribute: { src },
         style: { width: targetW, zIndex: 10 },
@@ -705,8 +720,8 @@ export class Visualnovel<
     const fp = (pointKey && def?.points) ? def.points[pointKey] : { x: 0.5, y: 0.5 }
 
     const targetX = (target as any).transform?.position?.x ?? 0
-    const targetZ = (target as any).transform?.position?.z ?? (this.depth / 2)
-    const charW = (target as any).style?.width ?? this.world.camera!.calcDepthRatio(targetZ, 500)
+    const targetZ = (target as any).transform?.position?.z ?? 0
+    const charW = (target as any).style?.width ?? 500
     const charH = charW * 2
 
     const panX = targetX + charW * (fp.x - 0.5)
@@ -739,8 +754,8 @@ export class Visualnovel<
       attribute: overrides?.attribute,
       style: {
         color: p.color,
-        width: this.world.camera!.calcDepthRatio(this.depth / 2, this.width * 2),
-        height: this.world.camera!.calcDepthRatio(this.depth / 2, this.height * 2),
+        width: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.width),
+        height: this.world.camera!.calcDepthRatio(this._characterPlaneLocalZ, this.height),
         opacity: p.opacity, zIndex: 997, pointerEvents: false, blendMode: 'screen',
         ...overrides?.style
       },
@@ -868,9 +883,31 @@ export class Visualnovel<
     const { scale, duration: pd } = ZOOM_PRESETS[preset]
     const finalScale = overrideScale ?? scale
     const finalDur = duration ?? pd
-    const baseDist = this.depth / 2
-    const newZ = this._initialCamZ + baseDist - baseDist / finalScale
+    const baseDist = cam.attribute?.focalLength ?? 100
+    // 캐릭터가 World Z=0 평면에 있으므로, 확대 배율(finalScale)을 달성하기 위한 카메라의 World Z는 음수 distance 값
+    const newZ = - (baseDist / finalScale)
+
     cam.animate({ transform: { position: { z: newZ } } }, finalDur, 'easeInOutQuad')
+
+    // 카메라가 줌인/줌아웃될 때, 무드 및 라이트 패널들도 World Z=0 평면을 유지하도록 역동기화하고
+    // Z거리에 상응하는 삼각함수 비율(calcDepthRatio) 수식으로 정확한 width/height를 재계산하여 동시에 애니메이팅
+    const localZ = 0 - newZ
+    const exactW = cam.calcDepthRatio(localZ, this.width)
+    const exactH = cam.calcDepthRatio(localZ, this.height)
+
+    if (this._moodObj) {
+      this._moodObj.animate({
+        transform: { position: { z: localZ } },
+        style: { width: exactW, height: exactH }
+      }, finalDur, 'easeInOutQuad')
+    }
+    for (const light of this._lightObjs.values()) {
+      light.animate({
+        transform: { position: { z: localZ } },
+        style: { width: exactW, height: exactH }
+      }, finalDur, 'easeInOutQuad')
+    }
+
     return this
   }
 
@@ -937,6 +974,13 @@ export class Visualnovel<
     const rect = this._getTransitionRect('rgba(0,0,0,1)')
     const w = this.world.canvas ? Math.max((this.world.canvas as any).width, this.width) : this.width
     const h = this.world.canvas ? Math.max((this.world.canvas as any).height, this.height) : this.height
+
+    // 화면을 정확히 덮는 1배수 계산 (여백 배수 삭제)
+    if (this.world.camera) {
+      rect.style.width = this.world.camera.calcDepthRatio(10, w)
+      rect.style.height = this.world.camera.calcDepthRatio(10, h)
+      rect.transform.position.z = 10
+    }
     const { x: dx, y: dy } = WIPE_PRESETS[preset]
     if (dir === 'out') {
       rect.transform.position.x = dx * w * 2
