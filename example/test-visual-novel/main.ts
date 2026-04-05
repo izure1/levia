@@ -64,7 +64,7 @@ const vn = Visualnovel.create()
 console.log(vn)
 
 // 초기 오버레이
-vn.addOverlay("클릭 또는 엔터로 진행 (step 1~16)", 'caption')
+vn.addOverlay("클릭 또는 엔터로 진행 (step 1~17)", 'caption')
 
 let step = 0
 let isWiping = false
@@ -78,12 +78,11 @@ function nextStep() {
     case 1:
       vn.clear()
       vn.setBackground('library', 'cover', 1000)
-      vn.setMood('sunset', 0.5)
-      vn.addEffect('sakura', 20)
+      vn.setMood('day', 0.5)
       // 분수 위치: 3명 배치 (1/3=좌, 2/3=중앙, 3/3=우)
       vn.showCharacter('heroine', '1/3', 'normal')   // 정의된 캐릭터 키 + 이미지 키 모두 타입 추론
       // 미정의 → 문자열을 src로 사용 (타입 미추론)
-      vn.addEffect('dust', 5)
+      vn.addEffect('dust', 15)
       vn.addOverlay("테스트: 배경·무드·파티클·캐릭터 배치 (분수 위치 '1/3')", 'caption')
       vn.screenFade('in', 'white', 1000)
       break
@@ -173,28 +172,35 @@ function nextStep() {
     // ---- 13. highlightCharacter ----
     case 13:
       vn.clearOverlay()
-      vn.addOverlay("테스트: highlightCharacter (다른 캐릭터 희미하게)", 'caption')
+      vn.addOverlay("테스트: highlightCharacter (UI계층 Cut-in 방식 앞단 렌더링)", 'caption')
       vn.panCamera('center', 800)
       vn.zoomCamera('reset')
       vn.highlightCharacter('heroine')
       break
 
-    // ---- 14. 배경 전환 — 무패럴럭스(floor) ----
+    // ---- 14. unhighlightCharacter ----
     case 14:
       vn.clearOverlay()
+      vn.addOverlay("테스트: unhighlightCharacter (원본 월드 위치로 환원)", 'caption')
+      vn.unhighlightCharacter('heroine')
+      break
+
+    // ---- 15. 배경 전환 — 무패럴럭스(floor) ----
+    case 15:
+      vn.clearOverlay()
+      vn.addEffect('sakura', 20)
       vn.addOverlay("테스트: 배경 전환 → floor (parallax: false, 카메라 고정)", 'caption')
       vn.setMood('dawn', 1, 1000)
       vn.setBackground('floor', 'cover', 1500)
       vn.focusCharacter('heroine', 'chest', 'reset')
       break
 
-    // ---- 15. addLight + setFlicker ----
-    case 15: {
+    // ---- 16. addLight + setFlicker ----
+    case 16: {
       vn.clearOverlay()
       vn.setMood('day', 1, 2000)
       vn.setBackground('park', 'cover', 1500)
       vn.addOverlay("테스트: addLight(spot) + setFlicker(spot, candle)", 'caption')
-      vn.removeEffect('sakura')
       vn.removeEffect('dust')
       vn.addEffect('fireflies', 8)
       vn.addLight('spot', { style: { width: 600, height: 600 } })
@@ -202,8 +208,8 @@ function nextStep() {
       break
     }
 
-    // ---- 16. screenWipe + 씬 리셋 ----
-    case 16:
+    // ---- 17. screenWipe + 씬 리셋 ----
+    case 17:
       vn.clearOverlay()
       vn.addOverlay("테스트: screenWipe(out) → 씬 초기화", 'caption')
       isWiping = true

@@ -46,7 +46,8 @@ for (let i = 0; i < 1500; i++) {
       opacity: Math.random() * 0.6 + 0.2, // Glowing transparency
       pointerEvents: false, // Performance optimize, ignore mouse raycast
       boxShadowColor: color, // Extends glow
-      boxShadowBlur: 10
+      boxShadowSpread: 2,
+      boxShadowBlur: 5
     },
     transform: { position: { x, y, z } }
   })

@@ -94,7 +94,7 @@ export const Z_INDEX = {
   BACKGROUND: -1,
   CHARACTER_NORMAL: 10,
   CHARACTER_HIGHLIGHT: 100,
-  
+
   // UI Layer (post-render)
   MOOD: 100,
   LIGHT: 200,
@@ -102,6 +102,7 @@ export const Z_INDEX = {
   OVERLAY_WHISPER: 400,
   OVERLAY_CAPTION: 410,
   OVERLAY_TITLE: 420,
+  CHARACTER_CUTIN: 500,
   TRANSITION: 999
 }
 
@@ -202,7 +203,7 @@ const EFFECT_PRESETS: Record<EffectType, Partial<ParticleOptions>> = {
   },
   sakura: {
     attribute: { src: 'sakura', gravityScale: 0.02, frictionAir: 0 },
-    style: { width: 12, height: 15, opacity: 0.8 }
+    style: { width: 16, height: 20, opacity: 0.8 }
   },
   sparkle: {
     attribute: { src: 'sparkle', gravityScale: 0.1 },
@@ -578,12 +579,12 @@ export class Visualnovel<
     if (this._effects.has(type)) this.removeEffect(type)
 
     const clipName = `${type}_rate_${finalRate}`
+    const particleZ = this.depth / 2
     if (!this.world.particleManager.get(clipName)) {
       const clipBase = EFFECT_CLIP_PRESETS[type] ?? EFFECT_CLIP_PRESETS.dust
       const customSrc = overrides?.attribute?.src ?? (preset.attribute as any)?.src ?? type
 
       // 파티클을 카메라와 배경(depth)의 딱 중간 평면(depth / 2)에 띄웁니다.
-      const particleZ = this.depth / 2
       const ratio = this.world.camera?.calcDepthRatio(particleZ, 1) ?? 1
 
       // 배경과 동일하게, X/Y축 카메라 최대 패닝 범위에 맞도록 최적 여백을 더합니다.
@@ -605,7 +606,7 @@ export class Visualnovel<
     const particle = this._track(this.world.createParticle({
       attribute: { ...(preset.attribute as any), src: clipName, ...overrides?.attribute },
       style: { ...(preset.style as any), ...overrides?.style },
-      transform: { position: { x: 0, y: 0, z: 0 }, ...overrides?.transform },
+      transform: { position: { x: 0, y: 0, z: particleZ }, ...overrides?.transform },
       ...(overrides as any)
     }))
     this._effects.set(type, particle)
@@ -871,12 +872,46 @@ export class Visualnovel<
     return this
   }
 
-  /** Brings character to front and sets mood to night */
+  /** Brings character to front UI layer as a cut-in */
   highlightCharacter<K extends keyof TC & string>(key: K): this {
     const target = this._characters.get(key)
     if (!target) return this
 
-    target.style.zIndex = Z_INDEX.CHARACTER_HIGHLIGHT
+    // 이미 하이라이트 된 상태인지 확인
+    if ((target as any)._originalTransform) return this
+
+      // 기존 월드 좌표 및 부모 복원을 위한 백업
+      ; (target as any)._originalTransform = {
+        x: target.transform.position.x,
+        y: target.transform.position.y,
+        z: target.transform.position.z,
+        zIndex: target.style.zIndex
+      }
+
+    // Camera 자식(UI 객체)으로 편입 (addChild 시 자동 이전 parent에서 해제됨)
+    this.world.camera?.addChild(target)
+
+    target.style.zIndex = Z_INDEX.CHARACTER_CUTIN
+    return this
+  }
+
+  /** Restores character from cut-in to normal world plane */
+  unhighlightCharacter<K extends keyof TC & string>(key: K): this {
+    const target = this._characters.get(key)
+    if (!target) return this
+
+    const orig = (target as any)._originalTransform
+    if (!orig) return this
+
+    // Camera 자식에서 해제 (parent = null이 되며 월드 루트 객체로 환원됨)
+    this.world.camera?.removeChild(target)
+
+    target.transform.position.x = orig.x
+    target.transform.position.y = orig.y
+    target.transform.position.z = orig.z
+    target.style.zIndex = orig.zIndex
+
+    delete (target as any)._originalTransform
     return this
   }
 
