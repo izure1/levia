@@ -89,6 +89,22 @@ export type EffectType = 'dust' | 'rain' | 'snow' | 'sakura' | 'sparkle' | 'fog'
 // Preset Lookup Tables
 // =============================================================
 
+export const Z_INDEX = {
+  // World Layer
+  BACKGROUND: -1,
+  CHARACTER_NORMAL: 10,
+  CHARACTER_HIGHLIGHT: 100,
+  
+  // UI Layer (post-render)
+  MOOD: 100,
+  LIGHT: 200,
+  UI_BASE: 300,
+  OVERLAY_WHISPER: 400,
+  OVERLAY_CAPTION: 410,
+  OVERLAY_TITLE: 420,
+  TRANSITION: 999
+}
+
 const CHARACTER_X_RATIO: Record<string, number> = {
   'far-left': 0.1,
   'left': 0.25,
@@ -166,9 +182,9 @@ const LIGHT_PRESETS: Record<LightPreset, { color: string, opacity: number }> = {
 }
 
 const OVERLAY_PRESETS: Record<OverlayPreset, { fontSize: number, color: string, opacity: number, zIndex: number, y: 'top' | 'center' | 'bottom' }> = {
-  caption: { fontSize: 24, color: '#ffffff', opacity: 1, zIndex: 1000, y: 'bottom' },
-  title: { fontSize: 48, color: '#ffffff', opacity: 1, zIndex: 1001, y: 'center' },
-  whisper: { fontSize: 18, color: '#cccccc', opacity: 0.7, zIndex: 999, y: 'bottom' }
+  caption: { fontSize: 24, color: '#ffffff', opacity: 1, zIndex: Z_INDEX.OVERLAY_CAPTION, y: 'bottom' },
+  title: { fontSize: 48, color: '#ffffff', opacity: 1, zIndex: Z_INDEX.OVERLAY_TITLE, y: 'center' },
+  whisper: { fontSize: 18, color: '#cccccc', opacity: 0.7, zIndex: Z_INDEX.OVERLAY_WHISPER, y: 'bottom' }
 }
 
 const EFFECT_PRESETS: Record<EffectType, Partial<ParticleOptions>> = {
@@ -487,7 +503,7 @@ export class Visualnovel<
       const w = this.world.canvas ? Math.max((this.world.canvas as any).width, this.width) : this.width
       const h = this.world.canvas ? Math.max((this.world.canvas as any).height, this.height) : this.height
       const rect = this.world.createRectangle({
-        style: { color, width: w * 2, height: h * 2, opacity: 0, zIndex: 9999, pointerEvents: false },
+        style: { color, width: w * 2, height: h * 2, opacity: 0, zIndex: Z_INDEX.TRANSITION, pointerEvents: false },
         transform: { position: { x: 0, y: 0, z: 10 } }
       })
       this.world.camera?.addChild(rect)
@@ -670,7 +686,7 @@ export class Visualnovel<
 
     const bgOpts = {
       attribute: { src: finalSrc, ...options?.attribute },
-      style: { width: exactViewW, height: exactViewH, zIndex: -1, ...options?.style },
+      style: { width: exactViewW, height: exactViewH, zIndex: Z_INDEX.BACKGROUND, ...options?.style },
       transform: {
         position: { x: 0, y: 0, z: zPos },
         scale: { x: ratio, y: ratio, z: 1 },
@@ -737,7 +753,7 @@ export class Visualnovel<
         // 카메라의 자식 객체이므로 X, Y 패닝 이동 시 화면에서 절대 벗어나지 않음.
         width: exactW,
         height: exactH,
-        zIndex: 998,
+        zIndex: Z_INDEX.MOOD,
         pointerEvents: false,
         blendMode: blendMode as any,
         ...overrides?.style
@@ -802,7 +818,7 @@ export class Visualnovel<
       const targetW = def.width ?? 500
       const img = this._track(this.world.createImage({
         attribute: { src },
-        style: { width: targetW, zIndex: 10 },
+        style: { width: targetW, zIndex: Z_INDEX.CHARACTER_NORMAL },
         transform: { position: { x: xPos, y: 0, z: zPos } }
       }))
       if (typeof (img as any).fadeIn === 'function') (img as any).fadeIn(400)
@@ -860,7 +876,7 @@ export class Visualnovel<
     const target = this._characters.get(key)
     if (!target) return this
 
-    target.style.zIndex = 1001
+    target.style.zIndex = Z_INDEX.CHARACTER_HIGHLIGHT
     return this
   }
 
@@ -883,7 +899,7 @@ export class Visualnovel<
         color: p.color,
         width: exactW,
         height: exactH,
-        opacity: p.opacity, zIndex: 997, pointerEvents: false, blendMode: 'screen',
+        opacity: p.opacity, zIndex: Z_INDEX.LIGHT, pointerEvents: false, blendMode: 'screen',
         ...overrides?.style
       },
       transform: { position: { x: 0, y: 0, z: this._characterPlaneLocalZ }, ...overrides?.transform },
@@ -1210,7 +1226,7 @@ export class Visualnovel<
     const mergedMake = applyDefaults(def.make, {
       style: {
         color: nodeType === 'rectangle' ? 'transparent' : undefined,
-        zIndex: 999, // 자동 배치 기본값
+        zIndex: Z_INDEX.UI_BASE, // 자동 배치 기본값
       },
       transform: {
         pivot: { x: 0, y: 0 },

@@ -10857,14 +10857,21 @@ var Renderer2 = class {
           worldObjects.push(o);
         }
       }
-      const sortLogic = (a, b) => {
+      const worldSortLogic = (a, b) => {
         const mA = a._worldMatrix;
         const mB = b._worldMatrix;
         const zdiff = -mB[14] - -mA[14];
         return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex;
       };
-      worldObjects.sort(sortLogic);
-      uiObjects.sort(sortLogic);
+      const uiSortLogic = (a, b) => {
+        const zIndexDiff = a.style.zIndex - b.style.zIndex;
+        if (zIndexDiff !== 0) return zIndexDiff;
+        const mA = a._worldMatrix;
+        const mB = b._worldMatrix;
+        return -mB[14] - -mA[14];
+      };
+      worldObjects.sort(worldSortLogic);
+      uiObjects.sort(uiSortLogic);
       this._sortedObjects = [...worldObjects, ...uiObjects];
     }
     this.gl.clearColor(0, 0, 0, 0);

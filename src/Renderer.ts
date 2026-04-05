@@ -569,7 +569,7 @@ export class Renderer {
         }
       }
 
-      const sortLogic = (a: LveObject, b: LveObject) => {
+      const worldSortLogic = (a: LveObject, b: LveObject) => {
         // 계층 구조 지원 _worldMatrix의 변환된 Z좌표 기준 정렬 (-1로 원상 복구)
         const mA = a._worldMatrix as unknown as Float32Array
         const mB = b._worldMatrix as unknown as Float32Array
@@ -577,8 +577,17 @@ export class Renderer {
         return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex
       }
 
-      worldObjects.sort(sortLogic)
-      uiObjects.sort(sortLogic)
+      const uiSortLogic = (a: LveObject, b: LveObject) => {
+        // UI 객체들은 거리에 상관없이 zIndex를 가장 우선 순위로 정렬합니다.
+        const zIndexDiff = a.style.zIndex - b.style.zIndex
+        if (zIndexDiff !== 0) return zIndexDiff
+        const mA = a._worldMatrix as unknown as Float32Array
+        const mB = b._worldMatrix as unknown as Float32Array
+        return (-mB[14]) - (-mA[14])
+      }
+
+      worldObjects.sort(worldSortLogic)
+      uiObjects.sort(uiSortLogic)
 
       this._sortedObjects = [...worldObjects, ...uiObjects]
     }
