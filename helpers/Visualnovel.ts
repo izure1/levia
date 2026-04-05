@@ -36,8 +36,8 @@ export type CharImages = Record<string, string>
 /** Single character definition */
 export interface CharDef {
   images: CharImages
-  /** Focus point (0~1 normalized). x: left→right, y: top→bottom. Default { x:0.5, y:0.5 } */
-  focusPoint?: { x: number, y: number }
+  /** Focus points (0~1 normalized). x: left→right, y: top→bottom. */
+  points?: Record<string, { x: number, y: number }>
 }
 
 /** Single background definition */
@@ -62,7 +62,7 @@ export type BackgroundFitPreset = 'stretch' | 'contain' | 'cover'
 export type FadeColorPreset = 'black' | 'white' | 'red' | 'dream' | 'sepia'
 export type FlashPreset = 'white' | 'red' | 'yellow'
 export type WipePreset = 'left' | 'right' | 'up' | 'down'
-export type MoodType = 'day' | 'night' | 'sunset' | 'foggy' | 'sepia' | 'cold' | 'noir' | 'none'
+export type MoodType = 'day' | 'night' | 'sunset' | 'foggy' | 'sepia' | 'cold' | 'noir' | 'horror' | 'flashback' | 'dream' | 'danger' | 'none'
 export type LightPreset = 'spot' | 'ambient' | 'warm' | 'cold'
 export type FlickerPreset = 'candle' | 'flicker' | 'strobe'
 export type OverlayPreset = 'caption' | 'title' | 'whisper'
@@ -124,13 +124,17 @@ const WIPE_PRESETS: Record<WipePreset, { x: number, y: number }> = {
 }
 
 const MOOD_PRESETS: Record<MoodType, { color: string, vignette?: string, blendMode?: string }> = {
-  day: { color: 'rgba(255,220,120,0.08)' },
-  night: { color: 'rgba(0,20,80,0.55)', vignette: 'rgba(0,0,50,0.6)', blendMode: 'multiply' },
-  sunset: { color: 'rgba(255,100,40,0.35)', vignette: 'rgba(150,40,0,0.4)' },
-  foggy: { color: 'rgba(200,210,220,0.4)', vignette: 'rgba(180,190,200,0.3)', blendMode: 'screen' },
-  sepia: { color: 'rgba(160,120,60,0.35)', vignette: 'rgba(100,70,30,0.3)', blendMode: 'multiply' },
-  cold: { color: 'rgba(80,120,200,0.25)', vignette: 'rgba(40,60,150,0.2)', blendMode: 'screen' },
-  noir: { color: 'rgba(0,0,0,0.5)', vignette: 'rgba(0,0,0,0.6)', blendMode: 'multiply' },
+  day: { color: 'rgba(255, 230, 180, 0.1)', vignette: 'transparent 60%, rgba(255, 200, 100, 0.25) 100%', blendMode: 'screen' },
+  night: { color: 'rgba(10, 15, 60, 0.5)', vignette: 'transparent 20%, rgba(0, 5, 25, 0.85) 100%', blendMode: 'multiply' },
+  sunset: { color: 'rgba(255, 120, 50, 0.25)', vignette: 'transparent 30%, rgba(120, 30, 0, 0.7) 100%', blendMode: 'overlay' },
+  foggy: { color: 'rgba(200, 210, 220, 0.4)', vignette: 'rgba(255,255,255,0.1) 0%, rgba(150, 160, 170, 0.6) 100%', blendMode: 'screen' },
+  sepia: { color: 'rgba(160, 110, 50, 0.3)', vignette: 'transparent 40%, rgba(80, 50, 20, 0.8) 100%', blendMode: 'multiply' },
+  cold: { color: 'rgba(80, 130, 220, 0.25)', vignette: 'transparent 30%, rgba(20, 40, 100, 0.6) 100%', blendMode: 'hard-light' },
+  noir: { color: 'rgba(0, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%', blendMode: 'luminosity' },
+  horror: { color: 'rgba(150, 0, 0, 0.3)', vignette: 'transparent 30%, rgba(0, 0, 0, 0.9) 100%', blendMode: 'multiply' },
+  flashback: { color: 'rgba(200, 200, 200, 0.2)', vignette: 'transparent 40%, rgba(255, 255, 255, 0.8) 100%', blendMode: 'screen' },
+  dream: { color: 'rgba(180, 150, 255, 0.2)', vignette: 'transparent 40%, rgba(255, 200, 255, 0.6) 100%', blendMode: 'screen' },
+  danger: { color: 'rgba(255, 0, 0, 0.1)', vignette: 'transparent 30%, rgba(200, 0, 0, 0.8) 100%', blendMode: 'color-burn' },
   none: { color: 'transparent' }
 }
 
@@ -148,29 +152,109 @@ const OVERLAY_PRESETS: Record<OverlayPreset, { fontSize: number, color: string, 
 }
 
 const EFFECT_PRESETS: Record<EffectType, Partial<ParticleOptions>> = {
-  dust: { attribute: { src: 'dust' }, style: { width: 4, height: 4, opacity: 0.5, color: '#cccccc' } },
-  rain: { attribute: { src: 'rain' }, style: { width: 2, height: 12, opacity: 0.6, color: '#aaccff' } },
-  snow: { attribute: { src: 'snow' }, style: { width: 8, height: 8, opacity: 0.8, color: '#ffffff' } },
-  sakura: { attribute: { src: 'sakura' }, style: { width: 12, height: 12, opacity: 0.9, color: '#ffaacc' } },
-  sparkle: { attribute: { src: 'sparkle' }, style: { width: 6, height: 6, opacity: 0.9, color: '#ffffaa' } },
-  fog: { attribute: { src: 'fog' }, style: { width: 80, height: 40, opacity: 0.3, color: '#aabbcc' } },
-  leaves: { attribute: { src: 'leaves' }, style: { width: 14, height: 14, opacity: 0.85, color: '#88bb44' } },
-  fireflies: { attribute: { src: 'fireflies' }, style: { width: 6, height: 6, opacity: 0.9, color: '#aaffaa' } }
+  dust: {
+    attribute: { src: 'dust', frictionAir: 0, gravityScale: 0.001 },
+    style: { width: 10, height: 10, blendMode: 'lighter' }
+  },
+  rain: {
+    attribute: { src: 'rain', gravityScale: 1 },
+    style: { width: 3, height: 6, opacity: 0.3, blendMode: 'screen' }
+  },
+  snow: {
+    attribute: { src: 'snow', gravityScale: 0.01, frictionAir: 0 },
+    style: { width: 15, height: 15, blendMode: 'lighter' }
+  },
+  sakura: {
+    attribute: { src: 'sakura', gravityScale: 0.02, frictionAir: 0 },
+    style: { width: 12, height: 15, opacity: 0.8 }
+  },
+  sparkle: {
+    attribute: { src: 'sparkle', gravityScale: 0.1 },
+    style: { width: 16, height: 16, opacity: 0.8 }
+  },
+  fog: {
+    attribute: { src: 'fog', frictionAir: 0, gravityScale: 0.003 },
+    style: { width: 120, height: 120, blendMode: 'screen' }
+  },
+  leaves: {
+    attribute: { src: 'leaves', gravityScale: 0.1, frictionAir: 0.05, strictPhysics: true },
+    style: { width: 20, height: 20, opacity: 0.9 }
+  },
+  fireflies: {
+    attribute: { src: 'fireflies', gravityScale: -0.02, frictionAir: 0.05, strictPhysics: true },
+    style: { width: 8, height: 8, opacity: 0.8, blendMode: 'lighter' }
+  }
 }
 
 const EFFECT_CLIP_PRESETS: Record<EffectType, object> = {
-  dust: { gravity: -0.01, velocityY: -0.5, velocityX: 0.3, velocityZ: 0, lifespan: 300 },
-  rain: { gravity: 0.3, velocityY: -8, velocityX: -1, velocityZ: 0, lifespan: 80 },
-  snow: { gravity: 0.02, velocityY: -1, velocityX: 0.2, velocityZ: 0, lifespan: 400 },
-  sakura: { gravity: 0.01, velocityY: -0.8, velocityX: 0.5, velocityZ: 0.1, lifespan: 500 },
-  sparkle: { gravity: -0.02, velocityY: -0.5, velocityX: 0.1, velocityZ: 0, lifespan: 120 },
-  fog: { gravity: 0, velocityY: 0, velocityX: 0.1, velocityZ: 0, lifespan: 600 },
-  leaves: { gravity: 0.02, velocityY: -0.6, velocityX: 0.4, velocityZ: 0.1, lifespan: 450 },
-  fireflies: { gravity: -0.01, velocityY: 0.2, velocityX: 0.1, velocityZ: 0, lifespan: 350 }
+  dust: {
+    impulse: 0.05,
+    lifespan: 10000,
+    interval: 250,
+    size: [[0.5, 1], [0, 0.5]],
+    opacity: [[0, 0], [1, 1], [0, 0]],
+    loop: true
+  },
+  rain: {
+    impulse: 0,
+    lifespan: 3000,
+    interval: 40,
+    size: [[0.1, 0.3], [0.1, 0.3]],
+    opacity: [[1, 1], [1, 1]],
+    loop: true
+  },
+  snow: {
+    impulse: 0.01,
+    angularImpulse: 0.001,
+    lifespan: 10000,
+    interval: 100,
+    size: [[0.3, 0.8], [0.0, 0.0]],
+    opacity: [[1, 1], [0, 0]],
+    loop: true
+  },
+  sakura: {
+    impulse: 0.02,
+    angularImpulse: 0.001,
+    lifespan: 6000,
+    interval: 300,
+    size: [[0.5, 0.8], [0.3, 0.5]],
+    loop: true
+  },
+  sparkle: {
+    impulse: 0.02,
+    lifespan: 1500,
+    interval: 150,
+    size: [[0.5, 1], [0, 0.1]],
+    loop: true
+  },
+  fog: {
+    impulse: 0.01,
+    angularImpulse: 0.0001,
+    lifespan: 15000,
+    interval: 800,
+    size: [[2, 2], [5, 10]],
+    opacity: [[0, 0], [0.1, 0.2], [0, 0]],
+    loop: true
+  },
+  leaves: {
+    impulse: 0.08,
+    angularImpulse: 0.05,
+    lifespan: 7000,
+    interval: 350,
+    size: [[0.8, 1.2], [0.8, 1.2]],
+    loop: true
+  },
+  fireflies: {
+    impulse: 0.03,
+    lifespan: 5000,
+    interval: 300,
+    size: [[0.5, 1.5], [0, 0.5]],
+    loop: true
+  }
 }
 
 const DEFAULT_RATES: Partial<Record<EffectType, number>> = {
-  dust: 5, rain: 40, snow: 15, sakura: 8, sparkle: 12, fog: 3, leaves: 6, fireflies: 4
+  dust: 5, rain: 200, snow: 8, sakura: 8, sparkle: 10, fog: 4, leaves: 5, fireflies: 5
 }
 
 // =============================================================
@@ -606,19 +690,19 @@ export class Visualnovel<
 
   /**
    * Pan + zoom the camera to focus on a specific character.
-   * Uses the character's `focusPoint` from defineCharacter, overridable at call time.
+   * Uses the character's `points` from defineCharacter.
    */
   focusCharacter<K extends keyof TC & string>(
     key: K,
+    pointKey?: keyof TC[K]['points'] & string,
     zoomPreset: ZoomPreset = 'close-up',
-    duration: number = 800,
-    focusPoint?: { x: number, y: number }
+    duration: number = 800
   ): this {
     const target = this._characters.get(key)
     if (!target) return this
 
     const def = this._charDefs[key]
-    const fp = focusPoint ?? def?.focusPoint ?? { x: 0.5, y: 0.5 }
+    const fp = (pointKey && def?.points) ? def.points[pointKey] : { x: 0.5, y: 0.5 }
 
     const targetX = (target as any).transform?.position?.x ?? 0
     const targetZ = (target as any).transform?.position?.z ?? (this.depth / 2)
@@ -633,13 +717,12 @@ export class Visualnovel<
     return this
   }
 
-  /** Dim all characters except the highlighted one. */
+  /** Brings character to front and sets mood to night */
   highlightCharacter<K extends keyof TC & string>(key: K): this {
-    this._characters.forEach((obj, k) => {
-      if (typeof obj.animate === 'function') {
-        obj.animate({ style: { opacity: k === key ? 1 : 0.3 } }, 400, 'easeInOutQuad')
-      }
-    })
+    const target = this._characters.get(key)
+    if (!target) return this
+
+    target.style.zIndex = 1001
     return this
   }
 

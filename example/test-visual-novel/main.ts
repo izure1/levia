@@ -24,7 +24,11 @@ const vn = Visualnovel.create()
   .defineCharacter({
     heroine: {
       images: { normal: 'girl_before', after: 'girl_after' },
-      focusPoint: { x: 0.5, y: 0.25 } // 얼굴 기준
+      points: {
+        face: { x: 0.5, y: 0.25 },
+        chest: { x: 0.5, y: 0.35 },
+        legs: { x: 0.5, y: 0.8 }
+      }
     }
   })
   .defineBackground({
@@ -52,7 +56,7 @@ function nextStep() {
     case 1:
       vn.clear()
       vn.setBackground('library', 'cover', 1000)
-      vn.setMood('day')
+      vn.setMood('sunset')
       vn.addEffect('sakura', 20)
       // 분수 위치: 3명 배치 (1/3=좌, 2/3=중앙, 3/3=우)
       vn.showCharacter('heroine', '1/3', 'normal')   // 정의된 캐릭터 키 + 이미지 키 모두 타입 추론
@@ -66,21 +70,21 @@ function nextStep() {
     case 2:
       vn.clearOverlay()
       vn.addOverlay("테스트: focusCharacter — 얼굴 포커스 (defineCharacter focusPoint 적용)", 'caption')
-      vn.focusCharacter('heroine', 'close-up', 800)
+      vn.focusCharacter('heroine', 'face', 'close-up', 800)
       break
 
     // ---- 3. focusCharacter — 가슴 부위 오버라이드 ----
     case 3:
       vn.clearOverlay()
       vn.addOverlay("테스트: focusCharacter — 가슴 포커스 (런타임 오버라이드)", 'caption')
-      vn.focusCharacter('heroine', 'close-up', 800, { x: 0.5, y: 0.35 })
+      vn.focusCharacter('heroine', 'chest', 'close-up', 800)
       break
 
     // ---- 4. focusCharacter — 다리 포커스 ----
     case 4:
       vn.clearOverlay()
       vn.addOverlay("테스트: focusCharacter — 다리 포커스", 'caption')
-      vn.focusCharacter('heroine', 'medium', 800, { x: 0.5, y: 0.8 })
+      vn.focusCharacter('heroine', 'legs', 'medium', 800)
       break
 
     // ---- 5. 카메라 리셋 + 이미지 변경 ----
