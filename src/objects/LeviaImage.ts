@@ -1,14 +1,14 @@
-import { LeviaObject } from '../LeviaObject.js'
-import type { LeviaObjectOptions } from '../types.js'
+import { LeviarObject } from '../LeviarObject.js'
+import type { LeviarObjectOptions } from '../types.js'
 import { ImageTransition } from './ImageTransition.js'
 
 export interface ImageAttribute {
   src?: string
 }
 
-export class LeviaImage<
+export class LeviarImage<
   D extends Record<string, any> = Record<string, any>
-> extends LeviaObject<ImageAttribute, D> {
+> extends LeviarObject<ImageAttribute, D> {
   /** 트랜지션용 과거 에셋 키 */
   __transitionOldSrc: string | null = null
   /** 트랜지션 진행도 (0 ~ 1) */
@@ -17,7 +17,7 @@ export class LeviaImage<
   /** 전환 관리자 */
   private __transitioner?: ImageTransition
 
-  constructor(options?: LeviaObjectOptions<ImageAttribute, D>) {
+  constructor(options?: LeviarObjectOptions<ImageAttribute, D>) {
     super('image', options)
   }
 

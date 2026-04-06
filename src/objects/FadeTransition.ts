@@ -1,9 +1,9 @@
-import { LeviaObject } from '../LeviaObject.js'
+import { LeviarObject } from '../LeviarObject.js'
 import { BaseTransition } from './BaseTransition.js'
 import type { EasingType } from '../types.js'
 
-export class FadeTransition extends BaseTransition<LeviaObject> {
-  constructor(target: LeviaObject) { super(target) }
+export class FadeTransition extends BaseTransition<LeviarObject> {
+  constructor(target: LeviarObject) { super(target) }
 
   start(durationMs: number, easing: EasingType | undefined, type: 'in' | 'out'): this {
     if (this._anim) this._anim.stop()

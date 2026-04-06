@@ -2,7 +2,7 @@ export { World } from './World.js'
 export type { WorldOptions } from './World.js'
 export { Loader } from './Loader.js'
 export { Renderer } from './Renderer.js'
-export { LeviaObject } from './LeviaObject.js'
+export { LeviarObject } from './LeviarObject.js'
 export { Animation } from './Animation.js'
 export { EventEmitter } from './EventEmitter.js'
 export { AssetManager } from './AssetManager.js'
@@ -16,9 +16,9 @@ export { Camera } from './objects/Camera.js'
 export { Rectangle } from './objects/Rectangle.js'
 export { Ellipse } from './objects/Ellipse.js'
 export { Text } from './objects/Text.js'
-export { LeviaImage } from './objects/LeviaImage.js'
+export { LeviarImage } from './objects/LeviarImage.js'
 export { ImageTransition } from './objects/ImageTransition.js'
-export { LeviaVideo } from './objects/LeviaVideo.js'
+export { LeviarVideo } from './objects/LeviarVideo.js'
 export { Sprite } from './objects/Sprite.js'
 export { Particle } from './objects/Particle.js'
 
@@ -33,11 +33,11 @@ export type {
   Style,
   Transform,
   Vec3,
-  LeviaObjectOptions,
+  LeviarObjectOptions,
   AssetMap,
   LoadedAsset,
   LoadedAssets,
   LoaderEventType,
-  LeviaObjectEvents,
+  LeviarObjectEvents,
   AnimationEvents,
 } from './types.js'

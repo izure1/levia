@@ -4,9 +4,9 @@
 
 ---
 
-## 📋 1. 객체 공용 이벤트 (LeviaObject Events)
+## 📋 1. 객체 공용 이벤트 (LeviarObject Events)
 
-모든 객체(`LeviaObject`)에서 발생하는 공통 신호입니다. `obj.on('이벤트명', (arg1, arg2...) => { ... })` 형식을 통해 구독할 수 있습니다.
+모든 객체(`LeviarObject`)에서 발생하는 공통 신호입니다. `obj.on('이벤트명', (arg1, arg2...) => { ... })` 형식을 통해 구독할 수 있습니다.
 
 ### 🖱️ 마우스 상호작용 (MouseEvents)
 
@@ -59,7 +59,7 @@
 | 이벤트 명 | 인자(Arguments) | 시점 |
 | :--- | :--- | :--- |
 | `update` | `timestamp: number` | 월드 심장 박동(매 프레임) |
-| `click` / `mousedown` / ...| `obj: LeviaObject, e: MouseEvent` | 월드 전체 마우스 이벤트 |
+| `click` / `mousedown` / ...| `obj: LeviarObject, e: MouseEvent` | 월드 전체 마우스 이벤트 |
 
 ---
 

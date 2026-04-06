@@ -16,7 +16,7 @@
  *   vn.setBackground('library', 'cover', 1000)
  */
 
-import type { World, LeviaObject, EasingType, LeviaObjectOptions, LeviaObjectEvents } from '../src'
+import type { World, LeviarObject, EasingType, LeviarObjectOptions, LeviarObjectEvents } from '../src'
 import type { SpriteClipOptions } from '../src/SpriteManager'
 import type { ParticleOptions } from '../src/objects/Particle'
 import type { RectangleOptions } from '../src/objects/Rectangle'
@@ -65,9 +65,9 @@ export type UiNodeType = 'rectangle' | 'ellipse' | 'text' | 'image' | 'video' | 
 export interface UiDef {
   type: UiNodeType
   children?: Record<string, UiDef>
-  make: LeviaObjectOptions<{ text?: string; src?: string; sprite?: Omit<SpriteClipOptions, 'name' | 'src'> }>
+  make: LeviarObjectOptions<{ text?: string; src?: string; sprite?: Omit<SpriteClipOptions, 'name' | 'src'> }>
   on?: Partial<{
-    [K in keyof LeviaObjectEvents]: (...args: LeviaObjectEvents[K]) => void
+    [K in keyof LeviarObjectEvents]: (...args: LeviarObjectEvents[K]) => void
   }> & Record<string, (...args: any[]) => void>
 }
 
@@ -402,17 +402,17 @@ export class Visualnovel<
   private readonly _bgDefs: TB
   private readonly _uiDefs: TU
 
-  private _objects: Set<LeviaObject> = new Set()
-  private _characters: Map<string, LeviaObject> = new Map()
-  private _effects: Map<string, LeviaObject> = new Map()
-  private _backgroundObj: LeviaObject | null = null
+  private _objects: Set<LeviarObject> = new Set()
+  private _characters: Map<string, LeviarObject> = new Map()
+  private _effects: Map<string, LeviarObject> = new Map()
+  private _backgroundObj: LeviarObject | null = null
   private _backgroundIsParallax: boolean = true
-  private _moodObj: LeviaObject | null = null
-  private _transitionObj: LeviaObject | null = null
-  private _overlayObjs: Map<string, LeviaObject> = new Map()
-  private _lightObjs: Map<string, LeviaObject> = new Map()
-  private _uiObjs: Map<string, LeviaObject> = new Map()
-  private _flickerObj: LeviaObject | null = null
+  private _moodObj: LeviarObject | null = null
+  private _transitionObj: LeviarObject | null = null
+  private _overlayObjs: Map<string, LeviarObject> = new Map()
+  private _lightObjs: Map<string, LeviarObject> = new Map()
+  private _uiObjs: Map<string, LeviarObject> = new Map()
+  private _flickerObj: LeviarObject | null = null
   private _initialCamZ: number = 0
 
   // -----------------------------------------------------------
@@ -494,12 +494,12 @@ export class Visualnovel<
     return 0.5
   }
 
-  private _track<T extends LeviaObject>(obj: T): T {
+  private _track<T extends LeviarObject>(obj: T): T {
     this._objects.add(obj)
     return obj
   }
 
-  private _getTransitionRect(color: string): LeviaObject {
+  private _getTransitionRect(color: string): LeviarObject {
     if (!this._transitionObj) {
       const w = this.world.canvas ? Math.max((this.world.canvas as any).width, this.width) : this.width
       const h = this.world.canvas ? Math.max((this.world.canvas as any).height, this.height) : this.height
@@ -1255,7 +1255,7 @@ export class Visualnovel<
   // UI
   // -----------------------------------------------------------
 
-  private _buildUINode(def: UiDef, id: string): LeviaObject {
+  private _buildUINode(def: UiDef, id: string): LeviarObject {
     const nodeType = def.type ?? 'rectangle'
 
     const mergedMake = applyDefaults(def.make, {
@@ -1283,7 +1283,7 @@ export class Visualnovel<
       }
     }
 
-    let uiNode: LeviaObject
+    let uiNode: LeviarObject
 
     switch (nodeType) {
       case 'text':

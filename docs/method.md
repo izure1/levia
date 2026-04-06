@@ -5,7 +5,7 @@
 ---
 
 ## 📋 1. 객체 공용 메서드 (Common Methods)
-모든 객체(`LeviaObject`)가 공통적으로 사용할 수 있는 핵심 기능들입니다.
+모든 객체(`LeviarObject`)가 공통적으로 사용할 수 있는 핵심 기능들입니다.
 
 ### ✨ 상태 및 시각 효과
 
@@ -70,8 +70,8 @@
 
 | 메서드 | 파라미터 | 반환값 | 설명 |
 | :--- | :--- | :--- | :--- |
-| `addChild` | `LeviaObject` | `this` | 자식으로 추가. 부모의 변환(Matrix)을 상속받음. |
-| `removeChild` | `LeviaObject` | `this` | 지정한 자식 객체 해제. |
+| `addChild` | `LeviarObject` | `this` | 자식으로 추가. 부모의 변환(Matrix)을 상속받음. |
+| `removeChild` | `LeviarObject` | `this` | 지정한 자식 객체 해제. |
 | `removeFromParent`| - | `this` | 현재 부모로부터 독립. |
 
 ### 👣 추적 (Following)
@@ -81,7 +81,7 @@
 
 | 파라미터 | 타입 | 기본값 | 설명 |
 | :--- | :--- | :--- | :--- |
-| `target` | `LeviaObject` | - | 따라다닐 대상 객체 |
+| `target` | `LeviarObject` | - | 따라다닐 대상 객체 |
 | `offset` | `{x?, y?, z?}` | - | 대상과의 간격 좌표 |
 
 - **반환값**: `this`
@@ -92,7 +92,7 @@
 | 메서드 | 파라미터 | 반환값 | 설명 |
 | :--- | :--- | :--- | :--- |
 | `unfollow` | - | `this` | 현재 대상을 따라가는 동작 중단. |
-| `kick` | `LeviaObject` | `this` | 나를 따라다니는 특정 객체와의 연결 해제. |
+| `kick` | `LeviarObject` | `this` | 나를 따라다니는 특정 객체와의 연결 해제. |
 
 - **Getter**: `following` (내가 따라가는 대상), `followers` (나를 따라오는 목록)
 

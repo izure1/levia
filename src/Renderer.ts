@@ -22,10 +22,10 @@ import { parseTextMarkup } from './utils/textMarkup.js'
 import { parseBorderRadius } from './utils/styleUtils.js'
 import { TEXTURE_THROTTLE_FRAMES, TEXTURE_DEBOUNCE_FRAMES } from './dirty.js'
 
-import type { LeviaObject } from './LeviaObject.js'
+import type { LeviarObject } from './LeviarObject.js'
 import type { Sprite } from './objects/Sprite.js'
-import type { LeviaImage } from './objects/LeviaImage.js'
-import type { LeviaVideo } from './objects/LeviaVideo.js'
+import type { LeviarImage } from './objects/LeviarImage.js'
+import type { LeviarVideo } from './objects/LeviarVideo.js'
 import type { Particle } from './objects/Particle.js'
 import type { LoadedAssets } from './types.js'
 
@@ -179,7 +179,7 @@ export class Renderer {
   private _modelMat = new Mat4()
   private _viewMat = new Mat4()
   private _tmpVec = new OglVec3()
-  private _activeObj!: LeviaObject
+  private _activeObj!: LeviarObject
   private _activeRenderW = 0
   private _activeRenderH = 0
 
@@ -247,7 +247,7 @@ export class Renderer {
 
   // --- Z-Sort Cache (Dirty-Flag) ---
   /** 정렬 순서가 캐시된 객체 배열 (카메라 거리 기준 내림차순) */
-  private _sortedObjects: LeviaObject[] = []
+  private _sortedObjects: LeviarObject[] = []
   /** true이면 다음 프레임에 재정렬 */
   private _sortDirty = true
   /** 마지막으로 정렬에 사용된 카메라 회전값 */
@@ -454,7 +454,7 @@ export class Renderer {
 
   // ─── 공개 렌더 메서드 ────────────────────────────────────────────────────
 
-  render(objects: Set<LeviaObject>, assets: LoadedAssets = {}, timestamp: number = 0, activeCamera: LeviaObject | null = null) {
+  render(objects: Set<LeviarObject>, assets: LoadedAssets = {}, timestamp: number = 0, activeCamera: LeviarObject | null = null) {
     if (!activeCamera) {
       // 검은 화면 (알림 목적)
       this.gl.clearColor(0, 0, 0, 1)
@@ -482,7 +482,7 @@ export class Renderer {
           _textureIdleCount: 0
         }
       }
-      this._activeObj = this._noCameraText as LeviaObject
+      this._activeObj = this._noCameraText as LeviarObject
       this._activeRenderW = 200
       this._activeRenderH = 50
 
@@ -498,7 +498,7 @@ export class Renderer {
         near: 0.1,
         far: 100000,
       })
-      this._drawText(this._noCameraText as LeviaObject, 0, 0, 1, timestamp)
+      this._drawText(this._noCameraText as LeviarObject, 0, 0, 1, timestamp)
       this._flushBatch()
       return
     }
@@ -539,8 +539,8 @@ export class Renderer {
       this._sortDirty = false
 
       // 직접 Z 좌표 기준 정렬 및 카메라 자식 별도 판별 처리
-      const worldObjects: LeviaObject[] = []
-      const uiObjects: LeviaObject[] = []
+      const worldObjects: LeviarObject[] = []
+      const uiObjects: LeviarObject[] = []
 
       for (const o of objects) {
         if (
@@ -569,7 +569,7 @@ export class Renderer {
         }
       }
 
-      const worldSortLogic = (a: LeviaObject, b: LeviaObject) => {
+      const worldSortLogic = (a: LeviarObject, b: LeviarObject) => {
         // 계층 구조 지원 _worldMatrix의 변환된 Z좌표 기준 정렬 (-1로 원상 복구)
         const mA = a.__worldMatrix as unknown as Float32Array
         const mB = b.__worldMatrix as unknown as Float32Array
@@ -577,7 +577,7 @@ export class Renderer {
         return zdiff !== 0 ? zdiff : a.style.zIndex - b.style.zIndex
       }
 
-      const uiSortLogic = (a: LeviaObject, b: LeviaObject) => {
+      const uiSortLogic = (a: LeviarObject, b: LeviarObject) => {
         // UI 객체들은 거리에 상관없이 zIndex를 가장 우선 순위로 정렬합니다.
         const zIndexDiff = a.style.zIndex - b.style.zIndex
         if (zIndexDiff !== 0) return zIndexDiff
@@ -615,7 +615,7 @@ export class Renderer {
   // ─── 내부 오브젝트 렌더 ──────────────────────────────────────────────────
 
   private _drawObject(
-    obj: LeviaObject,
+    obj: LeviarObject,
     assets: LoadedAssets,
     timestamp: number,
   ) {
@@ -651,10 +651,10 @@ export class Renderer {
         this._drawText(obj, px, py, 1, timestamp)
         break
       case 'image':
-        this._drawAsset(obj as LeviaImage, px, py, w, h, 1, assets)
+        this._drawAsset(obj as LeviarImage, px, py, w, h, 1, assets)
         break
       case 'video':
-        this._drawVideo(obj as LeviaVideo, px, py, w, h, 1, assets)
+        this._drawVideo(obj as LeviarVideo, px, py, w, h, 1, assets)
         break
       case 'sprite':
         this._drawSprite(obj as Sprite, px, py, w, h, 1, assets, timestamp)
@@ -714,7 +714,7 @@ export class Renderer {
    * 좌표계: obj.z > cam.z = 카메라 앞 (구 시스템과 동일)
    * 모델 z = -obj.z 이므로, 카메라 역변환 z = +camZ
    */
-  private _buildViewMatrix(cam: LeviaObject) {
+  private _buildViewMatrix(cam: LeviarObject) {
     const pos = cam.transform.position
     const rot = cam.transform.rotation
 
@@ -950,7 +950,7 @@ export class Renderer {
   // ─── Box Shadow ─────────────────────────────────────────────────────────
 
   private _drawShadow(
-    obj: LeviaObject,
+    obj: LeviarObject,
     x: number, y: number, w: number, h: number,
     baseW?: number, baseH?: number,
     isEllipse: boolean = false,
@@ -991,7 +991,7 @@ export class Renderer {
     this.shadowMesh.draw({ camera: this.camera })
   }
 
-  private _drawRectBorders(obj: LeviaObject, x: number, y: number, w: number, h: number, targetOpacity: number) {
+  private _drawRectBorders(obj: LeviarObject, x: number, y: number, w: number, h: number, targetOpacity: number) {
     const { style } = obj
     // outline 먼저 (border 바깥)
     if (style.outlineColor && (style.outlineWidth ?? 0) > 0) {
@@ -1011,7 +1011,7 @@ export class Renderer {
 
   // ─── Rectangle ──────────────────────────────────────────────────────────
 
-  private _drawRectangle(obj: LeviaObject, x: number, y: number, w: number, h: number) {
+  private _drawRectangle(obj: LeviarObject, x: number, y: number, w: number, h: number) {
     const { style } = obj
     if (!style.color && !style.gradient && !style.borderColor && !style.outlineColor) return
 
@@ -1036,7 +1036,7 @@ export class Renderer {
 
   // ─── Ellipse ────────────────────────────────────────────────────────────
 
-  private _drawEllipse(obj: LeviaObject, x: number, y: number, w: number, h: number) {
+  private _drawEllipse(obj: LeviarObject, x: number, y: number, w: number, h: number) {
     this._flushBatch();
     this._setBlendMode(this._activeObj?.style?.blendMode ?? 'source-over');
     const { style } = obj
@@ -1080,7 +1080,7 @@ export class Renderer {
 
   // ─── Text (Offscreen Canvas → Texture) ──────────────────────────────────
 
-  private _drawText(obj: LeviaObject, x: number, y: number, perspectiveScale: number, _timestamp: number) {
+  private _drawText(obj: LeviarObject, x: number, y: number, perspectiveScale: number, _timestamp: number) {
     const { style, attribute } = obj
     const id = obj.attribute.id
     const rawText = attribute.text ?? ''
@@ -1191,7 +1191,7 @@ export class Renderer {
   private _renderTextToCanvas(
     entry: TextTextureEntry,
     rawText: string,
-    style: LeviaObject['style'],
+    style: LeviarObject['style'],
     baseFontSize: number,
     maxW: number | null,
     maxH: number | null,
@@ -1429,7 +1429,7 @@ export class Renderer {
 
   // ─── Image ──────────────────────────────────────────────────────────────
 
-  private _drawAsset(obj: LeviaImage, x: number, y: number, w: number, h: number, perspectiveScale: number, assets: LoadedAssets) {
+  private _drawAsset(obj: LeviarImage, x: number, y: number, w: number, h: number, perspectiveScale: number, assets: LoadedAssets) {
     const src = obj.attribute?.src
     const oldSrc = obj.__transitionOldSrc
     const progress = obj.__transitionProgress ?? 0
@@ -1483,7 +1483,7 @@ export class Renderer {
 
   // ─── Video ──────────────────────────────────────────────────────────────
 
-  private _drawVideo(obj: LeviaVideo, x: number, y: number, w: number, h: number, perspectiveScale: number, assets: LoadedAssets) {
+  private _drawVideo(obj: LeviarVideo, x: number, y: number, w: number, h: number, perspectiveScale: number, assets: LoadedAssets) {
     const src = obj.__src
     const asset = src ? assets[src] : undefined
     if (!asset || !(asset instanceof HTMLVideoElement)) {

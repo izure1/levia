@@ -1,5 +1,5 @@
-import { LeviaObject } from '../LeviaObject.js'
-import type { LeviaObjectOptions } from '../types.js'
+import { LeviarObject } from '../LeviarObject.js'
+import type { LeviarObjectOptions } from '../types.js'
 import { TextTransition } from './TextTransition.js'
 
 export interface TextAttribute {
@@ -8,14 +8,14 @@ export interface TextAttribute {
 
 export class Text<
   D extends Record<string, any> = Record<string, any>
-> extends LeviaObject<TextAttribute, D> {
+> extends LeviarObject<TextAttribute, D> {
   /** 트랜지션 진행도 (0 ~ 1, 1이면 완료 또는 미실행) */
   _transitionProgress: number = 1
 
   /** 전환 관리자 */
   private _transitioner?: TextTransition
 
-  constructor(options?: LeviaObjectOptions<TextAttribute, D>) {
+  constructor(options?: LeviarObjectOptions<TextAttribute, D>) {
     super('text', options)
   }
 

@@ -43,20 +43,20 @@ if (watch) {
     port: 3000,
   })
 
-  console.log(`[levia] dev server: http://localhost:${port}`)
+  console.log(`[leviar] dev server: http://localhost:${port}`)
 } else if (buildExample) {
   const exampleOptions = await getExampleOptions()
   const result = await esbuild.build(exampleOptions)
   if (result.errors.length > 0) {
-    console.error('[levia] example build failed')
+    console.error('[leviar] example build failed')
     process.exit(1)
   }
-  console.log('[levia] example build complete')
+  console.log('[leviar] example build complete')
 } else {
   const result = await esbuild.build(libOptions)
   if (result.errors.length > 0) {
-    console.error('[levia] build failed')
+    console.error('[leviar] build failed')
     process.exit(1)
   }
-  console.log('[levia] build complete -> dist/index.js')
+  console.log('[leviar] build complete -> dist/index.js')
 }

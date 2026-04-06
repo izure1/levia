@@ -1,5 +1,5 @@
 import Matter from 'matter-js'
-import type { LeviaObject } from './LeviaObject.js'
+import type { LeviarObject } from './LeviarObject.js'
 import { PHYSICS_THROTTLE_FRAMES, PHYSICS_DEBOUNCE_FRAMES } from './dirty.js'
 
 /**
@@ -24,17 +24,17 @@ function parseMargin(margin?: string): { top: number; right: number; bottom: num
   }
 }
 
-// globalThis에 Matter를 노출하여 LeviaObject에서 applyForce/setVelocity 호출 가능하게 함
+// globalThis에 Matter를 노출하여 LeviarObject에서 applyForce/setVelocity 호출 가능하게 함
 ; (globalThis as any).__Matter__ = Matter
 
 /**
  * matter-js 기반 물리 엔진 래퍼.
- * attribute.physics = 'dynamic' | 'static' 인 LeviaObject를 등록하고 매 프레임 시뮬레이션을 수행합니다.
+ * attribute.physics = 'dynamic' | 'static' 인 LeviarObject를 등록하고 매 프레임 시뮬레이션을 수행합니다.
  */
 export class PhysicsEngine {
   readonly engine: Matter.Engine
   private bodyMap: Map<string, Matter.Body> = new Map()
-  private objMap: Map<string, LeviaObject> = new Map()
+  private objMap: Map<string, LeviarObject> = new Map()
   private prevTime: number = 0
   /** syncObjectSizes에서 크기 변경 감지용 - border/margin 제외한 순수 w, h */
   private lastSizeMap: Map<string, { w: number; h: number }> = new Map()
@@ -64,10 +64,10 @@ export class PhysicsEngine {
 
 
   /**
-   * LeviaObject를 물리 바디로 등록합니다.
+   * LeviarObject를 물리 바디로 등록합니다.
    * attribute.physics에 따라 dynamic / static 바디를 생성합니다.
    */
-  addBody(obj: LeviaObject, w: number, h: number) {
+  addBody(obj: LeviarObject, w: number, h: number) {
     if (!obj.attribute.physics) return
 
     const { x, y } = obj.transform.position
@@ -145,7 +145,7 @@ export class PhysicsEngine {
    * 현재 위치, 속도, 각도를 유지합니다.
    * w, h는 style.width * scale, style.height * scale 기준 (margin/border 미포함)
    */
-  updateBodySize(obj: LeviaObject, w: number, h: number) {
+  updateBodySize(obj: LeviarObject, w: number, h: number) {
     const prevBody = this.bodyMap.get(obj.attribute.id)
     if (!prevBody) return
 
@@ -183,10 +183,10 @@ export class PhysicsEngine {
   }
 
   /**
-   * LeviaObject._renderedSize 기반으로 물리 바디 크기를 동기화합니다.
+   * LeviarObject._renderedSize 기반으로 물리 바디 크기를 동기화합니다.
    * dirty + 디바운스(개혁) 또는 스로틄(강제) 조건 달성 시에만 크기를 재확인합니다.
    */
-  syncObjectSizes(objects: Iterable<LeviaObject>) {
+  syncObjectSizes(objects: Iterable<LeviarObject>) {
     const EPS = 0.5
     for (const obj of objects) {
       if (!obj.__body || !obj.__renderedSize) continue
@@ -216,9 +216,9 @@ export class PhysicsEngine {
   }
 
   /**
-   * LeviaObject의 물리 바디를 제거합니다.
+   * LeviarObject의 물리 바디를 제거합니다.
    */
-  removeBody(obj: LeviaObject) {
+  removeBody(obj: LeviarObject) {
     const body = this.bodyMap.get(obj.attribute.id)
     if (!body) return
     Matter.Composite.remove(this.engine.world, body)
@@ -231,7 +231,7 @@ export class PhysicsEngine {
   /**
    * 특정 오브젝트에 힘을 적용합니다.
    */
-  applyForce(obj: LeviaObject, force: { x: number; y: number }) {
+  applyForce(obj: LeviarObject, force: { x: number; y: number }) {
     if (!obj.__body) return
     Matter.Body.applyForce(obj.__body, obj.__body.position, force)
   }
@@ -239,13 +239,13 @@ export class PhysicsEngine {
   /**
    * 특정 오브젝트의 속도를 설정합니다.
    */
-  setVelocity(obj: LeviaObject, velocity: { x: number; y: number }) {
+  setVelocity(obj: LeviarObject, velocity: { x: number; y: number }) {
     if (!obj.__body) return
     Matter.Body.setVelocity(obj.__body, velocity)
   }
 
   /**
-   * 물리 시뮬레이션을 진행하고, 바디 위치를 LeviaObject에 동기화합니다.
+   * 물리 시뮬레이션을 진행하고, 바디 위치를 LeviarObject에 동기화합니다.
    * @param timestamp requestAnimationFrame의 타임스탬프
    */
   step(timestamp: number) {
@@ -298,7 +298,7 @@ export class PhysicsEngine {
   }
 
   /**
-   * matter-js 바디의 위치/회전을 LeviaObject.transform에 반영합니다.
+   * matter-js 바디의 위치/회전을 LeviarObject.transform에 반영합니다.
    */
   private syncToObjects() {
     for (const [id, body] of this.bodyMap) {

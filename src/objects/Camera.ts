@@ -1,6 +1,6 @@
-import { LeviaObject } from '../LeviaObject.js'
+import { LeviarObject } from '../LeviarObject.js'
 import type { World } from '../World.js'
-import type { LeviaObjectOptions } from '../types.js'
+import type { LeviarObjectOptions } from '../types.js'
 
 export interface CameraAttribute {
   /**
@@ -13,11 +13,11 @@ export interface CameraAttribute {
 
 export class Camera<
   D extends Record<string, any> = Record<string, any>
-> extends LeviaObject<CameraAttribute, D> {
+> extends LeviarObject<CameraAttribute, D> {
   /** @internal */
   __world?: World;
 
-  constructor(options?: LeviaObjectOptions<CameraAttribute, D>) {
+  constructor(options?: LeviarObjectOptions<CameraAttribute, D>) {
     super('camera', options)
     if (this.attribute.focalLength === undefined) {
       this.attribute.focalLength = 100

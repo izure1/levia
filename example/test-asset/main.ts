@@ -39,15 +39,15 @@ function label(text: string, x: number, y: number, z: number) {
   })
 }
 
-// ① LeviaImage — logo.png (auto size)
-label('① LeviaImage — logo.png (auto size)', -500, -250, 0)
+// ① LeviarImage — logo.png (auto size)
+label('① LeviarImage — logo.png (auto size)', -500, -250, 0)
 const img1 = world.createImage({
   transform: { position: { x: -380, y: -160, z: 0 } },
 })
 img1.attribute.src = 'logo'
 
-// ② LeviaImage — logo.png (지정 크기 200×auto)
-label('② LeviaImage — logo.png (200×auto)', -500, 20, 0)
+// ② LeviarImage — logo.png (지정 크기 200×auto)
+label('② LeviarImage — logo.png (200×auto)', -500, 20, 0)
 const img2 = world.createImage({
   style: { width: 200 },
   transform: { position: { x: -400, y: 120, z: 0 } },
@@ -79,8 +79,8 @@ const sprFar = world.createSprite({
 sprFar.attribute.src = 'play'
 sprFar.play()
 
-// ⑥ LeviaVideo — sample.mp4
-label('⑥ LeviaVideo — sample.mp4 (200×auto)', -200, -250, 0)
+// ⑥ LeviarVideo — sample.mp4
+label('⑥ LeviarVideo — sample.mp4 (200×auto)', -200, -250, 0)
 const vid = world.createVideo({
   style: { width: 200 },
   transform: { position: { x: -120, y: -160, z: 0 } },

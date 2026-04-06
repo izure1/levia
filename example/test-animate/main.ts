@@ -5,7 +5,7 @@ const camera = world.createCamera()
 
 world.camera = camera
 
-// 1. LeviaObject.animate() 테스트
+// 1. LeviarObject.animate() 테스트
 const text = world.createText({
   attribute: { text: 'Move and Fade' },
   style: { color: '#7ec8e3', zIndex: 1, fontSize: 36, opacity: 0.2, textShadowBlur: 10, textShadowColor: 'red', textShadowOffsetX: 10, textShadowOffsetY: 10 },

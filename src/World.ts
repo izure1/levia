@@ -3,9 +3,9 @@ import { Camera, CameraAttribute } from './objects/Camera.js'
 import { Rectangle } from './objects/Rectangle.js'
 import { Ellipse } from './objects/Ellipse.js'
 import { Text } from './objects/Text.js'
-import { LeviaObject } from './LeviaObject.js'
-import { LeviaImage } from './objects/LeviaImage.js'
-import { LeviaVideo } from './objects/LeviaVideo.js'
+import { LeviarObject } from './LeviarObject.js'
+import { LeviarImage } from './objects/LeviarImage.js'
+import { LeviarVideo } from './objects/LeviarVideo.js'
 import { Sprite } from './objects/Sprite.js'
 import { Particle } from './objects/Particle.js'
 import type { ParticleOptions } from './objects/Particle.js'
@@ -13,7 +13,7 @@ import { SpriteManager } from './SpriteManager.js'
 import { VideoManager } from './VideoManager.js'
 import { ParticleManager } from './ParticleManager.js'
 import { PhysicsEngine } from './PhysicsEngine.js'
-import type { LeviaObjectOptions, LoadedAssets, Attribute, WorldEvents } from './types.js'
+import type { LeviarObjectOptions, LoadedAssets, Attribute, WorldEvents } from './types.js'
 import type { RectangleOptions } from './objects/Rectangle.js'
 import { Renderer } from './Renderer.js'
 import { EventEmitter } from './EventEmitter.js'
@@ -29,7 +29,7 @@ export interface WorldOptions {
 
   /**
    * 브라우저 기본 우클릭 메뉴를 막을지 여부.
-   * true로 설정해도 LeviaObject의 'contextmenu' 이벤트는 정상적으로 수신됩니다.
+   * true로 설정해도 LeviarObject의 'contextmenu' 이벤트는 정상적으로 수신됩니다.
    * @default true
    */
   disableContextMenu?: boolean
@@ -52,7 +52,7 @@ function wrapMouseEvent(e: MouseEvent): MouseEvent & { _propagationStopped: bool
 
 export class World extends EventEmitter<WorldEvents> {
   private renderer: Renderer
-  private objects: Set<LeviaObject> = new Set()
+  private objects: Set<LeviarObject> = new Set()
   private rafId: number | null = null
   private physics: PhysicsEngine = new PhysicsEngine()
   private _canvas: HTMLCanvasElement | null = null
@@ -194,7 +194,7 @@ export class World extends EventEmitter<WorldEvents> {
   /**
    * 화면좌표 기준으로 마우스 위치에 겹쳐지는 객체를 반환합니다. (AABB hit-test)
    */
-  private _getHitObjects(e: MouseEvent): LeviaObject[] {
+  private _getHitObjects(e: MouseEvent): LeviarObject[] {
     const canvas = this._canvas
     if (!canvas) return []
 
@@ -223,7 +223,7 @@ export class World extends EventEmitter<WorldEvents> {
     const radZ = -camRotZ * Math.PI / 180
 
     const focalLength = activeCam ? (activeCam as Camera).attribute.focalLength ?? 100 : 100
-    const result: LeviaObject[] = []
+    const result: LeviarObject[] = []
     const modelMat = new Mat4()
 
     const pointInPoly = (px: number, py: number, poly: { x: number, y: number }[]) => {
@@ -244,7 +244,7 @@ export class World extends EventEmitter<WorldEvents> {
       .filter(obj => obj.attribute.type !== 'camera' && obj.style.display !== 'none' && obj.style.pointerEvents)
       .map(obj => {
         const mat = obj.__worldMatrix as unknown as Float32Array
-        // Levia와 OpenGL 좌표계 연결 과정에서 역방향된 z를 본래 양수 스케일로 복원 (-1 곱함)
+        // Leviar와 OpenGL 좌표계 연결 과정에서 역방향된 z를 본래 양수 스케일로 복원 (-1 곱함)
         const wx = mat[12], wy = mat[13], wz = -mat[14]
 
         let dx = wx - camX
@@ -391,7 +391,7 @@ export class World extends EventEmitter<WorldEvents> {
    * CSS querySelector와 유사한 방식으로 오브젝트를 선택합니다.
    * 지원 셀렉터: `.className`, `#id`, `[attribute=value]`
    */
-  select(query: string): LeviaObject[] {
+  select(query: string): LeviarObject[] {
     const all = Array.from(this.objects)
 
     const classMatches = query.match(/\.([a-zA-Z0-9_-]+)/g)
@@ -466,16 +466,16 @@ export class World extends EventEmitter<WorldEvents> {
 
   // ─── Object 등록 ─────────────────────────────────────────
 
-  private _registerObject(obj: LeviaObject) {
+  private _registerObject(obj: LeviarObject) {
     this.objects.add(obj)
-    obj.on('remove', (target: LeviaObject) => {
+    obj.on('remove', (target: LeviarObject) => {
       this.removeObject(target)
     })
   }
 
   // ─── Object 생성 ─────────────────────────────────────────
 
-  createCamera<D extends Record<string, any> = Record<string, any>>(options?: LeviaObjectOptions<CameraAttribute, D>): Camera<D> {
+  createCamera<D extends Record<string, any> = Record<string, any>>(options?: LeviarObjectOptions<CameraAttribute, D>): Camera<D> {
     const cam = new Camera<D>(options)
     cam.__world = this
     if (options?.transform?.position?.z === undefined) {
@@ -496,7 +496,7 @@ export class World extends EventEmitter<WorldEvents> {
     return rect
   }
 
-  createEllipse<D extends Record<string, any> = Record<string, any>>(options?: LeviaObjectOptions<Record<string, any>, D>): Ellipse<D> {
+  createEllipse<D extends Record<string, any> = Record<string, any>>(options?: LeviarObjectOptions<Record<string, any>, D>): Ellipse<D> {
     const el = new Ellipse<D>(options)
     this._registerObject(el)
     this._tryAddPhysics(el, options?.style?.width, options?.style?.height)
@@ -505,7 +505,7 @@ export class World extends EventEmitter<WorldEvents> {
     return el
   }
 
-  createText<D extends Record<string, any> = Record<string, any>>(options?: LeviaObjectOptions<Record<string, any>, D>): Text<D> {
+  createText<D extends Record<string, any> = Record<string, any>>(options?: LeviarObjectOptions<Record<string, any>, D>): Text<D> {
     const text = new Text<D>(options)
     this._registerObject(text)
     this._trackSortDirty(text)
@@ -513,16 +513,16 @@ export class World extends EventEmitter<WorldEvents> {
     return text
   }
 
-  createImage<D extends Record<string, any> = Record<string, any>>(options?: LeviaObjectOptions<Record<string, any>, D>): LeviaImage<D> {
-    const img = new LeviaImage<D>(options)
+  createImage<D extends Record<string, any> = Record<string, any>>(options?: LeviarObjectOptions<Record<string, any>, D>): LeviarImage<D> {
+    const img = new LeviarImage<D>(options)
     this._registerObject(img)
     this._trackSortDirty(img)
     this.renderer.markSortDirty()
     return img
   }
 
-  createVideo<D extends Record<string, any> = Record<string, any>>(options?: LeviaObjectOptions<Record<string, any>, D>): LeviaVideo<D> {
-    const video = new LeviaVideo<D>(options)
+  createVideo<D extends Record<string, any> = Record<string, any>>(options?: LeviarObjectOptions<Record<string, any>, D>): LeviarVideo<D> {
+    const video = new LeviarVideo<D>(options)
     video.__setManager(this.videoManager)
     this._registerObject(video)
     this._trackSortDirty(video)
@@ -530,7 +530,7 @@ export class World extends EventEmitter<WorldEvents> {
     return video
   }
 
-  createSprite<D extends Record<string, any> = Record<string, any>>(options?: LeviaObjectOptions<Record<string, any>, D>): Sprite<D> {
+  createSprite<D extends Record<string, any> = Record<string, any>>(options?: LeviarObjectOptions<Record<string, any>, D>): Sprite<D> {
     const sprite = new Sprite<D>(options)
     sprite.__setManager(this.spriteManager)
     this._registerObject(sprite)
@@ -549,7 +549,7 @@ export class World extends EventEmitter<WorldEvents> {
     return particle
   }
 
-  removeObject(obj: LeviaObject) {
+  removeObject(obj: LeviarObject) {
     this.physics.removeBody(obj)
     this.objects.delete(obj)
     this.renderer.removeTextEntry(obj.attribute.id)
@@ -595,7 +595,7 @@ export class World extends EventEmitter<WorldEvents> {
   /**
    * 객체의 Z 좌표 또는 zIndex 변경 시 Z-Sort 캐시를 무효화합니다.
    */
-  private _trackSortDirty(obj: LeviaObject) {
+  private _trackSortDirty(obj: LeviarObject) {
     obj.on('positionmodified', (axis: string) => {
       if (axis === 'z') this.renderer.markSortDirty()
     })
@@ -604,7 +604,7 @@ export class World extends EventEmitter<WorldEvents> {
     })
   }
 
-  private _tryAddPhysics(obj: LeviaObject, w?: number, h?: number) {
+  private _tryAddPhysics(obj: LeviarObject, w?: number, h?: number) {
     if (!obj.attribute.physics) return
 
     this.physics.addBody(obj, w ?? 32, h ?? 32)

@@ -38,7 +38,7 @@ world.on('click', (obj, e: MouseEvent) => {
     // 이벤트가 월드 클릭 등으로 전파되지 않게 막음
     eBox.stopImmediatePropagation()
 
-    // LeviaObject에서 완전히 삭제 (물리 엔진 바디 동시 제거)
+    // LeviarObject에서 완전히 삭제 (물리 엔진 바디 동시 제거)
     box.remove({ child: true })
     console.log('Object removed')
   })

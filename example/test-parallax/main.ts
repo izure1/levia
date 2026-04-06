@@ -60,7 +60,7 @@ for (let i = 0; i < 25; i++) {
 }
 
 world.createText({
-  attribute: { text: 'Levia' },
+  attribute: { text: 'Leviar' },
   style: { color: '#ffffff', opacity: 0.95, fontSize: 72, fontFamily: 'sans-serif, Segoe UI, sans-serif', fontWeight: 'bold', textAlign: 'center' },
   transform: { position: { x: -100, y: -30, z: 200 } },
 })
