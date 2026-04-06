@@ -10,7 +10,6 @@ const libOptions = {
   bundle: true,
   format: /** @type {'esm'} */ ('esm'),
   outfile: 'dist/index.js',
-  sourcemap: true,
   target: 'esnext',
   platform: 'browser',
 }
