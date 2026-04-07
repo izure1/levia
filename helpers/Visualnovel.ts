@@ -862,7 +862,8 @@ export class Visualnovel<
     const targetX = (target as any).transform?.position?.x ?? 0
     const targetZ = (target as any).transform?.position?.z ?? (this.world.camera?.attribute?.focalLength ?? 100)
     const charW = (target as any).style?.width ?? 500
-    const charH = charW * 2
+    const renderedH = (target as any).__renderedSize?.h
+    const charH = (renderedH && renderedH > 0) ? renderedH : (charW * 2)
 
     const panX = targetX + charW * (fp.x - 0.5)
     const panY = charH * (0.5 - fp.y)

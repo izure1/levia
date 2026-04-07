@@ -24,10 +24,10 @@ await world.loader.load({
 const vn = Visualnovel.create()
   .defineCharacter({
     heroine: {
-      width: 500,
+      width: 400,
       images: { normal: 'girl_before', after: 'girl_after' },
       points: {
-        face: { x: 0.5, y: 0.25 },
+        face: { x: 0.5, y: 0.15 },
         chest: { x: 0.5, y: 0.35 },
         legs: { x: 0.5, y: 0.8 }
       }
@@ -122,7 +122,8 @@ function nextStep() {
     case 6:
       vn.clearOverlay()
       vn.addOverlay("테스트: showCharacter 위치 이동 (center로 animate)", 'caption')
-      vn.showCharacter('heroine', 'center', 'normal')
+      vn.focusCharacter('heroine', 'face', 'reset')
+      // vn.showCharacter('heroine', 'center', 'normal')
       break
 
     // ---- 7. 무드 변경 + 셰이크 + 플래시 ----

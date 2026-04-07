@@ -13,6 +13,9 @@ await world.loader.load({
 
 // 이미지 생성
 const image = world.createImage({
+  style: {
+    height: 1000,
+  },
   transform: {
     position: { x: 0, y: 0, z: 0 }
   }
