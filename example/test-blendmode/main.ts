@@ -12,7 +12,7 @@ const camera = world.createCamera({
 world.camera = camera
 
 await world.loader.load({
-  'logo': '../asset/image/logo.png',
+  'sd': '../asset/image/girl_sd.png',
   'star': '../asset/image/star.png',
 })
 
@@ -25,18 +25,12 @@ const blendModes: BlendMode[] = [
   'lighten', 'darken', 'difference', 'exclusion'
 ]
 
-// 중앙 디스플레이 상태 텍스트
-const currentModeLabel = world.createText({
-  attribute: { text: 'Current: source-over' },
-  style: { color: '#7ec8e3', fontSize: 32, textAlign: 'center', fontWeight: 'bold' },
-  transform: { position: { x: 0, y: -220, z: 0 } }
-})
-
 // 중앙 디스플레이 (크게)
 const dest = world.createImage({
-  transform: { position: { x: 0, y: 0, z: 0 } }
+  style: { width: 300 },
+  transform: { position: { x: 0, y: -50, z: 50 } }
 })
-dest.attribute.src = 'logo'
+dest.attribute.src = 'sd'
 
 world.particleManager.create({
   name: 'star-anti-gravity',
@@ -49,10 +43,10 @@ world.particleManager.create({
   spawnX: 500,
   spawnY: 20,
   spawnZ: 100,
-  size: {
-    start: { min: 1, max: 1.5 },
-    end: { min: 0.5, max: 1 }
-  }
+  size: [
+    [1, 1.5],
+    [0.5, 1]
+  ]
 })
 
 const src = world.createParticle({
@@ -67,8 +61,19 @@ src.play()
 const cols = 8;
 const xSpace = 150;
 const ySpace = 60;
-const startX = -525;
-const startY = 200;
+const centerX = world.canvas!.width / 2
+const centerY = world.canvas!.height / 2
+const startX = centerX - (cols * xSpace) / 2
+const startY = 100;
+
+// 중앙 디스플레이 상태 텍스트
+const currentModeLabel = world.createText({
+  attribute: { text: 'Current: source-over' },
+  style: { color: '#7ec8e3', fontSize: 32, textAlign: 'center', fontWeight: 'bold', borderColor: '#ffffff', borderWidth: 5 },
+  transform: { position: world.camera?.canvasToLocal(centerX, centerY + 350) }
+})
+
+world.camera?.addChild(currentModeLabel)
 
 blendModes.forEach((mode, i) => {
   const col = i % cols;
@@ -86,7 +91,7 @@ blendModes.forEach((mode, i) => {
       borderColor: '#444',
       borderWidth: 1
     },
-    transform: { position: { x: cx, y: cy, z: 10 } }
+    transform: { position: world.camera?.canvasToLocal(cx, cy) }
   })
 
   btn.on('mouseover', () => {
@@ -103,6 +108,8 @@ blendModes.forEach((mode, i) => {
     src.style.blendMode = mode;
     currentModeLabel.attribute.text = `Current: <style fontSize="32" color="rgba(255, 136, 0, 1)" fontWeight="400">${mode}</style>`;
   })
+
+  world.camera?.addChild(btn)
 })
 
 window.addEventListener('mousemove', (e) => {

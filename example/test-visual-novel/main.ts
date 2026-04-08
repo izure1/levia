@@ -24,12 +24,23 @@ await world.loader.load({
 const vn = Visualnovel.create()
   .defineCharacter({
     heroine: {
-      width: 400,
-      images: { normal: 'girl_before', after: 'girl_after' },
-      points: {
-        face: { x: 0.5, y: 0.15 },
-        chest: { x: 0.5, y: 0.35 },
-        legs: { x: 0.5, y: 0.8 }
+      normal: {
+        src: 'girl_before',
+        width: 400,
+        points: {
+          face: { x: 0.5, y: 0.15 },
+          chest: { x: 0.5, y: 0.35 },
+          legs: { x: 0.5, y: 0.8 }
+        }
+      },
+      after: {
+        src: 'girl_after',
+        width: 400,
+        points: {
+          face: { x: 0.5, y: 0.15 },
+          chest: { x: 0.5, y: 0.35 },
+          legs: { x: 0.5, y: 0.8 }
+        }
       }
     }
   })

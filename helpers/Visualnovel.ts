@@ -31,17 +31,18 @@ export interface VisualnovelOption {
   depth: number
 }
 
-/** Image variant map: imageKey → asset src */
-export type CharImages = Record<string, string>
-
-/** Single character definition */
-export interface CharDef {
-  images: CharImages
+/** Single character image variant definition */
+export interface CharImageDef {
+  /** Source asset key or path (if omitted, imageKey is used as src) */
+  src?: string
   /** Character's base width in pixels */
   width?: number
   /** Focus points (0~1 normalized). x: left→right, y: top→bottom. */
   points?: Record<string, { x: number, y: number }>
 }
+
+/** Single character definition: mapping of imageKey to its details */
+export type CharDef = Record<string, CharImageDef>
 
 /** Single background definition */
 export interface BgDef {
@@ -792,13 +793,14 @@ export class Visualnovel<
   showCharacter<K extends keyof TC & string>(
     key: K,
     position: CharacterPositionPreset = 'center',
-    imageKey?: keyof TC[K]['images'] & string
+    imageKey?: keyof TC[K] & string
   ): this {
     const def = this._charDefs[key]
     if (!def) return this
 
-    const resolvedKey = imageKey ?? (Object.keys(def.images)[0] as string)
-    const src = def.images[resolvedKey]
+    const resolvedKey = imageKey ?? (Object.keys(def)[0] as string)
+    const imageDef = def[resolvedKey]
+    const src = imageDef.src ?? resolvedKey
     const xPos = this.width * (this._resolvePositionX(position) - 0.5)
     // 캐릭터 생성 기준 평면을 focalLength 로 고정합니다.
     const zPos = this.world.camera?.attribute?.focalLength ?? 100
@@ -815,14 +817,16 @@ export class Visualnovel<
           ; (existing as any).attribute.src = src
         }
       }
+      ;(existing as any)._currentImageKey = resolvedKey
     } else {
-      const targetW = def.width ?? 500
+      const targetW = imageDef.width ?? 500
       const img = this._track(this.world.createImage({
         attribute: { src },
         style: { width: targetW, zIndex: Z_INDEX.CHARACTER_NORMAL },
         transform: { position: { x: xPos, y: 0, z: zPos } }
       }))
       if (typeof (img as any).fadeIn === 'function') (img as any).fadeIn(400)
+      ;(img as any)._currentImageKey = resolvedKey
       this._characters.set(key, img)
     }
     return this
@@ -849,7 +853,7 @@ export class Visualnovel<
    */
   focusCharacter<K extends keyof TC & string>(
     key: K,
-    pointKey?: keyof TC[K]['points'] & string,
+    pointKey?: string,
     zoomPreset: ZoomPreset = 'close-up',
     duration: number = 800
   ): this {
@@ -857,7 +861,10 @@ export class Visualnovel<
     if (!target) return this
 
     const def = this._charDefs[key]
-    const fp = (pointKey && def?.points) ? def.points[pointKey] : { x: 0.5, y: 0.5 }
+    const activeImageKey = (target as any)._currentImageKey ?? Object.keys(def)[0]
+    const imageDef = def[activeImageKey as keyof typeof def]
+
+    const fp = (pointKey && imageDef?.points) ? imageDef.points[pointKey] : { x: 0.5, y: 0.5 }
 
     const targetX = (target as any).transform?.position?.x ?? 0
     const targetZ = (target as any).transform?.position?.z ?? (this.world.camera?.attribute?.focalLength ?? 100)
