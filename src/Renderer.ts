@@ -473,6 +473,8 @@ export class Renderer {
         uBorderColor: { value: [1, 0, 0, 1] },
         uOutlineWidth: { value: 0 },
         uOutlineColor: { value: [0, 0, 1, 1] },
+        uUVOffset: { value: [0, 0] },
+        uUVScale: { value: [1, 1] },
         uModelMatrix: { value: new Float32Array(16) },
         uViewMatrix: { value: new Float32Array(16) },
         uProjectionMatrix: { value: new Float32Array(16) },
@@ -496,6 +498,8 @@ export class Renderer {
         uBlur: { value: 0 },
         uSpread: { value: 0 },
         uAlphaThreshold: { value: 0.05 },
+        uUVOffset: { value: [0, 0] },
+        uUVScale: { value: [1, 1] },
         uModelMatrix: { value: new Float32Array(16) },
         uViewMatrix: { value: new Float32Array(16) },
         uProjectionMatrix: { value: new Float32Array(16) },
@@ -1077,7 +1081,9 @@ export class Renderer {
     obj: LeviarObject,
     x: number, y: number,
     drawW: number, drawH: number,
-    texture: Texture
+    texture: Texture,
+    uvOffset: [number, number] = [0, 0],
+    uvScale: [number, number] = [1, 1]
   ) {
     const { style } = obj
     if (!style.boxShadowColor) return
@@ -1104,6 +1110,8 @@ export class Renderer {
     prog.uniforms['uBlur'].value = blur
     prog.uniforms['uSpread'].value = spread
     prog.uniforms['uAlphaThreshold'].value = 0.05
+    prog.uniforms['uUVOffset'].value = uvOffset
+    prog.uniforms['uUVScale'].value = uvScale
     prog.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, quadW, quadH, 0, drawW, drawH)
     prog.uniforms['uProjectionMatrix'].value = this._projMatrix()
 
@@ -1121,7 +1129,9 @@ export class Renderer {
     x: number, y: number,
     drawW: number, drawH: number,
     texture: Texture,
-    opacity: number
+    opacity: number,
+    uvOffset: [number, number] = [0, 0],
+    uvScale: [number, number] = [1, 1]
   ) {
     const { style } = obj
     const borderWidth = (style.borderColor && (style.borderWidth ?? 0) > 0) ? style.borderWidth! : 0
@@ -1146,6 +1156,8 @@ export class Renderer {
     prog.uniforms['uBorderColor'].value = parseCSSColor(style.borderColor ?? 'transparent')
     prog.uniforms['uOutlineWidth'].value = outlineWidth
     prog.uniforms['uOutlineColor'].value = parseCSSColor(style.outlineColor ?? 'transparent')
+    prog.uniforms['uUVOffset'].value = uvOffset
+    prog.uniforms['uUVScale'].value = uvScale
     prog.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, expandedW, expandedH, 0, drawW, drawH)
     prog.uniforms['uProjectionMatrix'].value = this._projMatrix()
 
@@ -1808,8 +1820,8 @@ export class Renderer {
       h: drawH / perspectiveScale,
     }
     const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0)
-    this._drawAlphaShadow(sprite, x, y, drawW, drawH, texture)
-    this._drawAlphaImageBorders(sprite, x, y, drawW, drawH, texture, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity)
+    this._drawAlphaShadow(sprite, x, y, drawW, drawH, texture, [uvOffsetX, uvOffsetY], [uvScaleX, uvScaleY])
+    this._drawAlphaImageBorders(sprite, x, y, drawW, drawH, texture, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity, [uvOffsetX, uvOffsetY], [uvScaleX, uvScaleY])
 
     this._drawTextureMesh(
       texture,

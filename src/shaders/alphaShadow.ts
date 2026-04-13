@@ -40,6 +40,9 @@ export const alphaShadowFragment = /* glsl */ `
 
   varying vec2 vUV;
 
+  uniform vec2 uUVOffset;
+  uniform vec2 uUVScale;
+
   // 이미지 UV 범위 클램프 체크
   bool inUV(vec2 uv) {
     return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
@@ -56,8 +59,11 @@ export const alphaShadowFragment = /* glsl */ `
 
     // 이미지 불투명 영역 위는 그림자 렌더 제외
     vec2 imgUV = worldToImageUV(p);
-    if (inUV(imgUV) && texture2D(uTexture, imgUV).a > uAlphaThreshold) {
-      discard;
+    if (inUV(imgUV)) {
+      vec2 texUV = imgUV * uUVScale + uUVOffset;
+      if (texture2D(uTexture, texUV).a > uAlphaThreshold) {
+        discard;
+      }
     }
 
     // CSS 그림자 offset 역변환: WebGL +y = up, CSS +y = down
@@ -76,7 +82,10 @@ export const alphaShadowFragment = /* glsl */ `
     {
       float w = 1.0;
       vec2 sUV = worldToImageUV(shadowSrcP);
-      if (inUV(sUV)) accAlpha += texture2D(uTexture, sUV).a * w;
+      if (inUV(sUV)) {
+        vec2 texUV = sUV * uUVScale + uUVOffset;
+        accAlpha += texture2D(uTexture, texUV).a * w;
+      }
       totalWeight += w;
     }
 
@@ -90,7 +99,10 @@ export const alphaShadowFragment = /* glsl */ `
         float angle = float(i) / 8.0 * PI2;
         vec2 s = shadowSrcP + vec2(cos(angle), sin(angle)) * r;
         vec2 sUV = worldToImageUV(s);
-        if (inUV(sUV)) accAlpha += texture2D(uTexture, sUV).a * w;
+        if (inUV(sUV)) {
+          vec2 texUV = sUV * uUVScale + uUVOffset;
+          accAlpha += texture2D(uTexture, texUV).a * w;
+        }
         totalWeight += w;
       }
     }

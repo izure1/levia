@@ -10637,6 +10637,9 @@ var alphaShadowFragment = (
 
   varying vec2 vUV;
 
+  uniform vec2 uUVOffset;
+  uniform vec2 uUVScale;
+
   // \uC774\uBBF8\uC9C0 UV \uBC94\uC704 \uD074\uB7A8\uD504 \uCCB4\uD06C
   bool inUV(vec2 uv) {
     return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
@@ -10653,8 +10656,11 @@ var alphaShadowFragment = (
 
     // \uC774\uBBF8\uC9C0 \uBD88\uD22C\uBA85 \uC601\uC5ED \uC704\uB294 \uADF8\uB9BC\uC790 \uB80C\uB354 \uC81C\uC678
     vec2 imgUV = worldToImageUV(p);
-    if (inUV(imgUV) && texture2D(uTexture, imgUV).a > uAlphaThreshold) {
-      discard;
+    if (inUV(imgUV)) {
+      vec2 texUV = imgUV * uUVScale + uUVOffset;
+      if (texture2D(uTexture, texUV).a > uAlphaThreshold) {
+        discard;
+      }
     }
 
     // CSS \uADF8\uB9BC\uC790 offset \uC5ED\uBCC0\uD658: WebGL +y = up, CSS +y = down
@@ -10673,7 +10679,10 @@ var alphaShadowFragment = (
     {
       float w = 1.0;
       vec2 sUV = worldToImageUV(shadowSrcP);
-      if (inUV(sUV)) accAlpha += texture2D(uTexture, sUV).a * w;
+      if (inUV(sUV)) {
+        vec2 texUV = sUV * uUVScale + uUVOffset;
+        accAlpha += texture2D(uTexture, texUV).a * w;
+      }
       totalWeight += w;
     }
 
@@ -10687,7 +10696,10 @@ var alphaShadowFragment = (
         float angle = float(i) / 8.0 * PI2;
         vec2 s = shadowSrcP + vec2(cos(angle), sin(angle)) * r;
         vec2 sUV = worldToImageUV(s);
-        if (inUV(sUV)) accAlpha += texture2D(uTexture, sUV).a * w;
+        if (inUV(sUV)) {
+          vec2 texUV = sUV * uUVScale + uUVOffset;
+          accAlpha += texture2D(uTexture, texUV).a * w;
+        }
         totalWeight += w;
       }
     }
@@ -11182,6 +11194,8 @@ var Renderer2 = class {
         uBorderColor: { value: [1, 0, 0, 1] },
         uOutlineWidth: { value: 0 },
         uOutlineColor: { value: [0, 0, 1, 1] },
+        uUVOffset: { value: [0, 0] },
+        uUVScale: { value: [1, 1] },
         uModelMatrix: { value: new Float32Array(16) },
         uViewMatrix: { value: new Float32Array(16) },
         uProjectionMatrix: { value: new Float32Array(16) }
@@ -11203,6 +11217,8 @@ var Renderer2 = class {
         uBlur: { value: 0 },
         uSpread: { value: 0 },
         uAlphaThreshold: { value: 0.05 },
+        uUVOffset: { value: [0, 0] },
+        uUVScale: { value: [1, 1] },
         uModelMatrix: { value: new Float32Array(16) },
         uViewMatrix: { value: new Float32Array(16) },
         uProjectionMatrix: { value: new Float32Array(16) }
@@ -11681,7 +11697,7 @@ var Renderer2 = class {
    * 이미지 알파채널 경계를 기준으로 그림자를 렌더링합니다.
    * 이미지 불투명 영역 위에서는 그림자가 hidden 처리됩니다.
    */
-  _drawAlphaShadow(obj, x, y, drawW, drawH, texture) {
+  _drawAlphaShadow(obj, x, y, drawW, drawH, texture, uvOffset = [0, 0], uvScale = [1, 1]) {
     const { style } = obj;
     if (!style.boxShadowColor) return;
     const blur = style.boxShadowBlur ?? 0;
@@ -11703,6 +11719,8 @@ var Renderer2 = class {
     prog.uniforms["uBlur"].value = blur;
     prog.uniforms["uSpread"].value = spread;
     prog.uniforms["uAlphaThreshold"].value = 0.05;
+    prog.uniforms["uUVOffset"].value = uvOffset;
+    prog.uniforms["uUVScale"].value = uvScale;
     prog.uniforms["uModelMatrix"].value = this._makeModelMatrix(x, y, quadW, quadH, 0, drawW, drawH);
     prog.uniforms["uProjectionMatrix"].value = this._projMatrix();
     this.alphaShadowMesh.draw({ camera: this.camera });
@@ -11712,7 +11730,7 @@ var Renderer2 = class {
    * 이미지 알파채널 경계를 기준으로 border + outline을 렌더링합니다.
    * 이미지 불투명 픽셀은 discard하여 texture 패스와 중복되지 않습니다.
    */
-  _drawAlphaImageBorders(obj, x, y, drawW, drawH, texture, opacity) {
+  _drawAlphaImageBorders(obj, x, y, drawW, drawH, texture, opacity, uvOffset = [0, 0], uvScale = [1, 1]) {
     const { style } = obj;
     const borderWidth = style.borderColor && (style.borderWidth ?? 0) > 0 ? style.borderWidth : 0;
     const outlineWidth = style.outlineColor && (style.outlineWidth ?? 0) > 0 ? style.outlineWidth : 0;
@@ -11733,6 +11751,8 @@ var Renderer2 = class {
     prog.uniforms["uBorderColor"].value = parseCSSColor(style.borderColor ?? "transparent");
     prog.uniforms["uOutlineWidth"].value = outlineWidth;
     prog.uniforms["uOutlineColor"].value = parseCSSColor(style.outlineColor ?? "transparent");
+    prog.uniforms["uUVOffset"].value = uvOffset;
+    prog.uniforms["uUVScale"].value = uvScale;
     prog.uniforms["uModelMatrix"].value = this._makeModelMatrix(x, y, expandedW, expandedH, 0, drawW, drawH);
     prog.uniforms["uProjectionMatrix"].value = this._projMatrix();
     this.alphaOutlineMesh.draw({ camera: this.camera });
@@ -12247,8 +12267,8 @@ var Renderer2 = class {
       h: drawH / perspectiveScale
     };
     const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0);
-    this._drawAlphaShadow(sprite, x, y, drawW, drawH, texture);
-    this._drawAlphaImageBorders(sprite, x, y, drawW, drawH, texture, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity);
+    this._drawAlphaShadow(sprite, x, y, drawW, drawH, texture, [uvOffsetX, uvOffsetY], [uvScaleX, uvScaleY]);
+    this._drawAlphaImageBorders(sprite, x, y, drawW, drawH, texture, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity, [uvOffsetX, uvOffsetY], [uvScaleX, uvScaleY]);
     this._drawTextureMesh(
       texture,
       x,
