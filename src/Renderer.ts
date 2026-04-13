@@ -15,6 +15,8 @@ import { colorVertex, colorFragment, ellipseVertex, ellipseFragment } from './sh
 import { textureVertex, textureFragment } from './shaders/texture.js'
 import { instancedVertex, instancedFragment } from './shaders/instanced.js'
 import { shadowVertex, shadowFragment } from './shaders/shadow.js'
+import { alphaOutlineVertex, alphaOutlineFragment } from './shaders/alphaOutline.js'
+import { alphaShadowVertex, alphaShadowFragment } from './shaders/alphaShadow.js'
 import { parseTextMarkup } from './utils/textMarkup.js'
 import { parseBorderRadius } from './utils/styleUtils.js'
 import { TEXTURE_THROTTLE_FRAMES, TEXTURE_DEBOUNCE_FRAMES } from './dirty.js'
@@ -165,6 +167,8 @@ export class Renderer {
   private textureProgram!: Program
   private instancedProgram!: Program
   private shadowProgram!: Program
+  private alphaOutlineProgram!: Program
+  private alphaShadowProgram!: Program
 
   // Placeholder 색상 Program (에러 표시)
   private placeholderProgram!: Program
@@ -175,6 +179,8 @@ export class Renderer {
   private textureMesh!: Mesh
   private placeholderMesh!: Mesh
   private shadowMesh!: Mesh
+  private alphaOutlineMesh!: Mesh
+  private alphaShadowMesh!: Mesh
 
   // 상태 보존용 렌더 변수 (Model/View 매트릭스 계산용)
   private _modelMat = new Mat4()
@@ -452,12 +458,61 @@ export class Renderer {
       depthWrite: false,
     })
 
+    // ─── 알파 외곽선 (border + outline) ─────────────────────────────────
+    this.alphaOutlineProgram = new Program(gl, {
+      vertex: alphaOutlineVertex,
+      fragment: alphaOutlineFragment,
+      uniforms: {
+        uTexture: { value: null },
+        uOpacity: { value: 1 },
+        uAlphaThreshold: { value: 0.05 },
+        uImageOffset: { value: [0, 0] },
+        uImageScale: { value: [1, 1] },
+        uTexelStep: { value: [0, 0] },
+        uBorderWidth: { value: 0 },
+        uBorderColor: { value: [1, 0, 0, 1] },
+        uOutlineWidth: { value: 0 },
+        uOutlineColor: { value: [0, 0, 1, 1] },
+        uModelMatrix: { value: new Float32Array(16) },
+        uViewMatrix: { value: new Float32Array(16) },
+        uProjectionMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
+
+    // ─── 알파 그림자 (boxShadow) ─────────────────────────────────────────
+    this.alphaShadowProgram = new Program(gl, {
+      vertex: alphaShadowVertex,
+      fragment: alphaShadowFragment,
+      uniforms: {
+        uTexture: { value: null },
+        uColor: { value: [0, 0, 0, 0.5] },
+        uOpacity: { value: 1 },
+        uQuadSize: { value: [1, 1] },
+        uImageSize: { value: [1, 1] },
+        uOffset: { value: [0, 0] },
+        uBlur: { value: 0 },
+        uSpread: { value: 0 },
+        uAlphaThreshold: { value: 0.05 },
+        uModelMatrix: { value: new Float32Array(16) },
+        uViewMatrix: { value: new Float32Array(16) },
+        uProjectionMatrix: { value: new Float32Array(16) },
+      },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
+
     // ─── 공유 메쉬 초기화 ──────────────────────────────────────────────
     this.colorMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.colorProgram })
     this.ellipseMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.ellipseProgram })
     this.textureMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.textureProgram })
     this.placeholderMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.placeholderProgram })
     this.shadowMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.shadowProgram })
+    this.alphaOutlineMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.alphaOutlineProgram })
+    this.alphaShadowMesh = new Mesh(gl, { geometry: this.quadGeo, program: this.alphaShadowProgram })
   }
 
   // ─── 공개 렌더 메서드 ────────────────────────────────────────────────────
@@ -747,6 +802,8 @@ export class Renderer {
     this.instancedProgram.uniforms['uViewMatrix'].value = vm
     this.placeholderProgram.uniforms['uViewMatrix'].value = vm
     this.shadowProgram.uniforms['uViewMatrix'].value = vm
+    this.alphaOutlineProgram.uniforms['uViewMatrix'].value = vm
+    this.alphaShadowProgram.uniforms['uViewMatrix'].value = vm
   }
 
   /** ogl 카메라의 projectionMatrix를 Float32Array로 반환 */
@@ -1008,6 +1065,91 @@ export class Renderer {
     this.shadowProgram.uniforms['uProjectionMatrix'].value = this._projMatrix()
 
     this.shadowMesh.draw({ camera: this.camera })
+  }
+
+  // ─── Alpha Shadow (image/sprite 전용) ──────────────────────────────────
+
+  /**
+   * 이미지 알파채널 경계를 기준으로 그림자를 렌더링합니다.
+   * 이미지 불투명 영역 위에서는 그림자가 hidden 처리됩니다.
+   */
+  private _drawAlphaShadow(
+    obj: LeviarObject,
+    x: number, y: number,
+    drawW: number, drawH: number,
+    texture: Texture
+  ) {
+    const { style } = obj
+    if (!style.boxShadowColor) return
+
+    const blur = style.boxShadowBlur ?? 0
+    const spread = style.boxShadowSpread ?? 0
+    const offsetX = style.boxShadowOffsetX ?? 0
+    const offsetY = style.boxShadowOffsetY ?? 0
+
+    const quadW = drawW + (blur * 2 + Math.abs(spread)) * 1.5 + Math.abs(offsetX) * 2
+    const quadH = drawH + (blur * 2 + Math.abs(spread)) * 1.5 + Math.abs(offsetY) * 2
+
+    this._flushBatch()
+    this._setBlendMode(obj.style.blendMode ?? 'source-over')
+
+    const [r, g, b, a] = parseCSSColor(style.boxShadowColor)
+    const prog = this.alphaShadowProgram
+    prog.uniforms['uTexture'].value = texture
+    prog.uniforms['uColor'].value = [r, g, b, a]
+    prog.uniforms['uOpacity'].value = style.opacity * obj.__fadeOpacity
+    prog.uniforms['uQuadSize'].value = [quadW, quadH]
+    prog.uniforms['uImageSize'].value = [drawW, drawH]
+    prog.uniforms['uOffset'].value = [offsetX, offsetY]
+    prog.uniforms['uBlur'].value = blur
+    prog.uniforms['uSpread'].value = spread
+    prog.uniforms['uAlphaThreshold'].value = 0.05
+    prog.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, quadW, quadH, 0, drawW, drawH)
+    prog.uniforms['uProjectionMatrix'].value = this._projMatrix()
+
+    this.alphaShadowMesh.draw({ camera: this.camera })
+  }
+
+  // ─── Alpha Outline (image/sprite 전용) ─────────────────────────────────
+
+  /**
+   * 이미지 알파채널 경계를 기준으로 border + outline을 렌더링합니다.
+   * 이미지 불투명 픽셀은 discard하여 texture 패스와 중복되지 않습니다.
+   */
+  private _drawAlphaImageBorders(
+    obj: LeviarObject,
+    x: number, y: number,
+    drawW: number, drawH: number,
+    texture: Texture,
+    opacity: number
+  ) {
+    const { style } = obj
+    const borderWidth = (style.borderColor && (style.borderWidth ?? 0) > 0) ? style.borderWidth! : 0
+    const outlineWidth = (style.outlineColor && (style.outlineWidth ?? 0) > 0) ? style.outlineWidth! : 0
+    if (borderWidth <= 0 && outlineWidth <= 0) return
+
+    const pad = borderWidth + outlineWidth
+    const expandedW = drawW + pad * 2
+    const expandedH = drawH + pad * 2
+
+    this._flushBatch()
+    this._setBlendMode(obj.style.blendMode ?? 'source-over')
+
+    const prog = this.alphaOutlineProgram
+    prog.uniforms['uTexture'].value = texture
+    prog.uniforms['uOpacity'].value = opacity
+    prog.uniforms['uAlphaThreshold'].value = 0.05
+    prog.uniforms['uImageOffset'].value = [pad / expandedW, pad / expandedH]
+    prog.uniforms['uImageScale'].value = [drawW / expandedW, drawH / expandedH]
+    prog.uniforms['uTexelStep'].value = [1.0 / drawW, 1.0 / drawH]
+    prog.uniforms['uBorderWidth'].value = borderWidth
+    prog.uniforms['uBorderColor'].value = parseCSSColor(style.borderColor ?? 'transparent')
+    prog.uniforms['uOutlineWidth'].value = outlineWidth
+    prog.uniforms['uOutlineColor'].value = parseCSSColor(style.outlineColor ?? 'transparent')
+    prog.uniforms['uModelMatrix'].value = this._makeModelMatrix(x, y, expandedW, expandedH, 0, drawW, drawH)
+    prog.uniforms['uProjectionMatrix'].value = this._projMatrix()
+
+    this.alphaOutlineMesh.draw({ camera: this.camera })
   }
 
   private _drawRectBorders(obj: LeviarObject, x: number, y: number, w: number, h: number, targetOpacity: number) {
@@ -1497,10 +1639,11 @@ export class Renderer {
       }
 
       const baseRadius = parseBorderRadius(obj.style.borderRadius, drawW, drawH, 0)
-      this._drawShadow(obj, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
-      this._drawRectBorders(obj, x, y, drawW, drawH, obj.style.opacity * obj.__fadeOpacity)
-
       const texture = this._getOrCreateAssetTexture(assetSrc, asset)
+
+      // 알파채널 경계 기반 shadow → outline → 이미지 본체 순서로 렌더링
+      this._drawAlphaShadow(obj, x, y, drawW, drawH, texture)
+      this._drawAlphaImageBorders(obj, x, y, drawW, drawH, texture, obj.style.opacity * obj.__fadeOpacity)
       this._drawTextureMesh(texture, x, y, drawW, drawH, drawOpacity, false, [0, 0], [1, 1], 0, baseRadius)
     }
 
@@ -1631,8 +1774,8 @@ export class Renderer {
         h: drawH / perspectiveScale,
       }
       const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0)
-      this._drawShadow(sprite, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
-      this._drawRectBorders(sprite, x, y, drawW, drawH, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity)
+      this._drawAlphaShadow(sprite, x, y, drawW, drawH, texture)
+      this._drawAlphaImageBorders(sprite, x, y, drawW, drawH, texture, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity)
       this._drawTextureMesh(texture, x, y, drawW, drawH, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity, false, [0, 0], [1, 1], 0, baseRadius)
       return
     }
@@ -1665,8 +1808,8 @@ export class Renderer {
       h: drawH / perspectiveScale,
     }
     const baseRadius = parseBorderRadius(sprite.style.borderRadius, drawW, drawH, 0)
-    this._drawShadow(sprite, x, y, drawW, drawH, drawW, drawH, false, baseRadius)
-    this._drawRectBorders(sprite, x, y, drawW, drawH, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity)
+    this._drawAlphaShadow(sprite, x, y, drawW, drawH, texture)
+    this._drawAlphaImageBorders(sprite, x, y, drawW, drawH, texture, (sprite.style.opacity ?? 1) * sprite.__fadeOpacity)
 
     this._drawTextureMesh(
       texture,
